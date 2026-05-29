@@ -9,6 +9,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.utopia.economy.EconomyManager;
+import com.utopia.economy.EconomyMenus;
 import com.utopia.util.Messages;
 
 import net.minecraft.commands.CommandSourceStack;
@@ -24,13 +25,15 @@ public final class EconomyCommands {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        // /balance [joueur] (+ alias /bal)
+        // /balance [joueur] | /balance admin (menu admin) (+ alias /bal)
         dispatcher.register(Commands.literal("balance")
                 .executes(EconomyCommands::balanceSelf)
+                .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(EconomyCommands::adminMenu))
                 .then(Commands.argument("target", GameProfileArgument.gameProfile())
                         .executes(EconomyCommands::balanceOther)));
         dispatcher.register(Commands.literal("bal")
                 .executes(EconomyCommands::balanceSelf)
+                .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(EconomyCommands::adminMenu))
                 .then(Commands.argument("target", GameProfileArgument.gameProfile())
                         .executes(EconomyCommands::balanceOther)));
 
@@ -71,6 +74,11 @@ public final class EconomyCommands {
     private static GameProfile profile(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         Collection<GameProfile> profiles = GameProfileArgument.getGameProfiles(ctx, "target");
         return profiles.isEmpty() ? null : profiles.iterator().next();
+    }
+
+    private static int adminMenu(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EconomyMenus.openAdminMenu(ctx.getSource().getPlayerOrException());
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
     private static int balanceSelf(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {

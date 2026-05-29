@@ -17,6 +17,7 @@ import com.utopia.data.ParcelData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.parcel.Parcel;
 import com.utopia.parcel.ParcelManager;
+import com.utopia.parcel.ParcelMenus;
 import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
@@ -41,7 +42,10 @@ public final class ParcelCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal("parcel")
+                // /parcel (sans argument) ouvre le menu de la parcelle ou l'on se trouve
+                .executes(ParcelCommands::menu)
                 // ---- Joueur ----
+                .then(Commands.literal("menu").executes(ParcelCommands::menu))
                 .then(Commands.literal("info").executes(ParcelCommands::info))
                 .then(Commands.literal("list").executes(ParcelCommands::list))
                 .then(Commands.literal("buy").executes(ParcelCommands::buy))
@@ -118,6 +122,11 @@ public final class ParcelCommands {
 
     // ----------------------------------------------------------------------------------- joueur
 
+    private static int menu(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ParcelMenus.openParcelMenu(ctx.getSource().getPlayerOrException());
+        return 1;
+    }
+
     private static int info(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         Parcel p = parcelAt(player);
@@ -152,41 +161,23 @@ public final class ParcelCommands {
 
     private static int buy(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
-        MinecraftServer server = player.server;
         Parcel p = parcelAt(player);
         if (p == null) {
             player.sendSystemMessage(Messages.error("Vous n'etes sur aucune parcelle."));
             return 0;
         }
-        if (!p.forSale()) {
-            player.sendSystemMessage(Messages.error("Cette parcelle n'est pas en vente."));
-            return 0;
-        }
-        if (p.isOwner(player.getUUID())) {
-            player.sendSystemMessage(Messages.error("Vous possedez deja cette parcelle."));
-            return 0;
-        }
         long price = p.price();
-        if (!EconomyManager.remove(server, player.getUUID(), price)) {
-            player.sendSystemMessage(Messages.error("Solde insuffisant (prix : " + EconomyManager.format(price) + ")."));
-            return 0;
-        }
-        UUID previousOwner = p.owner();
-        if (previousOwner != null) {
-            EconomyManager.add(server, previousOwner, price);
-            ServerPlayer seller = server.getPlayerList().getPlayer(previousOwner);
-            if (seller != null) {
-                seller.sendSystemMessage(Messages.success(player.getGameProfile().getName()
-                        + " a achete votre parcelle " + p.name() + " pour " + EconomyManager.format(price) + "."));
+        switch (ParcelManager.purchase(player, p)) {
+            case NOT_FOR_SALE -> player.sendSystemMessage(Messages.error("Cette parcelle n'est pas en vente."));
+            case ALREADY_OWNER -> player.sendSystemMessage(Messages.error("Vous possedez deja cette parcelle."));
+            case INSUFFICIENT -> player.sendSystemMessage(Messages.error("Solde insuffisant (prix : " + EconomyManager.format(price) + ")."));
+            default -> {
+                player.sendSystemMessage(Messages.success("Vous avez achete la parcelle " + p.name()
+                        + " pour " + EconomyManager.format(price) + " !"));
+                return 1;
             }
         }
-        p.members().clear();
-        p.setOwner(player.getUUID(), player.getGameProfile().getName());
-        p.setForSale(false);
-        ParcelData.get(server).setDirty();
-        player.sendSystemMessage(Messages.success("Vous avez achete la parcelle " + p.name()
-                + " pour " + EconomyManager.format(price) + " !"));
-        return 1;
+        return 0;
     }
 
     private static int sell(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {

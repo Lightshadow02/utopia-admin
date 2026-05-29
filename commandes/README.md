@@ -42,6 +42,7 @@ Toutes les commandes du mod, classées par **joueur** et **administrateur**.
 ### 🏠 Parcelles
 | Commande | Effet |
 |---|---|
+| `/parcel` ou `/parcel menu` | **Ouvre le menu** de la parcelle où tu te trouves (gérer membres/droits, vente, ou achat). 🖱️ |
 | `/parcel info` | Infos sur la parcelle où tu te trouves (proprio, prix, tes droits). |
 | `/parcel list` | Liste tes parcelles. |
 | `/parcel buy` | Achète la parcelle où tu te trouves (paiement via ton solde `/balance`). |
@@ -59,6 +60,8 @@ Toutes les commandes du mod, classées par **joueur** et **administrateur**.
 - `machines` = fours, enclumes, tables, redstone…
 
 Exemple : `/parcel trust Steve build containers` (Steve peut construire et ouvrir les coffres).
+
+> 🖱️ **Le plus simple : tape `/parcel`** sur ta parcelle pour ouvrir le **menu de gestion** : « Gérer les membres » → ajoute un joueur (têtes des joueurs en ligne) et **active/désactive ses droits d'un clic** (vert = activé). Tu peux aussi y mettre en vente / retirer de la vente.
 
 ---
 
@@ -82,11 +85,12 @@ Exemple : `/parcel trust Steve build containers` (Steve peut construire et ouvri
 ### 💰 Économie — administration
 | Commande | Effet |
 |---|---|
-| `/money give <joueur> <montant>` | Crédite le solde d'un joueur. |
+| `/balance admin` | 🖱️ **Ouvre le menu admin** : liste des joueurs → donner / retirer **1, 10, 100, 1000** d'un clic. |
+| `/money give <joueur> <montant>` | Crédite le solde d'un joueur (commande, gère le hors-ligne). |
 | `/money take <joueur> <montant>` | Débite le solde d'un joueur. |
 | `/money set <joueur> <montant>` | Définit le solde d'un joueur. |
 
-> Accepte les joueurs **hors ligne** (par pseudo).
+> Le **menu** (`/balance admin`) couvre les joueurs **en ligne** ; pour un joueur **hors ligne**, utilise `/money give|take|set <pseudo> <montant>`.
 
 ### 🏠 Spawn
 | Commande | Effet |

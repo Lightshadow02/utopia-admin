@@ -77,7 +77,8 @@ Toutes les teleportations utilisent un **delai (warmup)** configurable, annulabl
 | `/pay <joueur> <montant>` | joueur | Transfere des pieces de son solde vers un autre joueur. |
 | `/withdraw <montant>` | joueur | Retire des pieces de la banque vers l'inventaire (pieces physiques). |
 | `/deposit [montant]` | joueur | Depose les pieces de l'inventaire en banque (tout si aucun montant). |
-| `/money give\|take\|set <joueur> <montant>` | op niveau 2 | Crediter / debiter / definir le solde d'un joueur. |
+| `/balance admin` | op niveau 2 | **Menu GUI** : liste des joueurs -> donner/retirer 1, 10, 100, 1000 d'un clic. |
+| `/money give\|take\|set <joueur> <montant>` | op niveau 2 | Crediter / debiter / definir le solde d'un joueur (commande, gere le hors-ligne). |
 
 Les pieces retirees sont des items **marques** (l'item de base est configurable). On peut aussi **deposer en faisant clic droit** en tenant des pieces. `/balance`, `/pay` et `/money` acceptent des joueurs **hors ligne** (par pseudo).
 
@@ -100,6 +101,7 @@ Terrains a **formes libres** : une parcelle est tracee comme un **polygone** (co
 **Joueur** :
 | Commande | Effet |
 |---|---|
+| `/parcel` (ou `/parcel menu`) | **Menu GUI** de gestion de la parcelle : membres & droits (toggles), vente, ou achat. |
 | `/parcel info` / `/parcel list` | Infos de la parcelle sous vos pieds / vos parcelles. |
 | `/parcel buy` | Achete la parcelle ou vous vous trouvez (paiement via `/balance`). |
 | `/parcel sell <prix>` / `/parcel unsell` | Met en vente / retire de la vente votre parcelle. |

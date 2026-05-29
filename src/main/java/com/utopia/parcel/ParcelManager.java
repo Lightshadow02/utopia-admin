@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.utopia.Config;
 import com.utopia.data.ParcelData;
+import com.utopia.economy.EconomyManager;
+import com.utopia.util.Messages;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -177,6 +179,41 @@ public final class ParcelManager {
             return Parcel.Flag.CONTAINERS;
         }
         return null;
+    }
+
+    // -------- Achat --------
+
+    public enum BuyResult { OK, NOT_FOR_SALE, ALREADY_OWNER, INSUFFICIENT }
+
+    /**
+     * Achat d'une parcelle par {@code buyer} (paiement via le solde). Transfere la propriete,
+     * paie l'ancien proprietaire le cas echeant, vide les membres. Le message est laisse a l'appelant.
+     */
+    public static BuyResult purchase(ServerPlayer buyer, Parcel parcel) {
+        if (!parcel.forSale()) {
+            return BuyResult.NOT_FOR_SALE;
+        }
+        if (parcel.isOwner(buyer.getUUID())) {
+            return BuyResult.ALREADY_OWNER;
+        }
+        long price = parcel.price();
+        if (!EconomyManager.remove(buyer.server, buyer.getUUID(), price)) {
+            return BuyResult.INSUFFICIENT;
+        }
+        UUID previous = parcel.owner();
+        if (previous != null) {
+            EconomyManager.add(buyer.server, previous, price);
+            ServerPlayer seller = buyer.server.getPlayerList().getPlayer(previous);
+            if (seller != null) {
+                seller.sendSystemMessage(Messages.success(buyer.getGameProfile().getName()
+                        + " a achete votre parcelle " + parcel.name() + " pour " + EconomyManager.format(price) + "."));
+            }
+        }
+        parcel.members().clear();
+        parcel.setOwner(buyer.getUUID(), buyer.getGameProfile().getName());
+        parcel.setForSale(false);
+        ParcelData.get(buyer.server).setDirty();
+        return BuyResult.OK;
     }
 
     /**

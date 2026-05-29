@@ -53,8 +53,13 @@ public final class Icons {
 
     /** Tete de joueur affichant le skin de la cible. */
     public static ItemStack playerHead(ServerPlayer player, Component name, List<Component> loreLines) {
+        return playerHead(player.getGameProfile(), name, loreLines);
+    }
+
+    /** Tete de joueur a partir d'un profil (fonctionne aussi pour un joueur hors ligne). */
+    public static ItemStack playerHead(com.mojang.authlib.GameProfile profile, Component name, List<Component> loreLines) {
         ItemStack stack = icon(Items.PLAYER_HEAD, 1, name, loreLines);
-        stack.set(DataComponents.PROFILE, new ResolvableProfile(player.getGameProfile()));
+        stack.set(DataComponents.PROFILE, new ResolvableProfile(profile));
         return stack;
     }
 }
