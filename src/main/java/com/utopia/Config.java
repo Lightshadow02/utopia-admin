@@ -59,6 +59,8 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue PARCEL_OP_BYPASS;
     public static final ModConfigSpec.BooleanValue PARCEL_PROTECT_EXPLOSIONS;
     public static final ModConfigSpec.BooleanValue PARCEL_EXTINGUISH_FIRE;
+    public static final ModConfigSpec.BooleanValue PARCEL_PUBLIC_DOORS;
+    public static final ModConfigSpec.BooleanValue PARCEL_PROTECT_ENTITIES;
 
     public static final ModConfigSpec SPEC;
 
@@ -183,6 +185,12 @@ public final class Config {
         PARCEL_EXTINGUISH_FIRE = BUILDER
                 .comment("Eteindre automatiquement le feu qui apparait dans les parcelles (balayage periodique).")
                 .define("extinguishFire", true);
+        PARCEL_PUBLIC_DOORS = BUILDER
+                .comment("Portes, trappes, portillons, boutons, leviers, plaques accessibles a TOUS dans les parcelles.")
+                .define("publicDoors", true);
+        PARCEL_PROTECT_ENTITIES = BUILDER
+                .comment("Empecher les joueurs non autorises de blesser/tuer les entites (villageois, animaux, cadres...) d'une parcelle.")
+                .define("protectEntities", true);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

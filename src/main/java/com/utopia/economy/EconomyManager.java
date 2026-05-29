@@ -124,6 +124,22 @@ public final class EconomyManager {
         }
     }
 
+    /** Nombre de pieces qui tiennent encore dans l'inventaire (slots vides + piles de pieces non pleines). */
+    public static int freeSpaceForCoins(ServerPlayer player) {
+        Inventory inv = player.getInventory();
+        int maxStack = new ItemStack(coinItem()).getMaxStackSize();
+        long free = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (s.isEmpty()) {
+                free += maxStack;
+            } else if (isCoin(s)) {
+                free += Math.max(0, maxStack - s.getCount());
+            }
+        }
+        return (int) Math.min(Integer.MAX_VALUE, free);
+    }
+
     /** Compte les pieces frappees dans l'inventaire du joueur. */
     public static int countCoins(ServerPlayer player) {
         Inventory inv = player.getInventory();

@@ -45,6 +45,13 @@ public final class EconomyData extends SavedData {
         setDirty();
     }
 
+    /** Les {@code limit} plus gros soldes, du plus riche au moins riche. */
+    public java.util.List<Map.Entry<UUID, Long>> top(int limit) {
+        java.util.List<Map.Entry<UUID, Long>> list = new java.util.ArrayList<>(balances.entrySet());
+        list.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+        return list.size() > limit ? list.subList(0, limit) : list;
+    }
+
     public static EconomyData load(CompoundTag tag, HolderLookup.Provider registries) {
         EconomyData data = new EconomyData();
         ListTag list = tag.getList("accounts", Tag.TAG_COMPOUND);

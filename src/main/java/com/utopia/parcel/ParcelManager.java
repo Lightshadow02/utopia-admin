@@ -15,6 +15,8 @@ import com.utopia.util.Messages;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -159,6 +161,22 @@ public final class ParcelManager {
 
     public static boolean isOp(ServerPlayer player) {
         return player.server.getPlayerList().isOp(player.getGameProfile());
+    }
+
+    /** Teleporte le joueur au centre de la parcelle, AU SOL (surface), pas en hauteur. */
+    public static void teleport(ServerPlayer player, Parcel parcel) {
+        double[] cxz = parcel.centerXZ();
+        if (cxz == null) {
+            player.sendSystemMessage(Messages.error("Cette parcelle n'a aucune region."));
+            return;
+        }
+        ServerLevel level = player.server.getLevel(ResourceKey.create(Registries.DIMENSION, parcel.dimension()));
+        if (level == null) {
+            level = player.serverLevel();
+        }
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) Math.floor(cxz[0]), (int) Math.floor(cxz[1]));
+        player.teleportTo(level, cxz[0], y, cxz[1], player.getYRot(), player.getXRot());
+        player.sendSystemMessage(Messages.success("Teleporte a la parcelle " + parcel.id() + "."));
     }
 
     public static boolean canBypass(ServerPlayer player) {

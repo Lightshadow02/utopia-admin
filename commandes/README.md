@@ -38,8 +38,10 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 | Commande | Effet |
 |---|---|
 | `/balance [joueur]` | Affiche ton solde (ou celui d'un autre joueur). Alias : `/bal`. |
+| `/balance menu` | 🖱️ **Menu banque** : payer un joueur, retirer ou déposer des pièces d'un clic. |
+| `/balance top` (ou `/baltop`) | Classement des plus gros soldes. |
 | `/pay <joueur> <montant>` | Envoie des pièces de ton solde vers un autre joueur (montant ≥ 1). |
-| `/withdraw <montant>` | Retire des pièces de la banque vers ton inventaire (montant ≥ 1). |
+| `/withdraw <montant>` | Retire des pièces de la banque (limité à la **place dispo** dans ton inventaire ; le reste reste en banque). |
 | `/deposit [montant]` | Dépose des pièces de l'inventaire en banque (tout si aucun montant). |
 
 > Tu peux aussi **déposer en faisant clic droit** en tenant des pièces.
@@ -49,24 +51,25 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 |---|---|
 | `/parcel` ou `/parcel menu` | 🖱️ Menu de la parcelle où tu te trouves. **Hors d'une parcelle**, ouvre tes parcelles (navigables ◄ ►). |
 | `/parcel mine` | 🖱️ Ouvre **tes parcelles** depuis n'importe où ; flèches ◄ ► pour passer de l'une à l'autre, puis gérer / vendre / TP. |
-| `/parcel shop` | 🖱️ Liste des parcelles **en vente** (triées par ID). **Clic gauche** = acheter (confirmation), **clic droit** = voir les délimitations 30 s (particules). Le **vendeur** (Serveur ou joueur) et le prix sont affichés. |
+| `/parcel shop` | 🖱️ Liste des parcelles **en vente** (triées par ID). **Clic gauche** = acheter (confirmation), **clic droit** = voir les délimitations 30 s (particules). Le **vendeur** (Mairie ou joueur) et le prix sont affichés. |
 | `/parcel info` | Infos sur la parcelle où tu te trouves (proprio, prix, tes droits). |
 | `/parcel list` | Liste tes parcelles. |
 | `/parcel buy` | Achète la parcelle où tu te trouves (paiement via `/balance`). |
 | `/parcel sell <prix>` | Met **ta** parcelle en vente aux joueurs au prix donné (≥ 0). |
 | `/parcel unsell` | Retire ta parcelle de la vente. |
 | `/parcel transfer <joueur>` | Donne ta parcelle à un autre joueur. |
-| `/parcel trust <joueur> <droits>` | Autorise un joueur. Droits : `build`, `containers`, `doors`, `machines`, ou `all`. |
+| `/parcel trust <joueur> <droits>` | Autorise un joueur. Droits : `build`, `containers`, `doors`, `machines`, `create`, ou `all`. |
 | `/parcel untrust <joueur>` | Retire tous les droits d'un joueur. |
 | `/parcel trustlist` | Liste les joueurs autorisés sur la parcelle. |
 
 **Droits** (`trust`) : `build` (casser/poser) · `containers` (coffres…) · `doors` (portes/trappes/boutons/leviers/plaques) · `machines` (fours/enclumes/tables/redstone) · `create` (blocs du mod **Create**) · `all` (tout).
 Exemple : `/parcel trust Steve build containers create`.
 
-> 🔒 La protection bloque aussi les **poses de blocs non-joueur** dans une parcelle (projectiles type *slingshot*, distributeurs, sable qui tombe…), pour éviter les contournements.
+> 🔒 La protection bloque aussi les **poses de blocs non-joueur** (projectiles type *slingshot*, distributeurs, sable…), les **explosions**, le **feu**, et empêche les non-autorisés de **blesser/tuer les entités** (villageois, animaux, cadres…) — on peut donc **commercer avec un villageois sans pouvoir le tuer ni ouvrir son coffre**.
+> 🚪 Les **portes, trappes, portillons, boutons, leviers et plaques** sont **publics** par défaut (tout le monde peut les utiliser), config `parcel.publicDoors`.
 
 > 🖱️ **Le plus simple** : `/parcel` (sur ta parcelle) ou `/parcel mine` (de n'importe où) → menu : « Gérer les membres », « Vendre », TP, voir les délimitations. Avec plusieurs parcelles, navigue avec ◄ ►.
-> **Vendre** : *au serveur* (immédiat, **75 % remboursé** de ce que tu as payé) ou *aux joueurs* (**tu fixes ton prix** : boutons ±1/±10/±100/±1000, ou `/parcel sell <prix>` pour un montant exact). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / Vendeur / prix`, et apparaît dans `/parcel shop` avec le **vendeur** (Serveur ou joueur).
+> **Vendre** : *à la Mairie* (immédiat, **75 % remboursé** de ce que tu as payé) ou *aux joueurs* (**tu fixes ton prix** : boutons ±1/±10/±100/±1000, ou `/parcel sell <prix>` pour un montant exact). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / Vendeur / prix`, et apparaît dans `/parcel shop` avec le **vendeur** (Mairie ou joueur).
 
 `/parcel` a un alias : `/parcelle`.
 
@@ -102,7 +105,7 @@ Exemple : `/parcel trust Steve build containers create`.
 ### 🏗️ Parcelles — administration
 | Commande | Effet |
 |---|---|
-| `/parcel admin` | 🖱️ Menu **global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer (propriétaire/transférer, **changer le prix**, remettre en vente serveur, déplacer l'hologramme X/Y/Z, **supprimer** avec confirmation), **clic droit** = se téléporter. |
+| `/parcel admin` | 🖱️ Menu **global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer (propriétaire/transférer, **changer le prix**, remettre en vente Mairie, déplacer l'hologramme X/Y/Z, **supprimer** avec confirmation), **clic droit** = se téléporter. |
 | `/parcel wand` | Reçois l'**outil de tracé**. |
 | `/parcel trace clear` | Efface le tracé en cours. |
 | `/parcel trace undo` | Annule le dernier point du tracé. |

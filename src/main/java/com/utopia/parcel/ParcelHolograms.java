@@ -190,7 +190,7 @@ public final class ParcelHolograms {
     }
 
     private static List<Component> holoLines(Parcel p) {
-        String seller = p.isOwned() ? "Vendeur : " + p.ownerName() : "Vendeur : Serveur";
+        String seller = p.isOwned() ? "Vendeur : " + p.ownerName() : "Vendeur : Mairie";
         return List.of(
                 Component.literal("ID: " + p.id()).withStyle(ChatFormatting.YELLOW),
                 Component.literal("A VENDRE").withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)),

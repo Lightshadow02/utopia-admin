@@ -121,7 +121,7 @@ public final class ParcelMenus {
         gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Gerer les membres", ChatFormatting.YELLOW), List.of()),
                 sp -> openMembersMenu(sp, parcelId));
         gui.button(12, Icons.icon(Items.GOLD_INGOT, Icons.label("Vendre", ChatFormatting.GOLD),
-                List.of(Icons.lore("Au serveur (75%) ou aux joueurs (ton prix)", ChatFormatting.GRAY))),
+                List.of(Icons.lore("A la Mairie (75%) ou aux joueurs (ton prix)", ChatFormatting.GRAY))),
                 sp -> openSellMenu(sp, parcelId));
         gui.button(14, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
                 sp -> {
@@ -162,7 +162,7 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
 
         List<Component> info = new ArrayList<>();
-        info.add(Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "aucun (serveur)"), ChatFormatting.GRAY));
+        info.add(Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY));
         info.add(Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                 p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
         info.add(Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY));
@@ -173,7 +173,7 @@ public final class ParcelMenus {
                     List.of(Icons.lore("Ajouter/retirer des joueurs et leurs droits", ChatFormatting.GRAY))),
                     sp -> openMembersMenu(sp, parcelId));
             gui.button(15, Icons.icon(Items.GOLD_INGOT, Icons.label("Vendre la parcelle", ChatFormatting.GOLD),
-                    List.of(Icons.lore("Au serveur (75%) ou via les joueurs", ChatFormatting.GRAY))),
+                    List.of(Icons.lore("A la Mairie (75%) ou via les joueurs", ChatFormatting.GRAY))),
                     sp -> openSellMenu(sp, parcelId));
         } else if (p.forSale()) {
             gui.button(15, Icons.icon(Items.EMERALD, Icons.label("Acheter", ChatFormatting.GREEN),
@@ -205,12 +205,12 @@ public final class ParcelMenus {
             player.sendSystemMessage(Messages.error("Acces refuse."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Vendre : " + p.name(), ChatFormatting.DARK_AQUA));
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Vendre : " + p.name(), ChatFormatting.GOLD));
 
         long refund = Math.round(p.lastPaid() * ParcelManager.SERVER_BUYBACK_RATE);
-        gui.button(10, Icons.icon(Items.HOPPER, Icons.label("Vendre au serveur", ChatFormatting.YELLOW), List.of(
+        gui.button(10, Icons.icon(Items.HOPPER, Icons.label("Vendre a la Mairie", ChatFormatting.YELLOW), List.of(
                 Icons.lore("Immediat. Remboursement : " + EconomyManager.format(refund) + " (75%)", ChatFormatting.GRAY),
-                Icons.lore("La parcelle repart en vente cote serveur.", ChatFormatting.DARK_GRAY))),
+                Icons.lore("La parcelle repart en vente cote Mairie.", ChatFormatting.DARK_GRAY))),
                 sp -> {
                     Parcel cur = getParcel(server, parcelId);
                     if (cur == null || !cur.isOwner(sp.getUUID())) {
@@ -218,7 +218,7 @@ public final class ParcelMenus {
                         return;
                     }
                     long r = ParcelManager.sellToServer(sp, cur);
-                    sp.sendSystemMessage(Messages.success("Parcelle vendue au serveur. Rembourse : " + EconomyManager.format(r) + "."));
+                    sp.sendSystemMessage(Messages.success("Parcelle vendue a la Mairie. Rembourse : " + EconomyManager.format(r) + "."));
                     sp.closeContainer();
                 });
 
@@ -254,7 +254,7 @@ public final class ParcelMenus {
             return;
         }
         long shown = Math.max(0, price);
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Prix de vente : " + EconomyManager.format(shown), ChatFormatting.DARK_AQUA));
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Prix de vente : " + EconomyManager.format(shown), ChatFormatting.GOLD));
 
         int[] minus = { -1000, -100, -10, -1 };
         int[] minusSlots = { 9, 10, 11, 12 };
@@ -489,7 +489,7 @@ public final class ParcelMenus {
             String pid = p.id();
             gui.button(slot++, Icons.icon(Items.PAPER, Icons.label("Parcelle " + pid, ChatFormatting.GOLD), List.of(
                             Icons.lore("Prix : " + EconomyManager.format(p.price()), ChatFormatting.GREEN),
-                            Icons.lore("Vendeur : " + (p.isOwned() ? p.ownerName() + " (joueur)" : "Serveur"),
+                            Icons.lore("Vendeur : " + (p.isOwned() ? p.ownerName() + " (joueur)" : "Mairie"),
                                     p.isOwned() ? ChatFormatting.AQUA : ChatFormatting.GRAY),
                             Icons.lore("Clic GAUCHE : acheter", ChatFormatting.YELLOW),
                             Icons.lore("Clic DROIT : voir les delimitations (30 s)", ChatFormatting.YELLOW))),
@@ -526,7 +526,7 @@ public final class ParcelMenus {
             String pid = p.id();
             gui.button(slot++, Icons.icon(p.forSale() ? Items.GOLD_BLOCK : Items.GRASS_BLOCK,
                             Icons.label("Parcelle " + pid, ChatFormatting.AQUA), List.of(
-                            Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "serveur"), ChatFormatting.GRAY),
+                            Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY),
                             Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                                     p.forSale() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
                             Icons.lore("Clic GAUCHE : gerer", ChatFormatting.YELLOW),
@@ -559,7 +559,7 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Admin : " + p.name(), ChatFormatting.DARK_RED));
 
         gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), List.of(
-                Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "serveur"), ChatFormatting.GOLD),
+                Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GOLD),
                 Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                         p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
                 Icons.lore("Dernier prix paye : " + EconomyManager.format(p.lastPaid()), ChatFormatting.DARK_GRAY),
@@ -570,7 +570,7 @@ public final class ParcelMenus {
         gui.button(12, Icons.icon(Items.NAME_TAG, Icons.label("Transferer (changer proprio)", ChatFormatting.YELLOW),
                 List.of(Icons.lore("Choisir un nouveau proprietaire", ChatFormatting.GRAY))),
                 sp -> openTransferPicker(sp, parcelId));
-        gui.button(14, Icons.icon(Items.GOLD_BLOCK, Icons.label("Remettre en vente (serveur)", ChatFormatting.GOLD),
+        gui.button(14, Icons.icon(Items.GOLD_BLOCK, Icons.label("Remettre en vente (Mairie)", ChatFormatting.GOLD),
                 List.of(Icons.lore("Retire au proprio, reliste au dernier prix paye", ChatFormatting.GRAY),
                         Icons.lore("Prix : " + EconomyManager.format(p.lastPaid()), ChatFormatting.GREEN))),
                 sp -> {
@@ -615,7 +615,7 @@ public final class ParcelMenus {
         }
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Supprimer " + p.id() + " ?", ChatFormatting.DARK_RED));
         gui.set(4, Icons.icon(Items.BARRIER, Icons.label("Suppression definitive", ChatFormatting.RED), List.of(
-                Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "serveur"), ChatFormatting.GRAY),
+                Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY),
                 Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY),
                 Icons.lore("Cette action est irreversible.", ChatFormatting.RED))));
         gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("OUI, supprimer", ChatFormatting.GREEN), List.of()),
@@ -765,16 +765,6 @@ public final class ParcelMenus {
     }
 
     private static void teleportTo(ServerPlayer player, Parcel parcel) {
-        double[] center = parcel.firstRegionCenter();
-        if (center == null) {
-            player.sendSystemMessage(Messages.error("Parcelle sans region."));
-            return;
-        }
-        ServerLevel level = player.server.getLevel(ResourceKey.create(Registries.DIMENSION, parcel.dimension()));
-        if (level == null) {
-            level = player.serverLevel();
-        }
-        player.teleportTo(level, center[0], center[1], center[2], player.getYRot(), player.getXRot());
-        player.sendSystemMessage(Messages.success("Teleporte a la parcelle " + parcel.id() + "."));
+        ParcelManager.teleport(player, parcel);
     }
 }

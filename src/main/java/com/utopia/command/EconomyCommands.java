@@ -25,17 +25,22 @@ public final class EconomyCommands {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        // /balance [joueur] | /balance admin (menu admin) (+ alias /bal)
+        // /balance [joueur] | /balance menu | /balance top | /balance admin (+ alias /bal)
         dispatcher.register(Commands.literal("balance")
                 .executes(EconomyCommands::balanceSelf)
+                .then(Commands.literal("menu").executes(EconomyCommands::playerMenu))
+                .then(Commands.literal("top").executes(EconomyCommands::top))
                 .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(EconomyCommands::adminMenu))
                 .then(Commands.argument("target", GameProfileArgument.gameProfile())
                         .executes(EconomyCommands::balanceOther)));
         dispatcher.register(Commands.literal("bal")
                 .executes(EconomyCommands::balanceSelf)
+                .then(Commands.literal("menu").executes(EconomyCommands::playerMenu))
+                .then(Commands.literal("top").executes(EconomyCommands::top))
                 .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(EconomyCommands::adminMenu))
                 .then(Commands.argument("target", GameProfileArgument.gameProfile())
                         .executes(EconomyCommands::balanceOther)));
+        dispatcher.register(Commands.literal("baltop").executes(EconomyCommands::top));
 
         // /pay <joueur> <montant>
         dispatcher.register(Commands.literal("pay")
@@ -78,6 +83,30 @@ public final class EconomyCommands {
 
     private static int adminMenu(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         EconomyMenus.openAdminMenu(ctx.getSource().getPlayerOrException());
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+    }
+
+    private static int playerMenu(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EconomyMenus.openPlayerMenu(ctx.getSource().getPlayerOrException());
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+    }
+
+    private static int top(CommandContext<CommandSourceStack> ctx) {
+        MinecraftServer server = ctx.getSource().getServer();
+        var list = com.utopia.data.EconomyData.get(server).top(10);
+        ctx.getSource().sendSuccess(() -> Messages.success("Classement des soldes (top " + list.size() + ") :"), false);
+        int rank = 1;
+        for (var e : list) {
+            final int r = rank++;
+            ServerPlayer online = server.getPlayerList().getPlayer(e.getKey());
+            String name = online != null ? online.getGameProfile().getName()
+                    : server.getProfileCache().get(e.getKey()).map(com.mojang.authlib.GameProfile::getName)
+                            .orElse(e.getKey().toString().substring(0, 8));
+            ctx.getSource().sendSuccess(() -> Messages.info(" #" + r + " " + name + " : " + EconomyManager.format(e.getValue())), false);
+        }
+        if (list.isEmpty()) {
+            ctx.getSource().sendSuccess(() -> Messages.info(" (aucun compte)"), false);
+        }
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
@@ -130,14 +159,23 @@ public final class EconomyCommands {
 
     private static int withdraw(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
-        int amount = IntegerArgumentType.getInteger(ctx, "amount");
-        if (!EconomyManager.remove(player.server, player.getUUID(), amount)) {
+        int requested = IntegerArgumentType.getInteger(ctx, "amount");
+        int space = EconomyManager.freeSpaceForCoins(player);
+        if (space <= 0) {
+            player.sendSystemMessage(Messages.error("Votre inventaire est plein."));
+            return 0;
+        }
+        long balance = EconomyManager.getBalance(player.server, player.getUUID());
+        int amount = (int) Math.min(requested, Math.min(space, balance));
+        if (amount <= 0) {
             player.sendSystemMessage(Messages.error("Solde insuffisant."));
             return 0;
         }
+        EconomyManager.remove(player.server, player.getUUID(), amount);
         EconomyManager.giveCoins(player, amount);
-        player.sendSystemMessage(Messages.success("Vous avez retire " + EconomyManager.format(amount)
-                + " en pieces. Nouveau solde : " + EconomyManager.format(EconomyManager.getBalance(player.server, player.getUUID())) + "."));
+        String suffix = amount < requested ? " (limite a la place dispo)" : "";
+        player.sendSystemMessage(Messages.success("Vous avez retire " + EconomyManager.format(amount) + suffix
+                + ". Nouveau solde : " + EconomyManager.format(EconomyManager.getBalance(player.server, player.getUUID())) + "."));
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 

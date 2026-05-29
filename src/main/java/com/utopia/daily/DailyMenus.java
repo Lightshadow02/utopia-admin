@@ -101,6 +101,27 @@ public final class DailyMenus {
                 available ? Icons.lore("Recompense du jour : disponible !", ChatFormatting.GREEN)
                         : Icons.lore("Prochaine dans " + Messages.formatDuration(DailyManager.secondsUntilTomorrow()), ChatFormatting.YELLOW))));
 
+        // Item du prochain daily a recuperer (aujourd'hui si dispo, sinon demain).
+        LocalDate nextDay = available ? today : today.plusDays(1);
+        List<Component> nextLore = new ArrayList<>();
+        nextLore.add(Icons.lore(available ? "A recuperer aujourd'hui (" + nextDay + ")" : "Demain (" + nextDay + ")",
+                ChatFormatting.GRAY));
+        ItemStack nextItem = new ItemStack(Items.CHEST);
+        for (String spec : DailyManager.rewardSpecsFor(nextDay)) {
+            ItemStack st = DailyManager.specToStack(spec);
+            if (!st.isEmpty()) {
+                if (nextItem.is(Items.CHEST)) {
+                    nextItem = st.copy(); // 1er item comme icone
+                }
+                nextLore.add(Icons.lore(" - " + st.getCount() + "x " + st.getHoverName().getString(), ChatFormatting.AQUA));
+            }
+        }
+        if (nextLore.size() == 1) {
+            nextLore.add(Icons.lore("(aucune recompense prevue)", ChatFormatting.DARK_GRAY));
+        }
+        gui.set(53, Icons.icon(nextItem.getItem(), Math.max(1, nextItem.getCount()),
+                Icons.label("Prochaine recompense", ChatFormatting.GREEN), nextLore));
+
         Menus.open(player, gui);
     }
 

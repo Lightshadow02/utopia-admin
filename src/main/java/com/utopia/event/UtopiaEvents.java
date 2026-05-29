@@ -127,11 +127,29 @@ public final class UtopiaEvents {
             event.setCanceled(true);
             return;
         }
-        // Protection des interactions (coffres, portes, machines).
+        // Protection des interactions (coffres, portes, machines, Create).
         Parcel.Flag flag = ParcelManager.requiredInteractFlag(level, pos);
+        // Portes/trappes/boutons publics : tout le monde peut les utiliser.
+        if (flag == Parcel.Flag.DOORS && Config.PARCEL_PUBLIC_DOORS.get()) {
+            return;
+        }
         if (flag != null && !ParcelManager.isActionAllowed(sp, level, pos, flag)) {
             event.setCanceled(true);
             sp.sendSystemMessage(Messages.error("Interaction protegee sur cette parcelle."));
+        }
+    }
+
+    @SubscribeEvent
+    public static void onAttackEntity(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        // Empeche de blesser/tuer les entites (villageois, animaux, cadres...) d'une parcelle.
+        if (!Config.PARCEL_PROTECT_ENTITIES.get() || !(event.getEntity() instanceof ServerPlayer sp)
+                || !(sp.serverLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        BlockPos pos = event.getTarget().blockPosition();
+        if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
+            event.setCanceled(true);
+            sp.sendSystemMessage(Messages.error("Vous ne pouvez pas attaquer les entites de cette parcelle."));
         }
     }
 

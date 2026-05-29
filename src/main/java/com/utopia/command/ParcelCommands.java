@@ -24,10 +24,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
@@ -456,17 +453,7 @@ public final class ParcelCommands {
         if (p == null) {
             return 0;
         }
-        double[] center = p.firstRegionCenter();
-        if (center == null) {
-            player.sendSystemMessage(Messages.error("Cette parcelle n'a aucune region."));
-            return 0;
-        }
-        ServerLevel level = player.server.getLevel(ResourceKey.create(Registries.DIMENSION, p.dimension()));
-        if (level == null) {
-            level = player.serverLevel();
-        }
-        player.teleportTo(level, center[0], center[1], center[2], player.getYRot(), player.getXRot());
-        player.sendSystemMessage(Messages.success("Teleporte a la parcelle '" + p.id() + "'."));
+        ParcelManager.teleport(player, p);
         return 1;
     }
 
