@@ -114,6 +114,15 @@ Exemple : `/parcel trust Steve build containers` (Steve peut construire et ouvri
 4. Une fois le contour fermé (≥ 3 points), `/parcel create <nom> [prix]`.
 5. Pour une forme en plusieurs morceaux : retrace un contour puis `/parcel addregion <nom>`.
 
+#### ↩️ Annuler / corriger une sélection
+| Moyen | Effet |
+|---|---|
+| **Clic gauche** avec l'outil | Annule le **dernier point** posé. |
+| `/parcel trace undo` | Annule le **dernier point** (équivalent du clic gauche). |
+| `/parcel trace clear` | **Efface tout** le tracé (repart de zéro). |
+
+> Le tracé se vide aussi **automatiquement** après un `/parcel create` ou `/parcel addregion` réussi.
+
 > `/parcel` a un alias : `/parcelle`.
 
 ---
