@@ -57,6 +57,8 @@ public final class Config {
     // ----------------------------------------------------------------------------------------
     public static final ModConfigSpec.ConfigValue<String> PARCEL_WAND_ITEM;
     public static final ModConfigSpec.BooleanValue PARCEL_OP_BYPASS;
+    public static final ModConfigSpec.BooleanValue PARCEL_PROTECT_EXPLOSIONS;
+    public static final ModConfigSpec.BooleanValue PARCEL_EXTINGUISH_FIRE;
 
     public static final ModConfigSpec SPEC;
 
@@ -175,6 +177,12 @@ public final class Config {
         PARCEL_OP_BYPASS = BUILDER
                 .comment("Les operateurs (op) ignorent la protection des parcelles (build/conteneurs/etc.).")
                 .define("opBypass", true);
+        PARCEL_PROTECT_EXPLOSIONS = BUILDER
+                .comment("Empecher les explosions (TNT, creepers...) de detruire les blocs des parcelles.")
+                .define("protectExplosions", true);
+        PARCEL_EXTINGUISH_FIRE = BUILDER
+                .comment("Eteindre automatiquement le feu qui apparait dans les parcelles (balayage periodique).")
+                .define("extinguishFire", true);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

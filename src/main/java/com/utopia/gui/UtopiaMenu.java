@@ -66,7 +66,12 @@ public final class UtopiaMenu extends ChestMenu {
                 super.clicked(slotId, dragType, clickType, player);
                 return;
             }
-            Consumer<ServerPlayer> action = gui.action(slotId);
+            // Distingue clic droit (PICKUP avec bouton 1) du clic gauche.
+            boolean rightClick = clickType == ClickType.PICKUP && dragType == 1;
+            Consumer<ServerPlayer> action = rightClick ? gui.rightAction(slotId) : gui.action(slotId);
+            if (action == null) {
+                action = gui.action(slotId); // repli sur l'action principale
+            }
             if (action != null && player instanceof ServerPlayer sp) {
                 action.accept(sp);
             }

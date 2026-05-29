@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import org.joml.Vector3f;
 
 /** Trace de parcelle (outil), visualisation, classification des blocs et verifications de permission. */
@@ -211,9 +212,89 @@ public final class ParcelManager {
         }
         parcel.members().clear();
         parcel.setOwner(buyer.getUUID(), buyer.getGameProfile().getName());
+        parcel.setLastPaid(price);
         parcel.setForSale(false);
         ParcelData.get(buyer.server).setDirty();
         return BuyResult.OK;
+    }
+
+    /** Pourcentage rembourse lors d'une vente au serveur. */
+    public static final double SERVER_BUYBACK_RATE = 0.75;
+
+    /**
+     * Vente directe au serveur : rembourse 75% de ce que le proprietaire a paye, puis la parcelle
+     * redevient propriete du serveur et est remise en vente au prix qu'il avait paye. Renvoie le
+     * montant rembourse, ou -1 si le joueur n'est pas proprietaire.
+     */
+    public static long sellToServer(ServerPlayer owner, Parcel parcel) {
+        if (!parcel.isOwner(owner.getUUID())) {
+            return -1;
+        }
+        long refund = Math.round(parcel.lastPaid() * SERVER_BUYBACK_RATE);
+        EconomyManager.add(owner.server, owner.getUUID(), refund);
+        relistToServer(parcel);
+        ParcelData.get(owner.server).setDirty();
+        return refund;
+    }
+
+    /** Remise en vente forcee par l'admin : retire le proprietaire et reliste au dernier prix paye. */
+    public static void repossess(MinecraftServer server, Parcel parcel) {
+        relistToServer(parcel);
+        ParcelData.get(server).setDirty();
+    }
+
+    private static void relistToServer(Parcel parcel) {
+        parcel.members().clear();
+        parcel.setOwner(null, null);
+        parcel.setPrice(parcel.lastPaid());
+        parcel.setForSale(true);
+    }
+
+    // -------- Protection feu --------
+
+    /** Surface maxi (en blocs au sol) d'une parcelle balayee pour le feu (au-dela : ignoree). */
+    private static final long FIRE_SWEEP_MAX_FOOTPRINT = 4096;
+
+    /** Eteint le feu apparu dans les parcelles (balayage de la surface, parcelles chargees uniquement). */
+    public static void sweepFire(MinecraftServer server) {
+        ParcelData data = ParcelData.get(server);
+        for (ServerLevel level : server.getAllLevels()) {
+            ResourceLocation dim = level.dimension().location();
+            for (Parcel p : data.all()) {
+                if (!p.dimension().equals(dim) || p.approxFootprint() > FIRE_SWEEP_MAX_FOOTPRINT) {
+                    continue;
+                }
+                for (Parcel.Box b : p.boxes()) {
+                    for (int x = b.minX(); x <= b.maxX(); x++) {
+                        for (int z = b.minZ(); z <= b.maxZ(); z++) {
+                            extinguishColumn(level, dim, p, x, z);
+                        }
+                    }
+                }
+                for (Parcel.Poly poly : p.polys()) {
+                    Parcel.Box bb = poly.bounds();
+                    for (int x = bb.minX(); x <= bb.maxX(); x++) {
+                        for (int z = bb.minZ(); z <= bb.maxZ(); z++) {
+                            extinguishColumn(level, dim, p, x, z);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static void extinguishColumn(ServerLevel level, ResourceLocation dim, Parcel p, int x, int z) {
+        BlockPos probe = new BlockPos(x, level.getMinBuildHeight() + 1, z);
+        if (!level.isLoaded(probe)) {
+            return;
+        }
+        int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+        for (int y = top; y >= top - 3 && y > level.getMinBuildHeight(); y--) {
+            Block block = level.getBlockState(new BlockPos(x, y, z)).getBlock();
+            if ((block == Blocks.FIRE || block == Blocks.SOUL_FIRE) && p.contains(dim, x, y, z)) {
+                level.removeBlock(new BlockPos(x, y, z), false);
+            }
+        }
     }
 
     /**

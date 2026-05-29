@@ -23,6 +23,7 @@ public final class UtopiaGui {
     private final Component title;
     private final SimpleContainer container;
     private final Map<Integer, Consumer<ServerPlayer>> actions = new HashMap<>();
+    private final Map<Integer, Consumer<ServerPlayer>> rightActions = new HashMap<>();
     private final Set<Integer> editable = new HashSet<>();
     private boolean editor = false;
     private Consumer<ServerPlayer> onClose = sp -> { };
@@ -58,11 +59,20 @@ public final class UtopiaGui {
         return this;
     }
 
-    /** Place une icone cliquable avec son action. */
+    /** Place une icone cliquable avec son action (clic gauche). */
     public UtopiaGui button(int slot, ItemStack icon, Consumer<ServerPlayer> action) {
         set(slot, icon);
         if (slot >= 0 && slot < size()) {
             actions.put(slot, action);
+        }
+        return this;
+    }
+
+    /** Place une icone avec action de clic gauche ET de clic droit distinctes. */
+    public UtopiaGui button(int slot, ItemStack icon, Consumer<ServerPlayer> leftAction, Consumer<ServerPlayer> rightAction) {
+        button(slot, icon, leftAction);
+        if (slot >= 0 && slot < size() && rightAction != null) {
+            rightActions.put(slot, rightAction);
         }
         return this;
     }
@@ -105,6 +115,10 @@ public final class UtopiaGui {
 
     Consumer<ServerPlayer> action(int slot) {
         return actions.get(slot);
+    }
+
+    Consumer<ServerPlayer> rightAction(int slot) {
+        return rightActions.get(slot);
     }
 
     /** Declenche le rappel de fermeture une seule fois. */

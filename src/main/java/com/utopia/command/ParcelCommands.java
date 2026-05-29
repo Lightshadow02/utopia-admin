@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
@@ -28,7 +27,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -46,6 +44,8 @@ public final class ParcelCommands {
                 .executes(ParcelCommands::menu)
                 // ---- Joueur ----
                 .then(Commands.literal("menu").executes(ParcelCommands::menu))
+                .then(Commands.literal("shop").executes(ParcelCommands::shop))
+                .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(ParcelCommands::adminAll))
                 .then(Commands.literal("info").executes(ParcelCommands::info))
                 .then(Commands.literal("list").executes(ParcelCommands::list))
                 .then(Commands.literal("buy").executes(ParcelCommands::buy))
@@ -124,6 +124,16 @@ public final class ParcelCommands {
 
     private static int menu(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ParcelMenus.openParcelMenu(ctx.getSource().getPlayerOrException());
+        return 1;
+    }
+
+    private static int shop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ParcelMenus.openShop(ctx.getSource().getPlayerOrException());
+        return 1;
+    }
+
+    private static int adminAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ParcelMenus.openAdminAll(ctx.getSource().getPlayerOrException());
         return 1;
     }
 

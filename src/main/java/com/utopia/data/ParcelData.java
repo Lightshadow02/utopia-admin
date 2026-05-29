@@ -132,7 +132,9 @@ public final class ParcelData extends SavedData {
             }
             Parcel parcel = new Parcel(pt.getString("id"), pt.getString("name"), dim);
             parcel.setPrice(pt.getLong("price"));
+            parcel.setLastPaid(pt.contains("lastPaid") ? pt.getLong("lastPaid") : pt.getLong("price"));
             parcel.setForSale(pt.getBoolean("forSale"));
+            parcel.setHoloOffset(pt.getDouble("holoDx"), pt.getDouble("holoDy"), pt.getDouble("holoDz"));
             if (pt.contains("owner")) {
                 try {
                     parcel.setOwner(UUID.fromString(pt.getString("owner")), pt.getString("ownerName"));
@@ -178,7 +180,11 @@ public final class ParcelData extends SavedData {
             pt.putString("name", p.name());
             pt.putString("dim", p.dimension().toString());
             pt.putLong("price", p.price());
+            pt.putLong("lastPaid", p.lastPaid());
             pt.putBoolean("forSale", p.forSale());
+            pt.putDouble("holoDx", p.holoDx());
+            pt.putDouble("holoDy", p.holoDy());
+            pt.putDouble("holoDz", p.holoDz());
             if (p.owner() != null) {
                 pt.putString("owner", p.owner().toString());
                 pt.putString("ownerName", p.ownerName() == null ? "" : p.ownerName());

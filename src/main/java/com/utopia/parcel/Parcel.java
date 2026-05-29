@@ -115,7 +115,11 @@ public final class Parcel {
     private UUID owner;
     private String ownerName;
     private long price;
+    private long lastPaid;
     private boolean forSale;
+    private double holoDx;
+    private double holoDy;
+    private double holoDz;
     private final Map<UUID, EnumSet<Flag>> members = new HashMap<>();
 
     public Parcel(String id, String name, ResourceLocation dimension) {
@@ -189,12 +193,52 @@ public final class Parcel {
         this.price = Math.max(0, price);
     }
 
+    /** Dernier montant paye par le proprietaire actuel (sert au remboursement 75% et au relist). */
+    public long lastPaid() {
+        return lastPaid;
+    }
+
+    public void setLastPaid(long lastPaid) {
+        this.lastPaid = Math.max(0, lastPaid);
+    }
+
     public boolean forSale() {
         return forSale;
     }
 
     public void setForSale(boolean forSale) {
         this.forSale = forSale;
+    }
+
+    public double holoDx() {
+        return holoDx;
+    }
+
+    public double holoDy() {
+        return holoDy;
+    }
+
+    public double holoDz() {
+        return holoDz;
+    }
+
+    public void setHoloOffset(double dx, double dy, double dz) {
+        this.holoDx = dx;
+        this.holoDy = dy;
+        this.holoDz = dz;
+    }
+
+    /** Centre X/Z de l'empreinte (premiere region), ou nul si aucune region. */
+    public double[] centerXZ() {
+        if (!boxes.isEmpty()) {
+            Box b = boxes.get(0);
+            return new double[] { (b.minX() + b.maxX()) / 2.0 + 0.5, (b.minZ() + b.maxZ()) / 2.0 + 0.5 };
+        }
+        if (!polys.isEmpty()) {
+            Box b = polys.get(0).bounds();
+            return new double[] { (b.minX() + b.maxX()) / 2.0 + 0.5, (b.minZ() + b.maxZ()) / 2.0 + 0.5 };
+        }
+        return null;
     }
 
     public Map<UUID, EnumSet<Flag>> members() {

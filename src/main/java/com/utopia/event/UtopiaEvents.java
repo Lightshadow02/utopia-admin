@@ -9,10 +9,13 @@ import com.utopia.command.EconomyCommands;
 import com.utopia.command.ParcelCommands;
 import com.utopia.command.SpawnCommands;
 import com.utopia.command.TpaCommands;
+import com.utopia.Config;
 import com.utopia.daily.DailyManager;
+import com.utopia.data.ParcelData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.gui.UtopiaMenu;
 import com.utopia.parcel.Parcel;
+import com.utopia.parcel.ParcelHolograms;
 import com.utopia.parcel.ParcelManager;
 import com.utopia.teleport.TeleportManager;
 import com.utopia.teleport.TpaManager;
@@ -21,6 +24,7 @@ import com.utopia.util.Messages;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -35,6 +39,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
@@ -120,6 +125,18 @@ public final class UtopiaEvents {
     }
 
     @SubscribeEvent
+    public static void onExplosion(ExplosionEvent.Detonate event) {
+        // Retire les blocs des parcelles de la liste des blocs detruits par l'explosion.
+        if (!Config.PARCEL_PROTECT_EXPLOSIONS.get() || !(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        ResourceLocation dim = level.dimension().location();
+        ParcelData data = ParcelData.get(level.getServer());
+        event.getAffectedBlocks().removeIf(pos ->
+                data.parcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null);
+    }
+
+    @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
         // Charge les fichiers locaux : clear-lag (JSON) et calendrier des recompenses (JSON).
         ClearLagManager.reload();
@@ -178,9 +195,18 @@ public final class UtopiaEvents {
         TeleportManager.tick(server);
         TpaManager.tick(server);
         ClearLagManager.tick(server);
-        // Visualisation du trace de parcelle (toutes les ~0.5s pour limiter les paquets).
-        if (server.getTickCount() % 10 == 0) {
+        int t = server.getTickCount();
+        // Visualisation du trace de parcelle + apercu des delimitations (toutes les ~0.5s).
+        if (t % 10 == 0) {
             ParcelManager.renderTraces(server);
+            ParcelHolograms.renderPreviews(server);
+        }
+        // Synchronisation des hologrammes + balayage anti-feu (toutes les ~2s).
+        if (t % 40 == 0) {
+            ParcelHolograms.syncHolograms(server);
+            if (Config.PARCEL_EXTINGUISH_FIRE.get()) {
+                ParcelManager.sweepFire(server);
+            }
         }
     }
 }
