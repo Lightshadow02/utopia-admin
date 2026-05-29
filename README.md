@@ -80,16 +80,20 @@ Toutes les teleportations utilisent un **delai (warmup)** configurable, annulabl
 Les pieces retirees sont des items **marques** (l'item de base est configurable). On peut aussi **deposer en faisant clic droit** en tenant des pieces. `/balance`, `/pay` et `/money` acceptent des joueurs **hors ligne** (par pseudo).
 
 ### Parcelles (terrains)
-Terrains a **formes libres** : une parcelle = **union de boites** rectangulaires (tailles differentes, decalages, irregulieres, non alignees aux chunks) pour suivre routes / batiments / reliefs. L'admin les trace, les joueurs les achetent.
+Terrains a **formes libres** : une parcelle est tracee comme un **polygone** (contour de points), ce qui permet d'epouser precisement routes / batiments / reliefs (tailles differentes, decalages, irregulieres, non alignees aux chunks). On peut cumuler plusieurs polygones par parcelle. L'admin trace, les joueurs achetent.
 
-**Admin** (op niveau 2) — definir avec l'outil de selection :
+**Admin** (op niveau 2) — tracer avec l'outil :
 | Commande | Effet |
 |---|---|
-| `/parcel wand` | Recoit l'outil. **Clic gauche** = coin 1, **clic droit** = coin 2 (une boite). |
-| `/parcel create <id> [prix]` | Cree une parcelle a partir de la selection (avec prix = mise en vente). |
-| `/parcel addbox <id>` | Ajoute la selection comme boite supplementaire (forme irreguliere). |
+| `/parcel wand` | Recoit l'outil de trace. **Clic droit au sol** = ajouter un point, **clic gauche** = annuler le dernier point. |
+| (visualisation) | Les points s'affichent en **rouge fonce** et les aretes en **rouge** (particules, visibles par vous seul). |
+| `/parcel trace clear` / `/parcel trace undo` | Effacer le trace / annuler le dernier point. |
+| `/parcel create <id> [prix]` | Cree la parcelle a partir du trace (>= 3 points). Avec prix = mise en vente. |
+| `/parcel addregion <id>` | Ajoute le trace courant comme region supplementaire (forme composee). |
 | `/parcel setprice <id> <prix>` / `setsale <id> <true\|false>` | Prix / mise en vente. |
 | `/parcel setowner <id> <joueur>` / `delete <id>` / `tp <id>` | Proprietaire / suppression / teleportation. |
+
+> Un polygone protege toute la colonne (de la hauteur min a la hauteur max du monde). Le test d'appartenance est un point-dans-polygone sur l'empreinte X/Z.
 
 **Joueur** :
 | Commande | Effet |
