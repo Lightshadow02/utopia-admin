@@ -10,6 +10,8 @@ Mod **NeoForge 1.21.1** regroupant plusieurs "plugins" cote serveur pour un serv
 - **Parcelles** : terrains a **formes libres** (union de boites, non alignees aux chunks) traces par l'admin, **achetables** par les joueurs (`/parcel buy`), avec **protection** (build/coffres/portes/machines) et gestion fine des joueurs autorises (`/parcel trust`).
 - **Banniere ASCII** dans les logs au demarrage + **notification a la connexion** si une recompense quotidienne est a recuperer.
 
+> 📖 **Guide complet des commandes (joueur + admin) : [commandes/README.md](commandes/README.md)**
+
 > `mod_id` interne : `utopia_admin` (underscore obligatoire, les ids NeoForge interdisent le tiret) ; nom affiche et jar : `utopia-admin`.
 > Mod cote serveur. Aucune installation cote client n'est requise (voir la section "Cote serveur / client" plus bas). Le jar va dans le dossier `mods/` du serveur.
 
