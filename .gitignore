@@ -44,3 +44,6 @@ repo/
 
 ### CLI GitHub portable ###
 .gh/
+
+### Config locale Claude Code ###
+.claude/
