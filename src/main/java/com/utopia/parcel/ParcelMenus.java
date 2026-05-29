@@ -593,8 +593,37 @@ public final class ParcelMenus {
                     List.of(Icons.lore("Ajuster X / Y / Z si un bloc gene", ChatFormatting.GRAY))),
                     sp -> openHoloMove(sp, parcelId));
         }
+        gui.button(8, Icons.icon(Items.BARRIER, Icons.label("Supprimer la parcelle", ChatFormatting.RED),
+                List.of(Icons.lore("Suppression definitive (avec confirmation)", ChatFormatting.GRAY))),
+                sp -> openDeleteConfirm(sp, parcelId));
         gui.button(18, Icons.icon(Items.ARROW, Icons.label("Retour (liste)", ChatFormatting.YELLOW), List.of()),
                 ParcelMenus::openAdminAll);
+        gui.fillEmpty();
+        Menus.open(admin, gui);
+    }
+
+    private static void openDeleteConfirm(ServerPlayer admin, String parcelId) {
+        MinecraftServer server = admin.server;
+        Parcel p = getParcel(server, parcelId);
+        if (p == null) {
+            openAdminAll(admin);
+            return;
+        }
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Supprimer " + p.id() + " ?", ChatFormatting.DARK_RED));
+        gui.set(4, Icons.icon(Items.BARRIER, Icons.label("Suppression definitive", ChatFormatting.RED), List.of(
+                Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "serveur"), ChatFormatting.GRAY),
+                Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY),
+                Icons.lore("Cette action est irreversible.", ChatFormatting.RED))));
+        gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("OUI, supprimer", ChatFormatting.GREEN), List.of()),
+                sp -> {
+                    if (getParcel(server, parcelId) != null) {
+                        ParcelData.get(server).remove(parcelId);
+                        sp.sendSystemMessage(Messages.success("Parcelle " + parcelId + " supprimee."));
+                    }
+                    openAdminAll(sp);
+                });
+        gui.button(15, Icons.icon(Items.RED_DYE, Icons.label("Annuler", ChatFormatting.RED), List.of()),
+                sp -> openAdminParcel(sp, parcelId));
         gui.fillEmpty();
         Menus.open(admin, gui);
     }

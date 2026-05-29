@@ -100,7 +100,7 @@ Exemple : `/parcel trust Steve build containers`.
 ### 🏗️ Parcelles — administration
 | Commande | Effet |
 |---|---|
-| `/parcel admin` | 🖱️ Menu **global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer (propriétaire, transférer, remettre en vente serveur, déplacer l'hologramme X/Y/Z), **clic droit** = se téléporter. |
+| `/parcel admin` | 🖱️ Menu **global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer (propriétaire, transférer, remettre en vente serveur, déplacer l'hologramme X/Y/Z, **supprimer** avec confirmation), **clic droit** = se téléporter. |
 | `/parcel wand` | Reçois l'**outil de tracé**. |
 | `/parcel trace clear` | Efface le tracé en cours. |
 | `/parcel trace undo` | Annule le dernier point du tracé. |
