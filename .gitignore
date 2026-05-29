@@ -41,3 +41,6 @@ repo/
 
 ### JDK portable telecharge pour le build ###
 .jdk/
+
+### CLI GitHub portable ###
+.gh/
