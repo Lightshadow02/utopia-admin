@@ -594,6 +594,9 @@ public final class ParcelMenus {
                     List.of(Icons.lore("Ajuster X / Y / Z si un bloc gene", ChatFormatting.GRAY))),
                     sp -> openHoloMove(sp, parcelId));
         }
+        gui.button(20, Icons.icon(Items.SUNFLOWER, Icons.label("Changer le prix", ChatFormatting.GOLD),
+                List.of(Icons.lore("Prix actuel : " + EconomyManager.format(p.price()), ChatFormatting.GRAY))),
+                sp -> openAdminPriceMenu(sp, parcelId, getParcel(server, parcelId) != null ? getParcel(server, parcelId).price() : 0));
         gui.button(8, Icons.icon(Items.BARRIER, Icons.label("Supprimer la parcelle", ChatFormatting.RED),
                 List.of(Icons.lore("Suppression definitive (avec confirmation)", ChatFormatting.GRAY))),
                 sp -> openDeleteConfirm(sp, parcelId));
@@ -706,6 +709,59 @@ public final class ParcelMenus {
                     }
                     openHoloMove(sp, parcelId);
                 });
+    }
+
+    /** Reglage du prix d'une parcelle par l'admin (par paliers). */
+    private static void openAdminPriceMenu(ServerPlayer admin, String parcelId, long price) {
+        MinecraftServer server = admin.server;
+        Parcel p = getParcel(server, parcelId);
+        if (p == null) {
+            openAdminAll(admin);
+            return;
+        }
+        long shown = Math.max(0, price);
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Prix de " + p.id() + " : " + EconomyManager.format(shown), ChatFormatting.DARK_RED));
+
+        int[] minus = { -1000, -100, -10, -1 };
+        int[] minusSlots = { 9, 10, 11, 12 };
+        int[] plus = { 1, 10, 100, 1000 };
+        int[] plusSlots = { 14, 15, 16, 17 };
+        for (int i = 0; i < 4; i++) {
+            int delta = minus[i];
+            gui.button(minusSlots[i], Icons.icon(Items.REDSTONE, Icons.label("" + delta, ChatFormatting.RED), List.of()),
+                    sp -> openAdminPriceMenu(sp, parcelId, Math.max(0, shown + delta)));
+            int deltaP = plus[i];
+            gui.button(plusSlots[i], Icons.icon(Items.EMERALD, Icons.label("+" + deltaP, ChatFormatting.GREEN), List.of()),
+                    sp -> openAdminPriceMenu(sp, parcelId, shown + deltaP));
+        }
+        gui.set(13, Icons.icon(Items.GOLD_INGOT, Icons.label(EconomyManager.format(shown), ChatFormatting.GOLD), List.of()));
+
+        gui.button(21, Icons.icon(Items.PAPER, Icons.label("Definir le prix", ChatFormatting.YELLOW),
+                List.of(Icons.lore("Change le prix sans toucher a l'etat de vente", ChatFormatting.GRAY))),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        cur.setPrice(shown);
+                        ParcelData.get(server).setDirty();
+                        sp.sendSystemMessage(Messages.success("Prix de " + cur.id() + " : " + EconomyManager.format(shown) + "."));
+                    }
+                    openAdminParcel(sp, parcelId);
+                });
+        gui.button(23, Icons.icon(Items.GOLD_BLOCK, Icons.label("Definir + mettre en vente", ChatFormatting.GOLD), List.of()),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        cur.setPrice(shown);
+                        cur.setForSale(true);
+                        ParcelData.get(server).setDirty();
+                        sp.sendSystemMessage(Messages.success(cur.id() + " en vente pour " + EconomyManager.format(shown) + "."));
+                    }
+                    openAdminParcel(sp, parcelId);
+                });
+        gui.button(18, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
+                sp -> openAdminParcel(sp, parcelId));
+        gui.fillEmpty();
+        Menus.open(admin, gui);
     }
 
     private static void teleportTo(ServerPlayer player, Parcel parcel) {
