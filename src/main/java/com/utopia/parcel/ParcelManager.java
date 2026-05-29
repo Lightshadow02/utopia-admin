@@ -169,6 +169,11 @@ public final class ParcelManager {
     public static Parcel.Flag requiredInteractFlag(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         Block block = state.getBlock();
+        // Blocs du mod Create : geres par leur propre permission.
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+        if (blockId != null && "create".equals(blockId.getNamespace())) {
+            return Parcel.Flag.CREATE;
+        }
         if (state.is(BlockTags.DOORS) || state.is(BlockTags.TRAPDOORS) || state.is(BlockTags.FENCE_GATES)
                 || state.is(BlockTags.BUTTONS) || state.is(BlockTags.PRESSURE_PLATES) || block instanceof LeverBlock) {
             return Parcel.Flag.DOORS;

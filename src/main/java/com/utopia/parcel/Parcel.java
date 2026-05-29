@@ -20,7 +20,8 @@ public final class Parcel {
         BUILD,       // casser / poser des blocs
         CONTAINERS,  // coffres, barils, hoppers, shulkers...
         DOORS,       // portes, trappes, portillons, boutons, leviers, plaques
-        MACHINES;    // fours, enclumes, tables, redstone...
+        MACHINES,    // fours, enclumes, tables, redstone...
+        CREATE;      // blocs du mod Create (namespace create:)
 
         public int bit() {
             return 1 << ordinal();

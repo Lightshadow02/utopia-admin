@@ -60,8 +60,10 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 | `/parcel untrust <joueur>` | Retire tous les droits d'un joueur. |
 | `/parcel trustlist` | Liste les joueurs autorisés sur la parcelle. |
 
-**Droits** (`trust`) : `build` (casser/poser) · `containers` (coffres…) · `doors` (portes/trappes/boutons/leviers/plaques) · `machines` (fours/enclumes/tables/redstone) · `all` (tout).
-Exemple : `/parcel trust Steve build containers`.
+**Droits** (`trust`) : `build` (casser/poser) · `containers` (coffres…) · `doors` (portes/trappes/boutons/leviers/plaques) · `machines` (fours/enclumes/tables/redstone) · `create` (blocs du mod **Create**) · `all` (tout).
+Exemple : `/parcel trust Steve build containers create`.
+
+> 🔒 La protection bloque aussi les **poses de blocs non-joueur** dans une parcelle (projectiles type *slingshot*, distributeurs, sable qui tombe…), pour éviter les contournements.
 
 > 🖱️ **Le plus simple** : `/parcel` (sur ta parcelle) ou `/parcel mine` (de n'importe où) → menu : « Gérer les membres », « Vendre », TP, voir les délimitations. Avec plusieurs parcelles, navigue avec ◄ ►.
 > **Vendre** : *au serveur* (immédiat, **75 % remboursé** de ce que tu as payé) ou *aux joueurs* (**tu fixes ton prix** : boutons ±1/±10/±100/±1000, ou `/parcel sell <prix>` pour un montant exact). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / Vendeur / prix`, et apparaît dans `/parcel shop` avec le **vendeur** (Serveur ou joueur).

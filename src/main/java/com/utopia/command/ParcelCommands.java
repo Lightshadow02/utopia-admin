@@ -115,6 +115,7 @@ public final class ParcelCommands {
                 case "containers", "coffres" -> set.add(Parcel.Flag.CONTAINERS);
                 case "doors", "portes" -> set.add(Parcel.Flag.DOORS);
                 case "machines" -> set.add(Parcel.Flag.MACHINES);
+                case "create" -> set.add(Parcel.Flag.CREATE);
                 default -> { }
             }
         }

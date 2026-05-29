@@ -40,6 +40,7 @@ public final class ParcelMenus {
             case CONTAINERS -> "Coffres / conteneurs";
             case DOORS -> "Portes / boutons";
             case MACHINES -> "Machines / redstone";
+            case CREATE -> "Blocs Create";
         };
     }
 
@@ -378,7 +379,7 @@ public final class ParcelMenus {
         gui.set(4, head(server, memberId, Icons.label(nameOf(server, memberId), ChatFormatting.WHITE),
                 List.of(Icons.lore("Cliquez les boutons pour activer/desactiver", ChatFormatting.GRAY))));
 
-        int[] slots = { 10, 12, 14, 16 };
+        int[] slots = { 10, 11, 12, 13, 14 };
         for (int i = 0; i < FLAGS.length; i++) {
             Parcel.Flag flag = FLAGS[i];
             boolean on = flags.contains(flag);

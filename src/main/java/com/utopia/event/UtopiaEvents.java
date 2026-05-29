@@ -81,11 +81,22 @@ public final class UtopiaEvents {
 
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
-        if (event.getEntity() instanceof ServerPlayer sp && event.getLevel() instanceof ServerLevel level) {
-            if (!ParcelManager.isActionAllowed(sp, level, event.getPos(), Parcel.Flag.BUILD)) {
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        BlockPos pos = event.getPos();
+        if (event.getEntity() instanceof ServerPlayer sp) {
+            if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
                 event.setCanceled(true);
                 sp.sendSystemMessage(Messages.error("Vous n'avez pas le droit de construire ici."));
             }
+            return;
+        }
+        // Pose par une entite non-joueur (projectile de slingshot, dispenser, sable, etc.) :
+        // interdite dans une parcelle (protection contre les contournements).
+        ResourceLocation dim = level.dimension().location();
+        if (ParcelData.get(level.getServer()).parcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null) {
+            event.setCanceled(true);
         }
     }
 
