@@ -111,7 +111,9 @@ Terrains a **formes libres** : une parcelle est tracee comme un **polygone** (co
 
 **Protection** : a l'interieur d'une parcelle, casser/poser (`build`), ouvrir coffres (`containers`), portes/boutons/leviers (`doors`) et machines/redstone (`machines`) sont reserves au proprietaire et aux membres ayant le droit correspondant. Hors parcelle = libre. Les op peuvent ignorer la protection (`parcel.opBypass`).
 
-> Couverture v1 : casse/pose de blocs + clic droit (coffres/portes/machines). Non couverts pour l'instant : explosions, pistons, propagation de fluide/feu, griefing de mobs, degats aux entites (cadres, supports d'armure). A demander si besoin.
+**Achat & vente** : `/parcel shop` ouvre la liste des parcelles en vente (clic gauche = acheter avec confirmation, clic droit = apercu des delimitations 30 s en particules). Un proprietaire peut vendre **au serveur** (75% rembourse) ou **a un joueur** (prix libre). Un **hologramme** (ID + A VENDRE + prix) flotte au-dessus des parcelles en vente. `/parcel admin` ouvre le menu de gestion de **toutes** les parcelles (clic gauche = gerer/transferer/remettre en vente/deplacer l'hologramme, clic droit = teleportation).
+
+> Couverture protection : casse/pose, clic droit (coffres/portes/machines), **explosions** (TNT/creepers) et **feu** (balayage anti-feu). Non couverts : pistons traversant la frontiere, griefing de mobs, degats aux entites (cadres, supports d'armure).
 
 ---
 

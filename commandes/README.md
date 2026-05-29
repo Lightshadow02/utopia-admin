@@ -42,7 +42,8 @@ Toutes les commandes du mod, classées par **joueur** et **administrateur**.
 ### 🏠 Parcelles
 | Commande | Effet |
 |---|---|
-| `/parcel` ou `/parcel menu` | **Ouvre le menu** de la parcelle où tu te trouves (gérer membres/droits, vente, ou achat). 🖱️ |
+| `/parcel` ou `/parcel menu` | **Ouvre le menu** de la parcelle où tu te trouves (gérer membres/droits, vendre, ou acheter). 🖱️ |
+| `/parcel shop` | 🛒 **Liste des parcelles en vente** (triées par ID). **Clic gauche** = acheter (confirmation), **clic droit** = voir les délimitations 30 s (particules orange/jaune). |
 | `/parcel info` | Infos sur la parcelle où tu te trouves (proprio, prix, tes droits). |
 | `/parcel list` | Liste tes parcelles. |
 | `/parcel buy` | Achète la parcelle où tu te trouves (paiement via ton solde `/balance`). |
@@ -61,7 +62,13 @@ Toutes les commandes du mod, classées par **joueur** et **administrateur**.
 
 Exemple : `/parcel trust Steve build containers` (Steve peut construire et ouvrir les coffres).
 
-> 🖱️ **Le plus simple : tape `/parcel`** sur ta parcelle pour ouvrir le **menu de gestion** : « Gérer les membres » → ajoute un joueur (têtes des joueurs en ligne) et **active/désactive ses droits d'un clic** (vert = activé). Tu peux aussi y mettre en vente / retirer de la vente.
+> 🖱️ **Le plus simple : tape `/parcel`** sur ta parcelle pour ouvrir le **menu de gestion** : « Gérer les membres » → ajoute un joueur (têtes des joueurs en ligne) et **active/désactive ses droits d'un clic** (vert = activé).
+
+**Vendre sa parcelle** (bouton « Vendre » du menu, ou `/parcel sell <prix>`) — deux méthodes :
+- **Au serveur** (immédiat) : tu récupères **75 %** de ce que tu as payé ; la parcelle repart en vente côté serveur.
+- **À un autre joueur** : tu fixes le prix toi-même ; la parcelle est listée dans `/parcel shop` et un joueur peut l'acheter (tu touches le prix).
+
+> Quand une parcelle est en vente, un **hologramme** flotte au-dessus : `ID`, `À VENDRE`, et le prix.
 
 ---
 
@@ -100,6 +107,7 @@ Exemple : `/parcel trust Steve build containers` (Steve peut construire et ouvri
 ### 🏗️ Parcelles — création & gestion
 | Commande | Effet |
 |---|---|
+| `/parcel admin` | 🖱️ **Menu global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer (proprio, transférer, remettre en vente serveur, déplacer l'hologramme X/Y/Z), **clic droit** = se téléporter dessus. |
 | `/parcel wand` | Reçois l'**outil de tracé**. |
 | `/parcel trace clear` | Efface le tracé en cours. |
 | `/parcel trace undo` | Annule le dernier point du tracé. |
