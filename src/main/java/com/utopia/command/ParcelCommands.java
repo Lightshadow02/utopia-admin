@@ -44,6 +44,7 @@ public final class ParcelCommands {
                 .executes(ParcelCommands::menu)
                 // ---- Joueur ----
                 .then(Commands.literal("menu").executes(ParcelCommands::menu))
+                .then(Commands.literal("mine").executes(ParcelCommands::mine))
                 .then(Commands.literal("shop").executes(ParcelCommands::shop))
                 .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(ParcelCommands::adminAll))
                 .then(Commands.literal("info").executes(ParcelCommands::info))
@@ -124,6 +125,11 @@ public final class ParcelCommands {
 
     private static int menu(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ParcelMenus.openParcelMenu(ctx.getSource().getPlayerOrException());
+        return 1;
+    }
+
+    private static int mine(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ParcelMenus.openMyParcels(ctx.getSource().getPlayerOrException(), 0);
         return 1;
     }
 

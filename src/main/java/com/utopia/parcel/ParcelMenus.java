@@ -81,13 +81,72 @@ public final class ParcelMenus {
 
     public static void openParcelMenu(ServerPlayer player) {
         BlockPos pos = player.blockPosition();
-        Parcel p = ParcelData.get(player.server).parcelAt(player.serverLevel().dimension().location(),
+        Parcel here = ParcelData.get(player.server).parcelAt(player.serverLevel().dimension().location(),
                 pos.getX(), pos.getY(), pos.getZ());
-        if (p == null) {
-            player.sendSystemMessage(Messages.warn("Vous n'etes sur aucune parcelle."));
+        if (here != null) {
+            openParcelMenuFor(player, here.id());
             return;
         }
-        openParcelMenuFor(player, p.id());
+        // Hors parcelle : ouvre la liste de ses parcelles (navigable), sinon un message.
+        if (!ParcelData.get(player.server).ownedBy(player.getUUID()).isEmpty()) {
+            openMyParcels(player, 0);
+        } else {
+            player.sendSystemMessage(Messages.warn("Vous n'etes sur aucune parcelle et n'en possedez aucune."));
+            player.sendSystemMessage(Messages.info("Utilisez /parcel shop pour en acheter une."));
+        }
+    }
+
+    /** Vue d'une de ses parcelles avec navigation (fleches) entre toutes ses parcelles. */
+    public static void openMyParcels(ServerPlayer player, int index) {
+        MinecraftServer server = player.server;
+        List<Parcel> owned = new ArrayList<>(ParcelData.get(server).ownedBy(player.getUUID()));
+        owned.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
+        if (owned.isEmpty()) {
+            player.sendSystemMessage(Messages.warn("Vous ne possedez aucune parcelle."));
+            return;
+        }
+        int i = Math.max(0, Math.min(index, owned.size() - 1));
+        Parcel p = owned.get(i);
+        String parcelId = p.id();
+
+        UtopiaGui gui = new UtopiaGui(3,
+                Icons.label("Mes parcelles (" + (i + 1) + "/" + owned.size() + ") : " + p.id(), ChatFormatting.DARK_AQUA));
+
+        gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), List.of(
+                Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
+                        p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY))));
+
+        gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Gerer les membres", ChatFormatting.YELLOW), List.of()),
+                sp -> openMembersMenu(sp, parcelId));
+        gui.button(12, Icons.icon(Items.GOLD_INGOT, Icons.label("Vendre", ChatFormatting.GOLD),
+                List.of(Icons.lore("Au serveur (75%) ou aux joueurs (ton prix)", ChatFormatting.GRAY))),
+                sp -> openSellMenu(sp, parcelId));
+        gui.button(14, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        teleportTo(sp, cur);
+                    }
+                    sp.closeContainer();
+                });
+        gui.button(16, Icons.icon(Items.GLOWSTONE_DUST, Icons.label("Voir les delimitations", ChatFormatting.YELLOW), List.of()),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        ParcelHolograms.startPreview(sp, cur);
+                    }
+                    sp.closeContainer();
+                });
+
+        if (owned.size() > 1) {
+            gui.button(18, Icons.icon(Items.ARROW, Icons.label("<- Precedente", ChatFormatting.YELLOW), List.of()),
+                    sp -> openMyParcels(sp, (i - 1 + owned.size()) % owned.size()));
+            gui.button(26, Icons.icon(Items.ARROW, Icons.label("Suivante ->", ChatFormatting.YELLOW), List.of()),
+                    sp -> openMyParcels(sp, (i + 1) % owned.size()));
+        }
+        gui.fillEmpty();
+        Menus.open(player, gui);
     }
 
     public static void openParcelMenuFor(ServerPlayer player, String parcelId) {
@@ -196,11 +255,11 @@ public final class ParcelMenus {
         long shown = Math.max(0, price);
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Prix de vente : " + EconomyManager.format(shown), ChatFormatting.DARK_AQUA));
 
-        int[] minus = { -1000, -100, -10 };
-        int[] minusSlots = { 10, 11, 12 };
-        int[] plus = { 10, 100, 1000 };
-        int[] plusSlots = { 14, 15, 16 };
-        for (int i = 0; i < 3; i++) {
+        int[] minus = { -1000, -100, -10, -1 };
+        int[] minusSlots = { 9, 10, 11, 12 };
+        int[] plus = { 1, 10, 100, 1000 };
+        int[] plusSlots = { 14, 15, 16, 17 };
+        for (int i = 0; i < 4; i++) {
             int delta = minus[i];
             gui.button(minusSlots[i], Icons.icon(Items.REDSTONE, Icons.label("" + delta, ChatFormatting.RED), List.of()),
                     sp -> openListPriceMenu(sp, parcelId, Math.max(0, shown + delta)));
@@ -209,7 +268,8 @@ public final class ParcelMenus {
                     sp -> openListPriceMenu(sp, parcelId, shown + deltaP));
         }
         gui.set(13, Icons.icon(Items.GOLD_INGOT, Icons.label(EconomyManager.format(shown), ChatFormatting.GOLD),
-                List.of(Icons.lore("Prix de mise en vente", ChatFormatting.GRAY))));
+                List.of(Icons.lore("Prix de mise en vente (ton prix)", ChatFormatting.GRAY),
+                        Icons.lore("Astuce : /parcel sell <prix> pour un montant exact", ChatFormatting.DARK_GRAY))));
 
         gui.button(22, Icons.icon(Items.LIME_DYE, Icons.label("Confirmer la mise en vente", ChatFormatting.GREEN), List.of()),
                 sp -> {
@@ -428,7 +488,8 @@ public final class ParcelMenus {
             String pid = p.id();
             gui.button(slot++, Icons.icon(Items.PAPER, Icons.label("Parcelle " + pid, ChatFormatting.GOLD), List.of(
                             Icons.lore("Prix : " + EconomyManager.format(p.price()), ChatFormatting.GREEN),
-                            Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "serveur"), ChatFormatting.GRAY),
+                            Icons.lore("Vendeur : " + (p.isOwned() ? p.ownerName() + " (joueur)" : "Serveur"),
+                                    p.isOwned() ? ChatFormatting.AQUA : ChatFormatting.GRAY),
                             Icons.lore("Clic GAUCHE : acheter", ChatFormatting.YELLOW),
                             Icons.lore("Clic DROIT : voir les delimitations (30 s)", ChatFormatting.YELLOW))),
                     sp -> openBuyConfirm(sp, pid),

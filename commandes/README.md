@@ -47,8 +47,9 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 ### 🏘️ Parcelles
 | Commande | Effet |
 |---|---|
-| `/parcel` ou `/parcel menu` | 🖱️ Menu de la parcelle où tu te trouves (gérer membres/droits, vendre, acheter, voir les délimitations). |
-| `/parcel shop` | 🖱️ Liste des parcelles **en vente** (triées par ID). **Clic gauche** = acheter (confirmation), **clic droit** = voir les délimitations 30 s (particules). |
+| `/parcel` ou `/parcel menu` | 🖱️ Menu de la parcelle où tu te trouves. **Hors d'une parcelle**, ouvre tes parcelles (navigables ◄ ►). |
+| `/parcel mine` | 🖱️ Ouvre **tes parcelles** depuis n'importe où ; flèches ◄ ► pour passer de l'une à l'autre, puis gérer / vendre / TP. |
+| `/parcel shop` | 🖱️ Liste des parcelles **en vente** (triées par ID). **Clic gauche** = acheter (confirmation), **clic droit** = voir les délimitations 30 s (particules). Le **vendeur** (Serveur ou joueur) et le prix sont affichés. |
 | `/parcel info` | Infos sur la parcelle où tu te trouves (proprio, prix, tes droits). |
 | `/parcel list` | Liste tes parcelles. |
 | `/parcel buy` | Achète la parcelle où tu te trouves (paiement via `/balance`). |
@@ -62,8 +63,8 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 **Droits** (`trust`) : `build` (casser/poser) · `containers` (coffres…) · `doors` (portes/trappes/boutons/leviers/plaques) · `machines` (fours/enclumes/tables/redstone) · `all` (tout).
 Exemple : `/parcel trust Steve build containers`.
 
-> 🖱️ **Le plus simple : `/parcel`** sur ta parcelle → menu : « Gérer les membres » (ajout par têtes, droits activables d'un clic) et « Vendre ».
-> **Vendre** : *au serveur* (immédiat, **75 % remboursé** de ce que tu as payé) ou *à un joueur* (tu fixes le prix). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / prix`.
+> 🖱️ **Le plus simple** : `/parcel` (sur ta parcelle) ou `/parcel mine` (de n'importe où) → menu : « Gérer les membres », « Vendre », TP, voir les délimitations. Avec plusieurs parcelles, navigue avec ◄ ►.
+> **Vendre** : *au serveur* (immédiat, **75 % remboursé** de ce que tu as payé) ou *aux joueurs* (**tu fixes ton prix** : boutons ±1/±10/±100/±1000, ou `/parcel sell <prix>` pour un montant exact). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / Vendeur / prix`, et apparaît dans `/parcel shop` avec le **vendeur** (Serveur ou joueur).
 
 `/parcel` a un alias : `/parcelle`.
 
