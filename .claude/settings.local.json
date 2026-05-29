@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//usr/lib/jvm/**)",
+      "Bash(archlinux-java status *)",
+      "Read(//home/light/.sdkman/candidates/**)",
+      "Bash(curl -sI https://maven.neoforged.net/)",
+      "Bash(curl -sI https://github.com)",
+      "Bash(pacman -Si jdk21-openjdk)",
+      "Bash(pacman -Qs jdk)",
+      "Bash(sudo -n pacman -S --noconfirm jdk21-openjdk)",
+      "Bash(mkdir -p .jdk)",
+      "Bash(curl -L -s -o .jdk/jdk21.tar.gz \"https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse\")",
+      "Bash(rm -rf MDK-1.21.1-NeoGradle-main src/main/java/com/example src/main/resources/assets/examplemod TEMPLATE_LICENSE.txt README.md)",
+      "Bash(mkdir -p src/main/java/com/utopia)",
+      "Bash(find ~/.gradle/caches -name \"EventBusSubscriber*.class\" 2>/dev/null | head; echo \"--- search sources jar ---\"; find ~/.gradle/caches -name \"*neoforge*sources*.jar\" 2>/dev/null | head; find ~/.gradle/caches -path \"*fml/common/EventBusSubscriber*\" 2>/dev/null | head)",
+      "Read(//home/light/.gradle/caches/**)",
+      "Read(//tmp/**)",
+      "Bash(unzip -o -q ~/.gradle/caches/modules-2/files-2.1/net.neoforged/neoforge/21.1.231/ffed6e621b4f87c182ae2f9d010ea990d4dbf13/neoforge-21.1.231-sources.jar \"net/neoforged/fml/common/EventBusSubscriber.java\" -d /tmp/nfsrc)",
+      "Read(//tmp/nfsrc/net/neoforged/fml/common/**)",
+      "Bash(pkill -f \"neoforged.*server\\\\|userdev.*server\\\\|run/server\")",
+      "Bash(pkill -f \"gradlew runServer\")",
+      "Bash(unzip -l /home/light/GITHUB/UTOPIA/.gradle/caches/minecraft/versions/1.21.1/server.jar)",
+      "Bash(unzip -l /home/light/GITHUB/UTOPIA/.gradle/repositories/ng_dummy_ng/net/neoforged/neoforge/21.1.231/neoforge-21.1.231-sources.jar)",
+      "Bash(python3 -c ' *)",
+      "Bash(ps -eo pid,args)",
+      "Bash(awk '{print $1}')",
+      "Bash(xargs -r kill -9)",
+      "Bash(export JAVA_HOME=/home/light/GITHUB/UTOPIA/.jdk/jdk-21.0.11+10)",
+      "Bash(./gradlew --stop)",
+      "Bash(ps -eo args)",
+      "Bash(echo \"JVM restantes: $\\(ps -eo args)"
+    ]
+  }
+}
