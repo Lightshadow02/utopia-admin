@@ -31,6 +31,12 @@ public final class UtopiaMod {
     public UtopiaMod(IEventBus modEventBus, ModContainer modContainer) {
         // Enregistre la configuration commune (fichier config/utopia-common.toml).
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        // Enregistre le type de menu custom (pour l'ecran client).
+        com.utopia.gui.UtopiaMenuType.register(modEventBus);
+        // Cote client uniquement : enregistre l'ecran custom du menu.
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            com.utopia.client.UtopiaClient.init(modEventBus);
+        }
         VERSION = modContainer.getModInfo().getVersion().toString();
         LOGGER.info("[Utopia] Initialisation du pack d'essentials serveur.");
     }

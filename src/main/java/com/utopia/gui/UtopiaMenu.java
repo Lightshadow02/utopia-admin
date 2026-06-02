@@ -2,38 +2,36 @@ package com.utopia.gui;
 
 import java.util.function.Consumer;
 
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Menu coffre cote serveur adosse a une {@link UtopiaGui}. Reutilise un {@code MenuType.GENERIC_9xN}
- * vanilla (rendu par le client sans code cote client). Les clics sur les slots-boutons declenchent
- * une action sans deplacer d'item ; en mode editeur, les slots editables se comportent normalement.
+ * Menu adosse a une {@link UtopiaGui}, base sur un {@code MenuType} custom (rendu par un ecran
+ * client custom). Cote serveur, {@code gui} porte les icones et actions ; cote client, {@code gui}
+ * est nul (le contenu des slots arrive par la synchro vanilla des conteneurs).
  */
 public final class UtopiaMenu extends ChestMenu {
 
+    /** Non nul cote serveur ; nul cote client. */
     private final UtopiaGui gui;
 
+    /** Construction cote serveur (avec la GUI et ses actions). */
     public UtopiaMenu(int containerId, Inventory playerInventory, UtopiaGui gui) {
-        super(typeForRows(gui.rows()), containerId, playerInventory, gui.container(), gui.rows());
+        super(UtopiaMenuType.UTOPIA.get(), containerId, playerInventory, gui.container(), gui.rows());
         this.gui = gui;
     }
 
-    private static MenuType<ChestMenu> typeForRows(int rows) {
-        return switch (rows) {
-            case 1 -> MenuType.GENERIC_9x1;
-            case 2 -> MenuType.GENERIC_9x2;
-            case 3 -> MenuType.GENERIC_9x3;
-            case 4 -> MenuType.GENERIC_9x4;
-            case 5 -> MenuType.GENERIC_9x5;
-            default -> MenuType.GENERIC_9x6;
-        };
+    /** Construction cote client (depuis le buffer d'ouverture) : conteneur vide, rempli par la synchro. */
+    public UtopiaMenu(int containerId, Inventory playerInventory, int rows) {
+        super(UtopiaMenuType.UTOPIA.get(), containerId, playerInventory,
+                new SimpleContainer(Math.max(1, Math.min(6, rows)) * 9), Math.max(1, Math.min(6, rows)));
+        this.gui = null;
     }
 
     @Override
@@ -44,9 +42,8 @@ public final class UtopiaMenu extends ChestMenu {
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) {
-        // Empeche le double-clic (PICKUP_ALL) de siphonner les icones des slots non editables
-        // (boutons, decoration, ligne de reference) et de l'inventaire du joueur.
-        return slot.container == gui.container() && gui.isEditable(slot.getContainerSlot());
+        // Empeche le double-clic (PICKUP_ALL) de siphonner les icones des slots non editables.
+        return gui != null && slot.container == gui.container() && gui.isEditable(slot.getContainerSlot());
     }
 
     /**
@@ -54,11 +51,17 @@ public final class UtopiaMenu extends ChestMenu {
      * declenche le rappel de fermeture de la GUI (ex: rendre les items de l'editeur) une seule fois.
      */
     public void handleLogout(ServerPlayer player) {
-        gui.fireClose(player);
+        if (gui != null) {
+            gui.fireClose(player);
+        }
     }
 
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
+        if (gui == null) {
+            super.clicked(slotId, dragType, clickType, player);
+            return;
+        }
         int topSize = gui.rows() * 9;
 
         if (slotId >= 0 && slotId < topSize) {
@@ -87,7 +90,7 @@ public final class UtopiaMenu extends ChestMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        if (player instanceof ServerPlayer sp) {
+        if (gui != null && player instanceof ServerPlayer sp) {
             gui.fireClose(sp);
         }
     }

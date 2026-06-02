@@ -13,7 +13,7 @@ Mod **NeoForge 1.21.1** regroupant plusieurs "plugins" cote serveur pour un serv
 > 📖 **Guide complet des commandes (joueur + admin) : [commandes/README.md](commandes/README.md)**
 
 > `mod_id` interne : `utopia_admin` (underscore obligatoire, les ids NeoForge interdisent le tiret) ; nom affiche et jar : `utopia-admin`.
-> Mod cote serveur. Aucune installation cote client n'est requise (voir la section "Cote serveur / client" plus bas). Le jar va dans le dossier `mods/` du serveur.
+> Depuis la v1.13.0 : menus custom cote client -> le mod doit etre installe sur le **serveur ET chaque joueur** (voir "Cote serveur / client" plus bas).
 
 ---
 
@@ -230,11 +230,13 @@ Le fichier est recharge a chaud quand vous le sauvegardez.
 
 ## Cote serveur / client
 
-Mod **100 % cote serveur** : aucun code client, aucun canal reseau ni registre custom. Les menus utilisent des conteneurs vanilla (`MenuType.GENERIC_9xN`), rendus nativement par le client.
+Depuis la **v1.13.0**, les menus utilisent un **ecran custom cote client** (`MenuType` + `Screen` propres au mod). Le mod doit donc etre **installe AUSSI sur le client** de chaque joueur.
 
-- A installer **uniquement dans le `mods/` du serveur**.
-- Les joueurs **n'ont rien a installer** : un client NeoForge sans le mod (et meme un client purement vanilla) peut se connecter (NeoForge 21.1 a retire la verification de version par mod ; la compatibilite depend des canaux reseau, ici aucun).
-- Fonctionne aussi en solo / LAN si le jar est present cote client (sans jamais l'imposer aux autres).
+- A installer dans le `mods/` du **serveur** ET de **chaque joueur** (meme version).
+- Toute la logique (protection des parcelles, commandes, daily, economie, hologrammes) reste cote serveur ; seul le **rendu des menus** est cote client.
+- Un client sans le mod ne pourra pas ouvrir les menus (et peut etre refuse a la connexion a cause du registre de menu custom).
+
+> Versions <= 1.12.0 : 100 % serveur (menus en conteneurs vanilla), rien a installer cote joueur. La 1.13.0 fait le choix de menus custom au prix de l'installation client.
 
 ---
 

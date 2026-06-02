@@ -10,8 +10,9 @@ public final class Menus {
     }
 
     public static void open(ServerPlayer player, UtopiaGui gui) {
+        // On transmet le nombre de rangees au client (qui reconstruit le menu via le MenuType custom).
         player.openMenu(new SimpleMenuProvider(
                 (containerId, inv, p) -> new UtopiaMenu(containerId, inv, gui),
-                gui.title()));
+                gui.title()), buf -> buf.writeByte(gui.rows()));
     }
 }
