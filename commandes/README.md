@@ -4,6 +4,7 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 
 > **Permissions** : les commandes admin demandent le **niveau d'opérateur 2** (op). Un joueur op (ou la console) y a accès ; un joueur normal non.
 > Notation : `<...>` = obligatoire · `[...]` = optionnel · `a|b` = au choix · 🖱️ = ouvre un menu.
+> **Menus** : depuis la v1.14.0 les menus utilisent **owo-ui** → le mod doit être installé **côté client ET serveur** (même version), avec **owo-lib** présent sur le client. Certaines saisies (montants, ID) se font dans un **champ à remplir**.
 
 ---
 
@@ -38,7 +39,7 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 | Commande | Effet |
 |---|---|
 | `/balance [joueur]` | Affiche ton solde (ou celui d'un autre joueur). Alias : `/bal`. |
-| `/balance menu` | 🖱️ **Menu banque** : payer un joueur, retirer ou déposer des pièces d'un clic. |
+| `/balance menu` | 🖱️ **Menu banque** : payer un joueur, retirer (**montant à saisir**), ou déposer toutes ses pièces. |
 | `/balance top` (ou `/baltop`) | Classement des plus gros soldes. |
 | `/pay <joueur> <montant>` | Envoie des pièces de ton solde vers un autre joueur (montant ≥ 1). |
 | `/withdraw <montant>` | Retire des pièces de la banque (limité à la **place dispo** dans ton inventaire ; le reste reste en banque). |
@@ -50,7 +51,7 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 | Commande | Effet |
 |---|---|
 | `/parcel` ou `/parcel menu` | 🖱️ Menu de la parcelle où tu te trouves. **Hors d'une parcelle**, ouvre tes parcelles (navigables ◄ ►). |
-| `/parcel mine` | 🖱️ Ouvre **tes parcelles** depuis n'importe où ; flèches ◄ ► pour passer de l'une à l'autre, puis gérer / vendre / TP. |
+| `/parcel mine` | 🖱️ Ouvre **tes parcelles** depuis n'importe où ; flèches ◄ ► pour passer de l'une à l'autre, puis gérer les membres / vendre / déplacer l'hologramme. |
 | `/parcel shop` | 🖱️ Liste des parcelles **en vente** (triées par ID). **Clic gauche** = acheter (confirmation), **clic droit** = voir les délimitations 30 s (particules). Le **vendeur** (Mairie ou joueur) et le prix sont affichés. |
 | `/parcel info` | Infos sur la parcelle où tu te trouves (proprio, prix, tes droits). |
 | `/parcel list` | Liste tes parcelles. |
@@ -69,7 +70,7 @@ Exemple : `/parcel trust Steve build containers create`.
 > 🚪 Les **portes, trappes, portillons, boutons, leviers et plaques** sont **publics** par défaut (tout le monde peut les utiliser), config `parcel.publicDoors`.
 
 > 🖱️ **Le plus simple** : `/parcel` (sur ta parcelle) ou `/parcel mine` (de n'importe où) → menu : « Gérer les membres », « Vendre », TP, voir les délimitations. Avec plusieurs parcelles, navigue avec ◄ ►.
-> **Vendre** : *à la Mairie* (immédiat, **75 % remboursé** de ce que tu as payé) ou *aux joueurs* (**tu fixes ton prix** : boutons ±1/±10/±100/±1000, ou `/parcel sell <prix>` pour un montant exact). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / Vendeur / prix`, et apparaît dans `/parcel shop` avec le **vendeur** (Mairie ou joueur).
+> **Vendre** : *à la Mairie* (immédiat, **75 % remboursé** de ce que tu as payé) ou *aux joueurs* (**tu fixes ton prix** : un **champ à remplir** s'ouvre, ou `/parcel sell <prix>` pour un montant exact). Une parcelle en vente affiche un **hologramme** `ID / À VENDRE / Vendeur / prix` (déplaçable à la boussole), et apparaît dans `/parcel shop` avec le **vendeur** (Mairie ou joueur).
 
 `/parcel` a un alias : `/parcelle`.
 
@@ -99,23 +100,36 @@ Exemple : `/parcel trust Steve build containers create`.
 | `/money give <joueur> <montant>` | Crédite le solde d'un joueur (montant ≥ 1). |
 | `/money take <joueur> <montant>` | Débite le solde d'un joueur (montant ≥ 1). |
 | `/money set <joueur> <montant>` | Définit le solde d'un joueur (montant ≥ 0). |
+| `/baltop holo here` | Place l'**hologramme du classement** (top 10 des soldes) à ta position. |
+| `/baltop holo move` | 🖱️ Ouvre le **menu boussole** pour déplacer l'hologramme (flèches ↑↓←→ + Monter/Descendre, Placer ici, Supprimer). |
+| `/baltop holo remove` | Retire l'hologramme du classement. |
 
 > `/balance admin` couvre les joueurs **en ligne** ; pour un joueur **hors ligne**, utilise `/money …` (accepte les pseudos hors ligne).
+> 🏆 **Hologramme BalTop** : affiche « ★ TOP 10 RICHESSES ★ » + les 10 plus riches au-dessus du sol (mise à jour auto ~2 s). Position persistante. Déplaçable à la boussole comme les hologrammes de parcelle.
 
 ### 🏗️ Parcelles — administration
 | Commande | Effet |
 |---|---|
-| `/parcel admin` | 🖱️ Menu **global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer (propriétaire/transférer, **changer le prix**, remettre en vente Mairie, déplacer l'hologramme X/Y/Z, **supprimer** avec confirmation), **clic droit** = se téléporter. |
+| `/parcel admin` | 🖱️ Menu **global** : toutes les parcelles (triées par ID). **Clic gauche** = gérer, **clic droit** = se téléporter. Bouton **« Créer une parcelle Admin »** (saisie de l'ID). Les parcelles Admin sont marquées **`[ADMIN]`**. Dans le menu d'une parcelle : transférer, **changer le prix** (saisie), remettre en vente Mairie, **déplacer l'hologramme** (boussole ↑↓←→), **bascule Admin**, **supprimer** (confirmation). |
 | `/parcel wand` | Reçois l'**outil de tracé**. |
 | `/parcel trace clear` | Efface le tracé en cours. |
 | `/parcel trace undo` | Annule le dernier point du tracé. |
 | `/parcel create <id> [prix]` | Crée une parcelle à partir du tracé (≥ 3 points). Avec un prix = mise en vente directe (≥ 0). |
+| `/parcel createadmin <id>` | Crée une **parcelle Admin** à partir du tracé (protégée, hors shop). |
+| `/parcel setadmin <id> <true\|false>` | Passe une parcelle existante en **Admin** (ou la repasse normale). |
 | `/parcel addregion <id>` | Ajoute le tracé courant comme région supplémentaire (forme composée). |
 | `/parcel setprice <id> <prix>` | Définit le prix d'une parcelle (≥ 0). |
 | `/parcel setsale <id> <true\|false>` | Met une parcelle en vente / la retire. |
 | `/parcel setowner <id> <joueur>` | Force le propriétaire d'une parcelle. |
 | `/parcel delete <id>` | Supprime une parcelle. |
-| `/parcel tp <id>` | Te téléporte à une parcelle. |
+| `/parcel tp <id>` | Te téléporte à une parcelle (admin uniquement). |
+
+#### 🛡️ Parcelles Admin
+Une **parcelle Admin** est une zone serveur **protégée** pour les routes, bâtiments, décorations, végétation… :
+- **Anti-grief** : seuls les admins peuvent casser / poser / interagir (coffres, machines…). Les portes restent publiques si `parcel.publicDoors` est activé.
+- **Hors shop** : jamais en vente, absente de `/parcel shop`.
+- **Invisible aux joueurs** : `/parcel info` et le menu affichent « Zone protégée » aux non-admins ; pas d'hologramme ; sans propriétaire.
+- Création/gestion : `/parcel createadmin <id>`, `/parcel setadmin <id> <bool>`, ou le bouton **bascule Admin** dans le menu de la parcelle.
 
 #### ✏️ Tracer une parcelle
 1. `/parcel wand` pour recevoir l'outil.
