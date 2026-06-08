@@ -64,6 +64,9 @@ public final class Config {
     public static final ModConfigSpec.ConfigValue<String> PARCEL_HABITATION_ITEM;
     public static final ModConfigSpec.ConfigValue<String> PARCEL_COMMERCE_ITEM;
 
+    // Chambres d'auberge
+    public static final ModConfigSpec.ConfigValue<String> ROOM_WAND_ITEM;
+
     public static final ModConfigSpec SPEC;
 
     static {
@@ -199,6 +202,12 @@ public final class Config {
         PARCEL_COMMERCE_ITEM = BUILDER
                 .comment("Item exige (et consomme) pour acheter une parcelle Commerce. Vide pour ne rien exiger.")
                 .define("commerceItem", "utopiamods:licencecommerciale");
+        BUILDER.pop();
+
+        BUILDER.comment("Chambres d'auberge (boites 3D superposables, gerees par les admins/aubergistes).").push("room");
+        ROOM_WAND_ITEM = BUILDER
+                .comment("Outil de selection des chambres (clic gauche = coin 1, clic droit = coin 2 ; le Y compte).")
+                .define("wandItem", "minecraft:blaze_rod");
         BUILDER.pop();
 
         SPEC = BUILDER.build();

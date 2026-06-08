@@ -7,7 +7,10 @@ import com.utopia.command.ClearLagCommand;
 import com.utopia.command.DailyCommand;
 import com.utopia.command.EconomyCommands;
 import com.utopia.command.ParcelCommands;
+import com.utopia.command.RoomCommands;
 import com.utopia.command.SpawnCommands;
+import com.utopia.data.RoomData;
+import com.utopia.room.RoomManager;
 import com.utopia.command.TpaCommands;
 import com.utopia.Config;
 import com.utopia.daily.DailyManager;
@@ -64,7 +67,8 @@ public final class UtopiaEvents {
         ClearLagCommand.register(dispatcher);
         EconomyCommands.register(dispatcher);
         ParcelCommands.register(dispatcher);
-        UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, tpahere, tpaccept, tpadeny, spawn, setspawn, daily, clearlag, balance, pay, withdraw, deposit, money, parcel).");
+        RoomCommands.register(dispatcher);
+        UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge).");
     }
 
     // ----------------------------------------------------------------------------------- Parcelles
@@ -95,7 +99,8 @@ public final class UtopiaEvents {
         // Pose par une entite non-joueur (projectile de slingshot, dispenser, sable, etc.) :
         // interdite dans une parcelle (protection contre les contournements).
         ResourceLocation dim = level.dimension().location();
-        if (ParcelData.get(level.getServer()).parcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null) {
+        if (ParcelData.get(level.getServer()).parcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null
+                || RoomData.get(level.getServer()).roomAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null) {
             event.setCanceled(true);
         }
     }
@@ -110,6 +115,14 @@ public final class UtopiaEvents {
             BlockPos removed = ParcelManager.undoPoint(sp.getUUID());
             sp.sendSystemMessage(removed == null ? Messages.warn("Aucun point a annuler.")
                     : Messages.success("Point annule (reste " + ParcelManager.traceSize(sp.getUUID()) + ")."));
+            event.setCanceled(true);
+            return;
+        }
+        // Outil chambre : coin 1 (clic gauche), Y compris.
+        if (RoomManager.isWand(event.getItemStack()) && RoomManager.isOp(sp)) {
+            RoomManager.setCorner(sp, event.getPos(), true);
+            BlockPos c = event.getPos();
+            sp.sendSystemMessage(Messages.success("Chambre - coin 1 : " + c.getX() + " " + c.getY() + " " + c.getZ()));
             event.setCanceled(true);
         }
     }
@@ -127,15 +140,25 @@ public final class UtopiaEvents {
             event.setCanceled(true);
             return;
         }
+        // Outil chambre : coin 2 (clic droit), Y compris.
+        if (RoomManager.isWand(event.getItemStack()) && RoomManager.isOp(sp)) {
+            RoomManager.setCorner(sp, pos, false);
+            sp.sendSystemMessage(Messages.success("Chambre - coin 2 : " + pos.getX() + " " + pos.getY() + " " + pos.getZ()));
+            event.setCanceled(true);
+            return;
+        }
         // Protection des interactions (coffres, portes, machines, Create).
         Parcel.Flag flag = ParcelManager.requiredInteractFlag(level, pos);
-        // Portes/trappes/boutons publics : tout le monde peut les utiliser.
-        if (flag == Parcel.Flag.DOORS && Config.PARCEL_PUBLIC_DOORS.get()) {
+        boolean inRoom = RoomData.get(sp.server).roomAt(level.dimension().location(), pos.getX(), pos.getY(), pos.getZ()) != null;
+        // Portes/trappes/boutons publics : sauf a l'interieur d'une chambre (privee a l'occupant).
+        if (flag == Parcel.Flag.DOORS && Config.PARCEL_PUBLIC_DOORS.get() && !inRoom) {
             return;
         }
         if (flag != null && !ParcelManager.isActionAllowed(sp, level, pos, flag)) {
             event.setCanceled(true);
-            sp.sendSystemMessage(Messages.error("Interaction protegee sur cette parcelle."));
+            sp.sendSystemMessage(Messages.error(inRoom
+                    ? "Cette chambre ne vous appartient pas (ou est gelee)."
+                    : "Interaction protegee sur cette parcelle."));
         }
     }
 
@@ -161,8 +184,10 @@ public final class UtopiaEvents {
         }
         ResourceLocation dim = level.dimension().location();
         ParcelData data = ParcelData.get(level.getServer());
+        RoomData rooms = RoomData.get(level.getServer());
         event.getAffectedBlocks().removeIf(pos ->
-                data.parcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null);
+                data.parcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null
+                        || rooms.roomAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null);
     }
 
     @SubscribeEvent

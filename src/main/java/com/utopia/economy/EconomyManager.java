@@ -171,6 +171,30 @@ public final class EconomyManager {
         return amount - remaining;
     }
 
+    /**
+     * Paie {@code amount} en prelevant d'abord les pieces physiques de l'inventaire, puis le reste
+     * sur le solde bancaire. Renvoie false (sans rien prelever) si le total disponible est insuffisant.
+     */
+    public static boolean payCombined(ServerPlayer payer, long amount) {
+        if (amount <= 0) {
+            return true;
+        }
+        int coins = countCoins(payer);
+        long balance = getBalance(payer.server, payer.getUUID());
+        if ((long) coins + balance < amount) {
+            return false;
+        }
+        int useCoins = (int) Math.min(coins, amount);
+        if (useCoins > 0) {
+            takeCoins(payer, useCoins);
+        }
+        long rest = amount - useCoins;
+        if (rest > 0) {
+            remove(payer.server, payer.getUUID(), rest);
+        }
+        return true;
+    }
+
     static {
         UtopiaMod.LOGGER.debug("[Utopia] EconomyManager charge.");
     }

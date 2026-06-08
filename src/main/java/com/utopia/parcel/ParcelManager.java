@@ -369,13 +369,21 @@ public final class ParcelManager {
         if (canBypass(player)) {
             return true;
         }
-        ParcelData data = ParcelData.get(player.server);
         ResourceLocation dim = level.dimension().location();
+        int x = pos.getX();
+        int y = pos.getY();
+        int z = pos.getZ();
+        // Chambres d'auberge : prioritaires sur toutes les parcelles (y compris administratives).
+        com.utopia.room.Room room = com.utopia.data.RoomData.get(player.server).roomAt(dim, x, y, z);
+        if (room != null) {
+            return !room.frozen() && room.isOccupant(player.getUUID());
+        }
+        ParcelData data = ParcelData.get(player.server);
         // Priorite aux zones administratives, meme si une parcelle normale les chevauche.
-        if (data.adminParcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null) {
+        if (data.adminParcelAt(dim, x, y, z) != null) {
             return false;
         }
-        Parcel parcel = data.parcelAt(dim, pos.getX(), pos.getY(), pos.getZ());
+        Parcel parcel = data.parcelAt(dim, x, y, z);
         if (parcel == null) {
             return true; // zone libre
         }
