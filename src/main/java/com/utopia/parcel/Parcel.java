@@ -118,6 +118,7 @@ public final class Parcel {
     private long price;
     private long lastPaid;
     private boolean forSale;
+    private boolean admin;
     private double holoDx;
     private double holoDy;
     private double holoDz;
@@ -209,6 +210,15 @@ public final class Parcel {
 
     public void setForSale(boolean forSale) {
         this.forSale = forSale;
+    }
+
+    /** Parcelle administrative : protegee (anti-grief), hors shop, sans proprietaire, geree par les admins. */
+    public boolean isAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
     }
 
     public double holoDx() {

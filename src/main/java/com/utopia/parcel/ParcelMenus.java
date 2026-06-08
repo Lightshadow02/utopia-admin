@@ -166,6 +166,11 @@ public final class ParcelMenus {
             return;
         }
         boolean manage = canManage(player, p);
+        // Parcelle administrative : invisible/inaccessible aux joueurs (zone protegee).
+        if (p.isAdmin() && !manage) {
+            player.sendSystemMessage(Messages.warn("Zone protegee par l'administration."));
+            return;
+        }
 
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
 
@@ -522,9 +527,11 @@ public final class ParcelMenus {
                 break;
             }
             String pid = p.id();
-            gui.button(slot++, Icons.icon(p.forSale() ? Items.GOLD_BLOCK : Items.GRASS_BLOCK,
-                            Icons.label("Parcelle " + pid, ChatFormatting.AQUA), List.of(
-                            Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY),
+            gui.button(slot++, Icons.icon(p.isAdmin() ? Items.BEDROCK : p.forSale() ? Items.GOLD_BLOCK : Items.GRASS_BLOCK,
+                            Icons.label((p.isAdmin() ? "[ADMIN] " : "") + "Parcelle " + pid,
+                                    p.isAdmin() ? ChatFormatting.RED : ChatFormatting.AQUA), List.of(
+                            Icons.lore(p.isAdmin() ? "Type : ADMIN (protegee, hors shop)" : "Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"),
+                                    p.isAdmin() ? ChatFormatting.RED : ChatFormatting.GRAY),
                             Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                                     p.forSale() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
                             Icons.lore("Clic GAUCHE : gerer", ChatFormatting.YELLOW),
@@ -557,6 +564,8 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Admin : " + p.name(), ChatFormatting.DARK_RED));
 
         gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), List.of(
+                Icons.lore(p.isAdmin() ? "Type : ADMIN (protegee, hors shop)" : "Type : normale",
+                        p.isAdmin() ? ChatFormatting.RED : ChatFormatting.DARK_GRAY),
                 Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GOLD),
                 Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                         p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
@@ -586,6 +595,23 @@ public final class ParcelMenus {
                         teleportTo(sp, cur);
                     }
                     com.utopia.gui.Menus.close(sp);
+                });
+        // Bascule parcelle Admin : protection serveur, hors shop, sans proprietaire.
+        gui.button(24, p.isAdmin()
+                        ? Icons.icon(Items.GRASS_BLOCK, Icons.label("Retirer le statut Admin", ChatFormatting.YELLOW),
+                                List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY)))
+                        : Icons.icon(Items.BEDROCK, Icons.label("Marquer comme Admin", ChatFormatting.RED),
+                                List.of(Icons.lore("Protegee anti-grief, hors shop, sans proprio", ChatFormatting.GRAY))),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        ParcelManager.makeAdmin(cur, !cur.isAdmin());
+                        ParcelData.get(server).setDirty();
+                        sp.sendSystemMessage(Messages.success(cur.isAdmin()
+                                ? "Parcelle " + cur.id() + " marquee ADMIN (protegee, hors shop)."
+                                : "Parcelle " + cur.id() + " n'est plus admin."));
+                    }
+                    openAdminParcel(sp, parcelId);
                 });
         if (p.forSale()) {
             gui.button(22, Icons.icon(Items.ARMOR_STAND, Icons.label("Deplacer l'hologramme", ChatFormatting.AQUA),

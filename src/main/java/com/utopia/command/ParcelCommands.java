@@ -68,6 +68,12 @@ public final class ParcelCommands {
                                 .executes(ctx -> create(ctx, 0, false))
                                 .then(Commands.argument("price", IntegerArgumentType.integer(0))
                                         .executes(ctx -> create(ctx, IntegerArgumentType.getInteger(ctx, "price"), true)))))
+                .then(Commands.literal("createadmin").requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .executes(ctx -> create(ctx, 0, false, true))))
+                .then(Commands.literal("setadmin").requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .then(Commands.argument("value", BoolArgumentType.bool()).executes(ParcelCommands::setadmin))))
                 .then(Commands.literal("addregion").requires(s -> s.hasPermission(2))
                         .then(Commands.argument("id", StringArgumentType.word()).executes(ParcelCommands::addregion)))
                 .then(Commands.literal("setprice").requires(s -> s.hasPermission(2))
@@ -146,6 +152,11 @@ public final class ParcelCommands {
         Parcel p = parcelAt(player);
         if (p == null) {
             player.sendSystemMessage(Messages.info("Zone libre (hors parcelle)."));
+            return 1;
+        }
+        // Parcelle administrative : invisible aux joueurs (seuls les admins voient les details).
+        if (p.isAdmin() && !ParcelManager.canBypass(player)) {
+            player.sendSystemMessage(Messages.warn("Zone protegee par l'administration."));
             return 1;
         }
         player.sendSystemMessage(Messages.success("Parcelle " + p.name() + " [" + p.id() + "]"));
@@ -340,6 +351,10 @@ public final class ParcelCommands {
     }
 
     private static int create(CommandContext<CommandSourceStack> ctx, int price, boolean forSale) throws CommandSyntaxException {
+        return create(ctx, price, forSale, false);
+    }
+
+    private static int create(CommandContext<CommandSourceStack> ctx, int price, boolean forSale, boolean admin) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         String id = StringArgumentType.getString(ctx, "id");
         ParcelData data = ParcelData.get(player.server);
@@ -356,13 +371,32 @@ public final class ParcelCommands {
         warnOverlap(player, data, dim, poly.bounds(), id);
         Parcel parcel = new Parcel(id, id, dim);
         parcel.addPoly(poly);
-        parcel.setPrice(price);
-        parcel.setForSale(forSale);
+        if (admin) {
+            ParcelManager.makeAdmin(parcel, true);
+        } else {
+            parcel.setPrice(price);
+            parcel.setForSale(forSale);
+        }
         data.put(parcel);
         ParcelManager.clearTrace(player.getUUID());
         player.sendSystemMessage(Messages.success("Parcelle '" + id + "' creee (" + poly.xs().length + " sommets, ~"
                 + parcel.approxFootprint() + " blocs au sol"
-                + (forSale ? ", en vente " + EconomyManager.format(price) : "") + ")."));
+                + (admin ? ", ADMIN (protegee, hors shop)" : forSale ? ", en vente " + EconomyManager.format(price) : "") + ")."));
+        return 1;
+    }
+
+    private static int setadmin(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        Parcel p = byId(player, ctx);
+        if (p == null) {
+            return 0;
+        }
+        boolean value = BoolArgumentType.getBool(ctx, "value");
+        ParcelManager.makeAdmin(p, value);
+        ParcelData.get(player.server).setDirty();
+        player.sendSystemMessage(Messages.success("Parcelle '" + p.id() + (value
+                ? "' marquee ADMIN (protegee, hors shop, sans proprietaire)."
+                : "' n'est plus une parcelle admin.")));
         return 1;
     }
 

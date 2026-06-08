@@ -112,7 +112,7 @@ public final class ParcelData extends SavedData {
     public List<Parcel> forSale() {
         List<Parcel> result = new ArrayList<>();
         for (Parcel p : parcels.values()) {
-            if (p.forSale()) {
+            if (p.forSale() && !p.isAdmin()) {
                 result.add(p);
             }
         }
@@ -134,6 +134,7 @@ public final class ParcelData extends SavedData {
             parcel.setPrice(pt.getLong("price"));
             parcel.setLastPaid(pt.contains("lastPaid") ? pt.getLong("lastPaid") : pt.getLong("price"));
             parcel.setForSale(pt.getBoolean("forSale"));
+            parcel.setAdmin(pt.getBoolean("admin"));
             parcel.setHoloOffset(pt.getDouble("holoDx"), pt.getDouble("holoDy"), pt.getDouble("holoDz"));
             if (pt.contains("owner")) {
                 try {
@@ -182,6 +183,7 @@ public final class ParcelData extends SavedData {
             pt.putLong("price", p.price());
             pt.putLong("lastPaid", p.lastPaid());
             pt.putBoolean("forSale", p.forSale());
+            pt.putBoolean("admin", p.isAdmin());
             pt.putDouble("holoDx", p.holoDx());
             pt.putDouble("holoDy", p.holoDy());
             pt.putDouble("holoDz", p.holoDz());

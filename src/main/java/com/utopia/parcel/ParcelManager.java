@@ -333,6 +333,22 @@ public final class ParcelManager {
         if (parcel == null) {
             return true; // zone libre
         }
+        if (parcel.isAdmin()) {
+            return false; // parcelle administrative : seuls les admins (bypass plus haut) agissent
+        }
         return parcel.allows(player.getUUID(), flag);
+    }
+
+    /**
+     * Marque (ou demarque) une parcelle comme administrative. Une parcelle admin est protegee
+     * (anti-grief), retiree de la vente, sans proprietaire ni membres.
+     */
+    public static void makeAdmin(Parcel parcel, boolean admin) {
+        parcel.setAdmin(admin);
+        if (admin) {
+            parcel.setForSale(false);
+            parcel.setOwner(null, null);
+            parcel.members().clear();
+        }
     }
 }
