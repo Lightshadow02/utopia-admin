@@ -70,6 +70,16 @@ public final class ParcelData extends SavedData {
         return null;
     }
 
+    /** Parcelle ADMINISTRATIVE contenant cette position, ou nul (priorite sur les parcelles normales). */
+    public Parcel adminParcelAt(ResourceLocation dim, int x, int y, int z) {
+        for (Parcel p : parcels.values()) {
+            if (p.isAdmin() && p.contains(dim, x, y, z)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
     /** Parcelles dont une boite chevauche la boite donnee (pour avertir d'un chevauchement). */
     public List<Parcel> overlapping(ResourceLocation dim, Parcel.Box box, String ignoreId) {
         List<Parcel> result = new ArrayList<>();
@@ -135,6 +145,7 @@ public final class ParcelData extends SavedData {
             parcel.setLastPaid(pt.contains("lastPaid") ? pt.getLong("lastPaid") : pt.getLong("price"));
             parcel.setForSale(pt.getBoolean("forSale"));
             parcel.setAdmin(pt.getBoolean("admin"));
+            parcel.setType(Parcel.Type.fromName(pt.getString("type")));
             parcel.setHoloOffset(pt.getDouble("holoDx"), pt.getDouble("holoDy"), pt.getDouble("holoDz"));
             if (pt.contains("owner")) {
                 try {
@@ -184,6 +195,7 @@ public final class ParcelData extends SavedData {
             pt.putLong("lastPaid", p.lastPaid());
             pt.putBoolean("forSale", p.forSale());
             pt.putBoolean("admin", p.isAdmin());
+            pt.putString("type", p.type().name());
             pt.putDouble("holoDx", p.holoDx());
             pt.putDouble("holoDy", p.holoDy());
             pt.putDouble("holoDz", p.holoDz());

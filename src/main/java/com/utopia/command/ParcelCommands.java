@@ -74,6 +74,9 @@ public final class ParcelCommands {
                 .then(Commands.literal("setadmin").requires(s -> s.hasPermission(2))
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .then(Commands.argument("value", BoolArgumentType.bool()).executes(ParcelCommands::setadmin))))
+                .then(Commands.literal("settype").requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .then(Commands.argument("type", StringArgumentType.word()).executes(ParcelCommands::settype))))
                 .then(Commands.literal("addregion").requires(s -> s.hasPermission(2))
                         .then(Commands.argument("id", StringArgumentType.word()).executes(ParcelCommands::addregion)))
                 .then(Commands.literal("setprice").requires(s -> s.hasPermission(2))
@@ -192,10 +195,14 @@ public final class ParcelCommands {
             return 0;
         }
         long price = p.price();
+        var req = ParcelManager.requiredBuyItem(p);
         switch (ParcelManager.purchase(player, p)) {
             case NOT_FOR_SALE -> player.sendSystemMessage(Messages.error("Cette parcelle n'est pas en vente."));
             case ALREADY_OWNER -> player.sendSystemMessage(Messages.error("Vous possedez deja cette parcelle."));
             case INSUFFICIENT -> player.sendSystemMessage(Messages.error("Solde insuffisant (prix : " + EconomyManager.format(price) + ")."));
+            case MISSING_ITEM -> player.sendSystemMessage(Messages.error("Il vous faut "
+                    + (req != null ? new net.minecraft.world.item.ItemStack(req).getHoverName().getString() : "le document requis")
+                    + " pour acheter cette parcelle " + p.type().label() + "."));
             default -> {
                 player.sendSystemMessage(Messages.success("Vous avez achete la parcelle " + p.name()
                         + " pour " + EconomyManager.format(price) + " !"));
@@ -382,6 +389,19 @@ public final class ParcelCommands {
         player.sendSystemMessage(Messages.success("Parcelle '" + id + "' creee (" + poly.xs().length + " sommets, ~"
                 + parcel.approxFootprint() + " blocs au sol"
                 + (admin ? ", ADMIN (protegee, hors shop)" : forSale ? ", en vente " + EconomyManager.format(price) : "") + ")."));
+        return 1;
+    }
+
+    private static int settype(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        Parcel p = byId(player, ctx);
+        if (p == null) {
+            return 0;
+        }
+        Parcel.Type t = Parcel.Type.fromName(StringArgumentType.getString(ctx, "type"));
+        p.setType(t);
+        ParcelData.get(player.server).setDirty();
+        player.sendSystemMessage(Messages.success("Parcelle '" + p.id() + "' definie comme " + t.label() + "."));
         return 1;
     }
 

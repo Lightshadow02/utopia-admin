@@ -15,6 +15,25 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class Parcel {
 
+    /** Categorie d'une parcelle (couleur du contour + item exige a l'achat). */
+    public enum Type {
+        HABITATION,
+        COMMERCE;
+
+        public static Type fromName(String name) {
+            for (Type t : values()) {
+                if (t.name().equalsIgnoreCase(name)) {
+                    return t;
+                }
+            }
+            return HABITATION;
+        }
+
+        public String label() {
+            return this == COMMERCE ? "Commerce" : "Habitation";
+        }
+    }
+
     /** Permissions accordables sur une parcelle. */
     public enum Flag {
         BUILD,       // casser / poser des blocs
@@ -119,6 +138,7 @@ public final class Parcel {
     private long lastPaid;
     private boolean forSale;
     private boolean admin;
+    private Type type = Type.HABITATION;
     private double holoDx;
     private double holoDy;
     private double holoDz;
@@ -219,6 +239,14 @@ public final class Parcel {
 
     public void setAdmin(boolean admin) {
         this.admin = admin;
+    }
+
+    public Type type() {
+        return type;
+    }
+
+    public void setType(Type type) {
+        this.type = type == null ? Type.HABITATION : type;
     }
 
     public double holoDx() {

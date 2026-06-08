@@ -40,6 +40,10 @@ public final class ParcelHolograms {
 
     private static final DustParticleOptions ORANGE = new DustParticleOptions(new Vector3f(1.0F, 0.55F, 0.0F), 1.0F);
     private static final DustParticleOptions YELLOW = new DustParticleOptions(new Vector3f(1.0F, 0.95F, 0.1F), 1.3F);
+    // Couleurs de contour selon le type de parcelle.
+    private static final DustParticleOptions BLUE = new DustParticleOptions(new Vector3f(0.15F, 0.45F, 1.0F), 1.0F);
+    private static final DustParticleOptions BLUE_BRIGHT = new DustParticleOptions(new Vector3f(0.5F, 0.75F, 1.0F), 1.3F);
+    private static final DustParticleOptions RED = new DustParticleOptions(new Vector3f(1.0F, 0.15F, 0.15F), 1.0F);
 
     /** Apercu de delimitation en cours pour un joueur. */
     private record Preview(String parcelId, ResourceLocation dim, long expiryTick) {
@@ -87,31 +91,44 @@ public final class ParcelHolograms {
     }
 
     private static void drawOutline(ServerLevel level, ServerPlayer player, Parcel parcel) {
+        // Bleu = Habitation, Jaune = Commerce, Rouge = zone Admin.
+        DustParticleOptions edgeColor;
+        DustParticleOptions cornerColor;
+        if (parcel.isAdmin()) {
+            edgeColor = RED;
+            cornerColor = RED;
+        } else if (parcel.type() == Parcel.Type.COMMERCE) {
+            edgeColor = YELLOW;
+            cornerColor = ORANGE;
+        } else {
+            edgeColor = BLUE;
+            cornerColor = BLUE_BRIGHT;
+        }
         for (Parcel.Box b : parcel.boxes()) {
             double x0 = b.minX();
             double x1 = b.maxX() + 1.0;
             double z0 = b.minZ();
             double z1 = b.maxZ() + 1.0;
-            edge(level, player, x0, z0, x1, z0);
-            edge(level, player, x1, z0, x1, z1);
-            edge(level, player, x1, z1, x0, z1);
-            edge(level, player, x0, z1, x0, z0);
-            corner(level, player, x0, z0);
-            corner(level, player, x1, z0);
-            corner(level, player, x1, z1);
-            corner(level, player, x0, z1);
+            edge(level, player, x0, z0, x1, z0, edgeColor);
+            edge(level, player, x1, z0, x1, z1, edgeColor);
+            edge(level, player, x1, z1, x0, z1, edgeColor);
+            edge(level, player, x0, z1, x0, z0, edgeColor);
+            corner(level, player, x0, z0, cornerColor);
+            corner(level, player, x1, z0, cornerColor);
+            corner(level, player, x1, z1, cornerColor);
+            corner(level, player, x0, z1, cornerColor);
         }
         for (Parcel.Poly poly : parcel.polys()) {
             int n = poly.xs().length;
             for (int i = 0; i < n; i++) {
                 int j = (i + 1) % n;
-                edge(level, player, poly.xs()[i] + 0.5, poly.zs()[i] + 0.5, poly.xs()[j] + 0.5, poly.zs()[j] + 0.5);
-                corner(level, player, poly.xs()[i] + 0.5, poly.zs()[i] + 0.5);
+                edge(level, player, poly.xs()[i] + 0.5, poly.zs()[i] + 0.5, poly.xs()[j] + 0.5, poly.zs()[j] + 0.5, edgeColor);
+                corner(level, player, poly.xs()[i] + 0.5, poly.zs()[i] + 0.5, cornerColor);
             }
         }
     }
 
-    private static void edge(ServerLevel level, ServerPlayer player, double x1, double z1, double x2, double z2) {
+    private static void edge(ServerLevel level, ServerPlayer player, double x1, double z1, double x2, double z2, DustParticleOptions color) {
         double dist = Math.sqrt((x2 - x1) * (x2 - x1) + (z2 - z1) * (z2 - z1));
         int steps = Math.min(400, Math.max(1, (int) (dist / 0.5)));
         for (int s = 0; s <= steps; s++) {
@@ -119,13 +136,13 @@ public final class ParcelHolograms {
             double x = x1 + (x2 - x1) * t;
             double z = z1 + (z2 - z1) * t;
             double y = level.getHeight(Heightmap.Types.WORLD_SURFACE, (int) Math.floor(x), (int) Math.floor(z)) + 0.3;
-            level.sendParticles(player, ORANGE, true, x, y, z, 1, 0.0, 0.0, 0.0, 0.0);
+            level.sendParticles(player, color, true, x, y, z, 1, 0.0, 0.0, 0.0, 0.0);
         }
     }
 
-    private static void corner(ServerLevel level, ServerPlayer player, double x, double z) {
+    private static void corner(ServerLevel level, ServerPlayer player, double x, double z, DustParticleOptions color) {
         double y = level.getHeight(Heightmap.Types.WORLD_SURFACE, (int) Math.floor(x), (int) Math.floor(z)) + 0.5;
-        level.sendParticles(player, YELLOW, true, x, y, z, 6, 0.02, 0.4, 0.02, 0.0);
+        level.sendParticles(player, color, true, x, y, z, 6, 0.02, 0.4, 0.02, 0.0);
     }
 
     // ------------------------------------------------------------------ Hologrammes "A vendre"

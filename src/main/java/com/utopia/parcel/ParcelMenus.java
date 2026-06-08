@@ -50,6 +50,18 @@ public final class ParcelMenus {
         return ParcelData.get(server).get(id);
     }
 
+    /** Icone (laine bleue/jaune) selon le type de parcelle. */
+    private static net.minecraft.world.level.ItemLike typeIcon(Parcel p) {
+        return p.type() == Parcel.Type.COMMERCE ? Items.YELLOW_WOOL : Items.BLUE_WOOL;
+    }
+
+    /** Ligne de lore "Requis : <item>" pour l'achat, ou une ligne vide si aucun item exige. */
+    private static Component typeReqLore(Parcel p) {
+        var req = ParcelManager.requiredBuyItem(p);
+        return req == null ? Icons.lore(" ", ChatFormatting.DARK_GRAY)
+                : Icons.lore("Requis : " + new ItemStack(req).getHoverName().getString(), ChatFormatting.LIGHT_PURPLE);
+    }
+
     private static boolean canManage(ServerPlayer player, Parcel parcel) {
         return parcel.isOwner(player.getUUID()) || ParcelManager.canBypass(player);
     }
@@ -175,6 +187,8 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
 
         List<Component> info = new ArrayList<>();
+        info.add(Icons.lore("Categorie : " + p.type().label(),
+                p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA));
         info.add(Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY));
         info.add(Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                 p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
@@ -304,9 +318,16 @@ public final class ParcelMenus {
             return;
         }
         long price = p.price();
+        var reqItem = ParcelManager.requiredBuyItem(p);
+        List<Component> info = new ArrayList<>();
+        info.add(Icons.lore("Type : " + p.type().label(),
+                p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA));
+        info.add(Icons.lore("Votre solde : " + EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GRAY));
+        if (reqItem != null) {
+            info.add(Icons.lore("Requis : " + new ItemStack(reqItem).getHoverName().getString() + " (consomme)", ChatFormatting.LIGHT_PURPLE));
+        }
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Acheter " + p.id() + " ?", ChatFormatting.DARK_AQUA));
-        gui.set(4, Icons.icon(EconomyManager.coinItem(), Icons.label("Prix : " + EconomyManager.format(price), ChatFormatting.GOLD),
-                List.of(Icons.lore("Votre solde : " + EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GRAY))));
+        gui.set(4, Icons.icon(EconomyManager.coinItem(), Icons.label("Prix : " + EconomyManager.format(price), ChatFormatting.GOLD), info));
         gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("OUI, acheter pour " + EconomyManager.format(price), ChatFormatting.GREEN), List.of()),
                 sp -> {
                     Parcel cur = getParcel(server, parcelId);
@@ -314,10 +335,14 @@ public final class ParcelMenus {
                         return;
                     }
                     long pr = cur.price();
+                    var req = ParcelManager.requiredBuyItem(cur);
                     switch (ParcelManager.purchase(sp, cur)) {
                         case INSUFFICIENT -> sp.sendSystemMessage(Messages.error("Solde insuffisant (" + EconomyManager.format(pr) + ")."));
                         case NOT_FOR_SALE -> sp.sendSystemMessage(Messages.error("Plus en vente."));
                         case ALREADY_OWNER -> sp.sendSystemMessage(Messages.error("Vous la possedez deja."));
+                        case MISSING_ITEM -> sp.sendSystemMessage(Messages.error("Il te faut "
+                                + (req != null ? new ItemStack(req).getHoverName().getString() : "le document requis")
+                                + " pour acheter cette parcelle " + cur.type().label() + "."));
                         default -> sp.sendSystemMessage(Messages.success("Vous avez achete " + cur.name() + " pour " + EconomyManager.format(pr) + " !"));
                     }
                     com.utopia.gui.Menus.close(sp);
@@ -490,10 +515,13 @@ public final class ParcelMenus {
                 break;
             }
             String pid = p.id();
-            gui.button(slot++, Icons.icon(Items.PAPER, Icons.label("Parcelle " + pid, ChatFormatting.GOLD), List.of(
+            gui.button(slot++, Icons.icon(typeIcon(p),
+                            Icons.label("[" + p.type().label() + "] Parcelle " + pid,
+                                    p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA), List.of(
                             Icons.lore("Prix : " + EconomyManager.format(p.price()), ChatFormatting.GREEN),
                             Icons.lore("Vendeur : " + (p.isOwned() ? p.ownerName() + " (joueur)" : "Mairie"),
                                     p.isOwned() ? ChatFormatting.AQUA : ChatFormatting.GRAY),
+                            typeReqLore(p),
                             Icons.lore("Clic GAUCHE : acheter", ChatFormatting.YELLOW),
                             Icons.lore("Clic DROIT : voir les delimitations (30 s)", ChatFormatting.YELLOW))),
                     sp -> openBuyConfirm(sp, pid),
@@ -582,14 +610,27 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Admin : " + p.name(), ChatFormatting.DARK_RED));
 
         gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), List.of(
-                Icons.lore(p.isAdmin() ? "Type : ADMIN (protegee, hors shop)" : "Type : normale",
-                        p.isAdmin() ? ChatFormatting.RED : ChatFormatting.DARK_GRAY),
+                Icons.lore(p.isAdmin() ? "Categorie : ADMIN (protegee, hors shop)" : "Categorie : " + p.type().label(),
+                        p.isAdmin() ? ChatFormatting.RED : p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
                 Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GOLD),
                 Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                         p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
                 Icons.lore("Dernier prix paye : " + EconomyManager.format(p.lastPaid()), ChatFormatting.DARK_GRAY),
                 Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY))));
 
+        // Bascule Habitation / Commerce (couleur du contour + item exige a l'achat).
+        gui.button(6, Icons.icon(p.type() == Parcel.Type.COMMERCE ? Items.YELLOW_WOOL : Items.BLUE_WOOL,
+                Icons.label("Categorie : " + p.type().label(), p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                List.of(Icons.lore("Clic : basculer Habitation / Commerce", ChatFormatting.GRAY),
+                        Icons.lore("Contour bleu (habitation) / jaune (commerce)", ChatFormatting.DARK_GRAY))),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        cur.setType(cur.type() == Parcel.Type.COMMERCE ? Parcel.Type.HABITATION : Parcel.Type.COMMERCE);
+                        ParcelData.get(server).setDirty();
+                    }
+                    openAdminParcel(sp, parcelId);
+                });
         gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Gerer les membres", ChatFormatting.YELLOW), List.of()),
                 sp -> openMembersMenu(sp, parcelId));
         gui.button(12, Icons.icon(Items.NAME_TAG, Icons.label("Transferer (changer proprio)", ChatFormatting.YELLOW),

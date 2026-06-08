@@ -61,6 +61,8 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue PARCEL_EXTINGUISH_FIRE;
     public static final ModConfigSpec.BooleanValue PARCEL_PUBLIC_DOORS;
     public static final ModConfigSpec.BooleanValue PARCEL_PROTECT_ENTITIES;
+    public static final ModConfigSpec.ConfigValue<String> PARCEL_HABITATION_ITEM;
+    public static final ModConfigSpec.ConfigValue<String> PARCEL_COMMERCE_ITEM;
 
     public static final ModConfigSpec SPEC;
 
@@ -191,6 +193,12 @@ public final class Config {
         PARCEL_PROTECT_ENTITIES = BUILDER
                 .comment("Empecher les joueurs non autorises de blesser/tuer les entites (villageois, animaux, cadres...) d'une parcelle.")
                 .define("protectEntities", true);
+        PARCEL_HABITATION_ITEM = BUILDER
+                .comment("Item exige (et consomme) pour acheter une parcelle Habitation. Vide pour ne rien exiger.")
+                .define("habitationItem", "utopiamods:actedepropriete");
+        PARCEL_COMMERCE_ITEM = BUILDER
+                .comment("Item exige (et consomme) pour acheter une parcelle Commerce. Vide pour ne rien exiger.")
+                .define("commerceItem", "utopiamods:licencecommerciale");
         BUILDER.pop();
 
         SPEC = BUILDER.build();

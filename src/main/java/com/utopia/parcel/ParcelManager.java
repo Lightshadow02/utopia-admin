@@ -207,7 +207,41 @@ public final class ParcelManager {
 
     // -------- Achat --------
 
-    public enum BuyResult { OK, NOT_FOR_SALE, ALREADY_OWNER, INSUFFICIENT }
+    public enum BuyResult { OK, NOT_FOR_SALE, ALREADY_OWNER, INSUFFICIENT, MISSING_ITEM }
+
+    /** Item exige (et consomme) pour acheter cette parcelle selon son type ; nul = aucune exigence. */
+    public static Item requiredBuyItem(Parcel parcel) {
+        String id = parcel.type() == Parcel.Type.COMMERCE
+                ? Config.PARCEL_COMMERCE_ITEM.get() : Config.PARCEL_HABITATION_ITEM.get();
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        return rl != null && BuiltInRegistries.ITEM.containsKey(rl) ? BuiltInRegistries.ITEM.get(rl) : null;
+    }
+
+    private static int countItem(ServerPlayer player, Item item) {
+        int n = 0;
+        net.minecraft.world.entity.player.Inventory inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (!s.isEmpty() && s.is(item)) {
+                n += s.getCount();
+            }
+        }
+        return n;
+    }
+
+    private static void consumeOne(ServerPlayer player, Item item) {
+        net.minecraft.world.entity.player.Inventory inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (!s.isEmpty() && s.is(item)) {
+                s.shrink(1);
+                return;
+            }
+        }
+    }
 
     /**
      * Achat d'une parcelle par {@code buyer} (paiement via le solde). Transfere la propriete,
@@ -220,9 +254,16 @@ public final class ParcelManager {
         if (parcel.isOwner(buyer.getUUID())) {
             return BuyResult.ALREADY_OWNER;
         }
+        Item required = requiredBuyItem(parcel);
+        if (required != null && countItem(buyer, required) <= 0) {
+            return BuyResult.MISSING_ITEM;
+        }
         long price = parcel.price();
         if (!EconomyManager.remove(buyer.server, buyer.getUUID(), price)) {
             return BuyResult.INSUFFICIENT;
+        }
+        if (required != null) {
+            consumeOne(buyer, required);
         }
         UUID previous = parcel.owner();
         if (previous != null) {
@@ -328,13 +369,15 @@ public final class ParcelManager {
         if (canBypass(player)) {
             return true;
         }
-        Parcel parcel = ParcelData.get(player.server).parcelAt(level.dimension().location(),
-                pos.getX(), pos.getY(), pos.getZ());
+        ParcelData data = ParcelData.get(player.server);
+        ResourceLocation dim = level.dimension().location();
+        // Priorite aux zones administratives, meme si une parcelle normale les chevauche.
+        if (data.adminParcelAt(dim, pos.getX(), pos.getY(), pos.getZ()) != null) {
+            return false;
+        }
+        Parcel parcel = data.parcelAt(dim, pos.getX(), pos.getY(), pos.getZ());
         if (parcel == null) {
             return true; // zone libre
-        }
-        if (parcel.isAdmin()) {
-            return false; // parcelle administrative : seuls les admins (bypass plus haut) agissent
         }
         return parcel.allows(player.getUUID(), flag);
     }
