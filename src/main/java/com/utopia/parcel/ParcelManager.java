@@ -351,4 +351,29 @@ public final class ParcelManager {
             parcel.members().clear();
         }
     }
+
+    /**
+     * Cree une parcelle a partir du trace en cours (&ge; 3 points), eventuellement administrative.
+     * Renvoie la parcelle creee, ou nul (un message a deja ete envoye au joueur).
+     */
+    public static Parcel createFromTrace(ServerPlayer player, String id, boolean admin) {
+        ParcelData data = ParcelData.get(player.server);
+        if (data.exists(id)) {
+            player.sendSystemMessage(Messages.error("Une parcelle '" + id + "' existe deja."));
+            return null;
+        }
+        Parcel.Poly poly = buildPoly(player);
+        if (poly == null) {
+            player.sendSystemMessage(Messages.error("Tracez d'abord au moins 3 points avec l'outil (clic droit au sol)."));
+            return null;
+        }
+        Parcel parcel = new Parcel(id, id, player.serverLevel().dimension().location());
+        parcel.addPoly(poly);
+        if (admin) {
+            makeAdmin(parcel, true);
+        }
+        data.put(parcel);
+        clearTrace(player.getUUID());
+        return parcel;
+    }
 }

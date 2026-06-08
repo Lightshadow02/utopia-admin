@@ -3,6 +3,7 @@ package com.utopia.client.owo;
 import com.utopia.net.CloseMenuPayload;
 import com.utopia.net.OpenAmountPayload;
 import com.utopia.net.OpenMenuPayload;
+import com.utopia.net.OpenTextPayload;
 
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -28,5 +29,9 @@ public final class OwoMenuClient {
 
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaAmountScreen(payload)));
+    }
+
+    public static void handleTextPrompt(OpenTextPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaTextScreen(payload)));
     }
 }

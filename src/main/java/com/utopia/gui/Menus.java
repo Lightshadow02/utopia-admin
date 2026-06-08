@@ -35,6 +35,18 @@ public final class Menus {
         OwoMenuServer.openAmount(player, title, info, confirmLabel, defaultValue, min, max, onConfirm);
     }
 
+    /**
+     * Ouvre un ecran de saisie de texte (champ a remplir). {@code onConfirm} recoit la chaine saisie
+     * (non vide, filtree cote client : lettres/chiffres/_/-).
+     */
+    public static void promptText(ServerPlayer player, net.minecraft.network.chat.Component title,
+                                  java.util.List<net.minecraft.network.chat.Component> info,
+                                  net.minecraft.network.chat.Component confirmLabel,
+                                  String defaultText, int maxLength,
+                                  java.util.function.Consumer<String> onConfirm) {
+        OwoMenuServer.openText(player, title, info, confirmLabel, defaultText, maxLength, onConfirm);
+    }
+
     /** Ferme le menu courant du joueur (conteneur vanilla de l'editeur, ou ecran owo). */
     public static void close(ServerPlayer player) {
         if (player.containerMenu instanceof UtopiaMenu) {

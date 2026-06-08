@@ -523,7 +523,7 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(6, Icons.label("Admin - toutes les parcelles", ChatFormatting.DARK_AQUA));
         int slot = 0;
         for (Parcel p : all) {
-            if (slot > 53) {
+            if (slot > 44) { // derniere rangee reservee aux controles
                 break;
             }
             String pid = p.id();
@@ -548,6 +548,24 @@ public final class ParcelMenus {
         if (slot == 0) {
             gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucune parcelle", ChatFormatting.RED), List.of()));
         }
+        // Creer une parcelle Admin depuis le trace en cours (rangee du bas).
+        gui.button(49, Icons.icon(Items.BEDROCK, Icons.label("Creer une parcelle Admin", ChatFormatting.RED),
+                List.of(Icons.lore("Trace d'abord la zone au wand (clic droit au sol)", ChatFormatting.GRAY),
+                        Icons.lore("Puis saisis un identifiant", ChatFormatting.GRAY))),
+                sp -> Menus.promptText(sp,
+                        Icons.label("Nouvelle parcelle Admin", ChatFormatting.DARK_RED),
+                        List.of(Icons.lore("Identifiant (lettres, chiffres, _ , -)", ChatFormatting.GRAY),
+                                Icons.lore("La zone = ton trace au wand", ChatFormatting.DARK_GRAY)),
+                        Icons.label("Creer", ChatFormatting.GREEN), "", 24,
+                        id -> {
+                            Parcel created = ParcelManager.createFromTrace(sp, id, true);
+                            if (created != null) {
+                                sp.sendSystemMessage(Messages.success("Parcelle Admin '" + created.id() + "' creee."));
+                                openAdminParcel(sp, created.id());
+                            } else {
+                                openAdminAll(sp);
+                            }
+                        }));
         gui.fillEmpty();
         Menus.open(admin, gui);
     }

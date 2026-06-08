@@ -22,11 +22,15 @@ public final class UtopiaNet {
                 (payload, context) -> com.utopia.client.owo.OwoMenuClient.handleClose(payload, context));
         registrar.playToClient(OpenAmountPayload.TYPE, OpenAmountPayload.STREAM_CODEC,
                 (payload, context) -> com.utopia.client.owo.OwoMenuClient.handleAmountPrompt(payload, context));
+        registrar.playToClient(OpenTextPayload.TYPE, OpenTextPayload.STREAM_CODEC,
+                (payload, context) -> com.utopia.client.owo.OwoMenuClient.handleTextPrompt(payload, context));
 
-        // C2S : clic / fermeture / montant saisi envoye par le client.
+        // C2S : clic / fermeture / montant / texte saisi envoye par le client.
         registrar.playToServer(MenuClickPayload.TYPE, MenuClickPayload.STREAM_CODEC,
                 OwoMenuServer::handleClick);
         registrar.playToServer(AmountResultPayload.TYPE, AmountResultPayload.STREAM_CODEC,
                 OwoMenuServer::handleAmount);
+        registrar.playToServer(TextResultPayload.TYPE, TextResultPayload.STREAM_CODEC,
+                OwoMenuServer::handleText);
     }
 }

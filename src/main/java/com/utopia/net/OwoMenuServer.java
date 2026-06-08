@@ -18,8 +18,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
- * Cote serveur : tient le menu owo actif de chaque joueur (menu a icones OU saisie de montant),
- * envoie l'ouverture/fermeture au client et execute les actions/valeurs recues.
+ * Cote serveur : tient le menu owo actif de chaque joueur (menu a icones, saisie de montant, ou
+ * saisie de texte), envoie l'ouverture/fermeture au client et execute les actions/valeurs recues.
  */
 public final class OwoMenuServer {
 
@@ -29,8 +29,11 @@ public final class OwoMenuServer {
     private record AmountPrompt(long min, long max, LongConsumer onConfirm) {
     }
 
-    /** Une session active : soit un menu a icones ({@code gui}), soit une saisie ({@code prompt}). */
-    private record Session(int id, UtopiaGui gui, AmountPrompt prompt) {
+    private record TextPrompt(Consumer<String> onConfirm) {
+    }
+
+    /** Une session active : menu a icones ({@code gui}), saisie de montant ({@code amount}) ou texte ({@code text}). */
+    private record Session(int id, UtopiaGui gui, AmountPrompt amount, TextPrompt text) {
     }
 
     private static final Map<UUID, Session> SESSIONS = new ConcurrentHashMap<>();
@@ -39,7 +42,7 @@ public final class OwoMenuServer {
     /** Ouvre (ou remplace) le menu a icones du joueur. */
     public static void open(ServerPlayer player, UtopiaGui gui) {
         int id = COUNTER.incrementAndGet();
-        SESSIONS.put(player.getUUID(), new Session(id, gui, null));
+        SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
 
         int size = gui.size();
         List<ItemStack> items = new ArrayList<>(size);
@@ -58,9 +61,18 @@ public final class OwoMenuServer {
     public static void openAmount(ServerPlayer player, Component title, List<Component> info, Component confirmLabel,
                                   long defaultValue, long min, long max, LongConsumer onConfirm) {
         int id = COUNTER.incrementAndGet();
-        SESSIONS.put(player.getUUID(), new Session(id, null, new AmountPrompt(min, max, onConfirm)));
+        SESSIONS.put(player.getUUID(), new Session(id, null, new AmountPrompt(min, max, onConfirm), null));
         PacketDistributor.sendToPlayer(player,
                 new OpenAmountPayload(id, title, info, confirmLabel, defaultValue, min, max));
+    }
+
+    /** Ouvre un ecran de saisie de texte ; {@code onConfirm} recoit la chaine saisie. */
+    public static void openText(ServerPlayer player, Component title, List<Component> info, Component confirmLabel,
+                                String defaultText, int maxLength, Consumer<String> onConfirm) {
+        int id = COUNTER.incrementAndGet();
+        SESSIONS.put(player.getUUID(), new Session(id, null, null, new TextPrompt(onConfirm)));
+        PacketDistributor.sendToPlayer(player,
+                new OpenTextPayload(id, title, info, confirmLabel, defaultText, maxLength));
     }
 
     /** Ferme l'ecran owo cote client + declenche le rappel de fermeture eventuel. */
@@ -121,13 +133,29 @@ public final class OwoMenuServer {
                 return;
             }
             Session s = SESSIONS.get(sp.getUUID());
-            if (s == null || s.id() != payload.sessionId() || s.prompt() == null) {
+            if (s == null || s.id() != payload.sessionId() || s.amount() == null) {
                 return;
             }
-            AmountPrompt prompt = s.prompt();
+            AmountPrompt prompt = s.amount();
             long value = Math.max(prompt.min(), Math.min(prompt.max(), payload.value()));
             SESSIONS.remove(sp.getUUID()); // consomme avant l'action (qui peut ouvrir un autre menu)
             prompt.onConfirm().accept(value);
+        });
+    }
+
+    /** Traite un texte saisi recu du client. */
+    public static void handleText(TextResultPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) {
+                return;
+            }
+            Session s = SESSIONS.get(sp.getUUID());
+            if (s == null || s.id() != payload.sessionId() || s.text() == null) {
+                return;
+            }
+            TextPrompt prompt = s.text();
+            SESSIONS.remove(sp.getUUID());
+            prompt.onConfirm().accept(payload.value());
         });
     }
 }
