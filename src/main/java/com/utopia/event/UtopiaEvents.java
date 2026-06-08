@@ -237,6 +237,7 @@ public final class UtopiaEvents {
         // Synchronisation des hologrammes + balayage anti-feu (toutes les ~2s).
         if (t % 40 == 0) {
             ParcelHolograms.syncHolograms(server);
+            com.utopia.economy.BalTopHologram.sync(server);
             if (Config.PARCEL_EXTINGUISH_FIRE.get()) {
                 ParcelManager.sweepFire(server);
             }

@@ -40,7 +40,11 @@ public final class EconomyCommands {
                 .then(Commands.literal("admin").requires(s -> s.hasPermission(2)).executes(EconomyCommands::adminMenu))
                 .then(Commands.argument("target", GameProfileArgument.gameProfile())
                         .executes(EconomyCommands::balanceOther)));
-        dispatcher.register(Commands.literal("baltop").executes(EconomyCommands::top));
+        dispatcher.register(Commands.literal("baltop").executes(EconomyCommands::top)
+                .then(Commands.literal("holo").requires(s -> s.hasPermission(2))
+                        .then(Commands.literal("here").executes(EconomyCommands::baltopHoloHere))
+                        .then(Commands.literal("move").executes(EconomyCommands::baltopHoloMove))
+                        .then(Commands.literal("remove").executes(EconomyCommands::baltopHoloRemove))));
 
         // /pay <joueur> <montant>
         dispatcher.register(Commands.literal("pay")
@@ -107,6 +111,22 @@ public final class EconomyCommands {
         if (list.isEmpty()) {
             ctx.getSource().sendSuccess(() -> Messages.info(" (aucun compte)"), false);
         }
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+    }
+
+    private static int baltopHoloHere(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        com.utopia.economy.BalTopHologram.setHere(ctx.getSource().getPlayerOrException());
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+    }
+
+    private static int baltopHoloMove(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EconomyMenus.openBalTopHoloMove(ctx.getSource().getPlayerOrException());
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+    }
+
+    private static int baltopHoloRemove(CommandContext<CommandSourceStack> ctx) {
+        com.utopia.economy.BalTopHologram.remove(ctx.getSource().getServer());
+        ctx.getSource().sendSuccess(() -> Messages.success("Hologramme BalTop retire."), false);
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 

@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
+import com.utopia.data.BalTopData;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
 import com.utopia.gui.UtopiaGui;
@@ -238,6 +239,56 @@ public final class EconomyMenus {
                                 + (give < amount ? " (limite a la place dispo)" : "") + "."));
                     }
                     openPlayerMenu(player);
+                });
+    }
+
+    // ============================================================ Hologramme BalTop (admin)
+
+    /** Menu admin : place / deplace (boussole) / supprime l'hologramme du classement des soldes. */
+    public static void openBalTopHoloMove(ServerPlayer admin) {
+        BalTopData data = BalTopData.get(admin.server);
+        UtopiaGui gui = new UtopiaGui(4, Icons.label("Hologramme BalTop", ChatFormatting.GOLD)).gridLayout(true);
+
+        if (data.enabled()) {
+            gui.set(12, Icons.icon(Items.ARMOR_STAND,
+                    Icons.label(String.format("X %.1f Y %.1f Z %.1f", data.x(), data.y(), data.z()), ChatFormatting.AQUA),
+                    List.of(Icons.lore("Top 10 des plus riches", ChatFormatting.DARK_GRAY))));
+            bhBtn(gui, 3, "↑ Nord", Items.ARROW, 0, 0, -1);
+            bhBtn(gui, 21, "↓ Sud", Items.ARROW, 0, 0, 1);
+            bhBtn(gui, 11, "← Ouest", Items.ARROW, -1, 0, 0);
+            bhBtn(gui, 13, "→ Est", Items.ARROW, 1, 0, 0);
+            bhBtn(gui, 5, "↑ Monter", Items.SPECTRAL_ARROW, 0, 0.5, 0);
+            bhBtn(gui, 23, "↓ Descendre", Items.SPECTRAL_ARROW, 0, -0.5, 0);
+        } else {
+            gui.set(12, Icons.icon(Items.BARRIER, Icons.label("Hologramme non place", ChatFormatting.RED),
+                    List.of(Icons.lore("Clique 'Placer ici'", ChatFormatting.GRAY))));
+        }
+
+        gui.button(29, Icons.icon(Items.ENDER_PEARL, Icons.label("Placer ici", ChatFormatting.GREEN),
+                List.of(Icons.lore("Place l'hologramme a ta position", ChatFormatting.GRAY))),
+                sp -> {
+                    BalTopHologram.setHere(sp);
+                    openBalTopHoloMove(sp);
+                });
+        gui.button(31, Icons.icon(Items.LAVA_BUCKET, Icons.label("Supprimer", ChatFormatting.RED), List.of()),
+                sp -> {
+                    BalTopHologram.remove(sp.server);
+                    sp.sendSystemMessage(Messages.success("Hologramme BalTop retire."));
+                    openBalTopHoloMove(sp);
+                });
+        gui.button(33, Icons.icon(Items.OAK_DOOR, Icons.label("Fermer", ChatFormatting.YELLOW), List.of()),
+                com.utopia.gui.Menus::close);
+        gui.fillEmpty();
+        Menus.open(admin, gui);
+    }
+
+    private static void bhBtn(UtopiaGui gui, int slot, String label, net.minecraft.world.level.ItemLike icon,
+                              double dx, double dy, double dz) {
+        gui.button(slot, Icons.icon(icon, Icons.label(label, ChatFormatting.YELLOW),
+                List.of(Icons.lore(String.format("%+.1f %+.1f %+.1f (X Y Z)", dx, dy, dz), ChatFormatting.DARK_GRAY))),
+                sp -> {
+                    BalTopData.get(sp.server).move(dx, dy, dz);
+                    openBalTopHoloMove(sp);
                 });
     }
 }
