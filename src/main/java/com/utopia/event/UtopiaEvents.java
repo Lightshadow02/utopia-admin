@@ -213,8 +213,12 @@ public final class UtopiaEvents {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         // Cet event est emis AVANT la sauvegarde de l'inventaire : on rend ici les items eventuellement
         // deposes dans l'editeur de recompenses (sinon ils seraient perdus, removed() n'etant pas appele).
-        if (event.getEntity() instanceof ServerPlayer sp && sp.containerMenu instanceof UtopiaMenu menu) {
-            menu.handleLogout(sp);
+        if (event.getEntity() instanceof ServerPlayer sp) {
+            if (sp.containerMenu instanceof UtopiaMenu menu) {
+                menu.handleLogout(sp);
+            }
+            // Oublie un eventuel menu owo encore ouvert (declenche son rappel de fermeture).
+            com.utopia.net.OwoMenuServer.clear(sp);
         }
     }
 

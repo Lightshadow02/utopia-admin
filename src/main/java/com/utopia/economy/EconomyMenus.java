@@ -65,7 +65,7 @@ public final class EconomyMenus {
         }
 
         gui.button(49, Icons.icon(Items.BARRIER, Icons.label("Fermer", ChatFormatting.RED), List.of()),
-                ServerPlayer::closeContainer);
+                com.utopia.gui.Menus::close);
         gui.fillEmpty();
         Menus.open(admin, gui);
     }
@@ -125,7 +125,7 @@ public final class EconomyMenus {
         MinecraftServer server = player.server;
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Banque", ChatFormatting.DARK_AQUA));
 
-        gui.set(4, Icons.icon(Items.GOLD_INGOT, Icons.label("Votre solde", ChatFormatting.GOLD),
+        gui.set(4, Icons.icon(EconomyManager.coinItem(), Icons.label("Votre solde", ChatFormatting.GOLD),
                 List.of(Icons.lore(EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GREEN))));
 
         gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Payer un joueur", ChatFormatting.YELLOW),
@@ -133,7 +133,7 @@ public final class EconomyMenus {
                 EconomyMenus::openPayPicker);
         gui.button(12, Icons.icon(Items.EMERALD, Icons.label("Retirer en pieces", ChatFormatting.GREEN),
                 List.of(Icons.lore("Sortir des pieces dans l'inventaire", ChatFormatting.GRAY))),
-                sp -> openWithdrawMenu(sp, 10));
+                EconomyMenus::openWithdrawMenu);
         gui.button(14, Icons.icon(Items.HOPPER, Icons.label("Deposer mes pieces", ChatFormatting.AQUA),
                 List.of(Icons.lore("Met toutes les pieces de l'inventaire en banque", ChatFormatting.GRAY))),
                 sp -> {
@@ -165,7 +165,7 @@ public final class EconomyMenus {
             UUID id = target.getUUID();
             gui.button(slot++, Icons.playerHead(target, Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE),
                     List.of(Icons.lore("Clic pour choisir le montant", ChatFormatting.GRAY))),
-                    sp -> openPayAmount(sp, id, 10));
+                    sp -> openPayAmount(sp, id));
         }
         if (slot == 0) {
             gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucun autre joueur en ligne", ChatFormatting.RED), List.of()));
@@ -176,76 +176,68 @@ public final class EconomyMenus {
         Menus.open(player, gui);
     }
 
-    private static void openPayAmount(ServerPlayer player, UUID targetId, long amount) {
+    private static void openPayAmount(ServerPlayer player, UUID targetId) {
         MinecraftServer server = player.server;
-        long shown = Math.max(1, amount);
-        UtopiaGui gui = new UtopiaGui(3,
-                Icons.label("Payer " + nameOf(server, targetId) + " : " + EconomyManager.format(shown), ChatFormatting.GOLD));
-        amountButtons(gui, shown, v -> openPayAmount(player, targetId, v));
-        gui.button(22, Icons.icon(Items.LIME_DYE, Icons.label("Envoyer " + EconomyManager.format(shown), ChatFormatting.GREEN), List.of()),
-                sp -> {
-                    if (sp.getUUID().equals(targetId)) {
-                        sp.sendSystemMessage(Messages.error("Vous ne pouvez pas vous payer."));
-                    } else if (EconomyManager.transfer(server, sp.getUUID(), targetId, shown)) {
-                        sp.sendSystemMessage(Messages.success("Envoye " + EconomyManager.format(shown) + " a " + nameOf(server, targetId) + "."));
+        long balance = EconomyManager.getBalance(server, player.getUUID());
+        if (balance <= 0) {
+            player.sendSystemMessage(Messages.warn("Vous n'avez rien a envoyer."));
+            openPlayerMenu(player);
+            return;
+        }
+        List<Component> info = List.of(
+                Icons.lore("Destinataire : " + nameOf(server, targetId), ChatFormatting.GRAY),
+                Icons.lore("Votre solde : " + EconomyManager.format(balance), ChatFormatting.GREEN));
+        Menus.promptAmount(player,
+                Icons.label("Payer " + nameOf(server, targetId), ChatFormatting.GOLD),
+                info, Icons.label("Envoyer", ChatFormatting.GREEN),
+                Math.min(10, balance), 1, balance,
+                amount -> {
+                    if (player.getUUID().equals(targetId)) {
+                        player.sendSystemMessage(Messages.error("Vous ne pouvez pas vous payer."));
+                    } else if (EconomyManager.transfer(server, player.getUUID(), targetId, amount)) {
+                        player.sendSystemMessage(Messages.success("Envoye " + EconomyManager.format(amount) + " a " + nameOf(server, targetId) + "."));
                         ServerPlayer t = server.getPlayerList().getPlayer(targetId);
                         if (t != null) {
-                            t.sendSystemMessage(Messages.success("Vous avez recu " + EconomyManager.format(shown)
-                                    + " de " + sp.getGameProfile().getName() + "."));
+                            t.sendSystemMessage(Messages.success("Vous avez recu " + EconomyManager.format(amount)
+                                    + " de " + player.getGameProfile().getName() + "."));
                         }
                     } else {
-                        sp.sendSystemMessage(Messages.error("Solde insuffisant."));
+                        player.sendSystemMessage(Messages.error("Solde insuffisant."));
                     }
-                    openPlayerMenu(sp);
+                    openPlayerMenu(player);
                 });
-        gui.button(18, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                EconomyMenus::openPayPicker);
-        gui.fillEmpty();
-        Menus.open(player, gui);
     }
 
-    private static void openWithdrawMenu(ServerPlayer player, long amount) {
+    private static void openWithdrawMenu(ServerPlayer player) {
         MinecraftServer server = player.server;
-        long shown = Math.max(1, amount);
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Retirer : " + EconomyManager.format(shown), ChatFormatting.GOLD));
-        gui.set(4, Icons.icon(Items.GOLD_INGOT, Icons.label("Solde : " + EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GREEN),
-                List.of(Icons.lore("Place dispo : " + EconomyManager.freeSpaceForCoins(player) + " pieces", ChatFormatting.GRAY))));
-        amountButtons(gui, shown, v -> openWithdrawMenu(player, v));
-        gui.button(22, Icons.icon(Items.EMERALD, Icons.label("Retirer " + EconomyManager.format(shown), ChatFormatting.GREEN), List.of()),
-                sp -> {
-                    int space = EconomyManager.freeSpaceForCoins(sp);
-                    long bal = EconomyManager.getBalance(server, sp.getUUID());
-                    int give = (int) Math.min(shown, Math.min(space, bal));
-                    if (give <= 0) {
-                        sp.sendSystemMessage(Messages.error(space <= 0 ? "Inventaire plein." : "Solde insuffisant."));
-                    } else {
-                        EconomyManager.remove(server, sp.getUUID(), give);
-                        EconomyManager.giveCoins(sp, give);
-                        sp.sendSystemMessage(Messages.success("Retire " + EconomyManager.format(give)
-                                + (give < shown ? " (limite a la place dispo)" : "") + "."));
-                    }
-                    openPlayerMenu(sp);
-                });
-        gui.button(18, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                EconomyMenus::openPlayerMenu);
-        gui.fillEmpty();
-        Menus.open(player, gui);
-    }
-
-    /** Boutons -1000/-100/-10/-1 (slots 9-12) et +1/+10/+100/+1000 (slots 14-17) + valeur au 13. */
-    private static void amountButtons(UtopiaGui gui, long shown, java.util.function.LongConsumer onChange) {
-        int[] minus = { -1000, -100, -10, -1 };
-        int[] minusSlots = { 9, 10, 11, 12 };
-        int[] plus = { 1, 10, 100, 1000 };
-        int[] plusSlots = { 14, 15, 16, 17 };
-        for (int i = 0; i < 4; i++) {
-            int delta = minus[i];
-            gui.button(minusSlots[i], Icons.icon(Items.REDSTONE, Icons.label("" + delta, ChatFormatting.RED), List.of()),
-                    sp -> onChange.accept(Math.max(1, shown + delta)));
-            int deltaP = plus[i];
-            gui.button(plusSlots[i], Icons.icon(Items.EMERALD, Icons.label("+" + deltaP, ChatFormatting.GREEN), List.of()),
-                    sp -> onChange.accept(shown + deltaP));
+        long balance = EconomyManager.getBalance(server, player.getUUID());
+        int space = EconomyManager.freeSpaceForCoins(player);
+        long max = Math.min(balance, space);
+        if (max <= 0) {
+            player.sendSystemMessage(Messages.error(space <= 0 ? "Inventaire plein." : "Solde insuffisant."));
+            openPlayerMenu(player);
+            return;
         }
-        gui.set(13, Icons.icon(Items.GOLD_INGOT, Icons.label(EconomyManager.format(shown), ChatFormatting.GOLD), List.of()));
+        List<Component> info = List.of(
+                Icons.lore("Solde : " + EconomyManager.format(balance), ChatFormatting.GREEN),
+                Icons.lore("Place dispo : " + space + " pieces", ChatFormatting.GRAY));
+        Menus.promptAmount(player,
+                Icons.label("Retirer en pieces", ChatFormatting.GOLD),
+                info, Icons.label("Retirer", ChatFormatting.GREEN),
+                Math.min(10, max), 1, max,
+                amount -> {
+                    int space2 = EconomyManager.freeSpaceForCoins(player);
+                    long bal = EconomyManager.getBalance(server, player.getUUID());
+                    int give = (int) Math.min(amount, Math.min(space2, bal));
+                    if (give <= 0) {
+                        player.sendSystemMessage(Messages.error(space2 <= 0 ? "Inventaire plein." : "Solde insuffisant."));
+                    } else {
+                        EconomyManager.remove(server, player.getUUID(), give);
+                        EconomyManager.giveCoins(player, give);
+                        player.sendSystemMessage(Messages.success("Retire " + EconomyManager.format(give)
+                                + (give < amount ? " (limite a la place dispo)" : "") + "."));
+                    }
+                    openPlayerMenu(player);
+                });
     }
 }

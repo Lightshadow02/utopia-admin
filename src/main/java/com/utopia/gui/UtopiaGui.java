@@ -26,6 +26,7 @@ public final class UtopiaGui {
     private final Map<Integer, Consumer<ServerPlayer>> rightActions = new HashMap<>();
     private final Set<Integer> editable = new HashSet<>();
     private boolean editor = false;
+    private boolean gridLayout = false;
     private Consumer<ServerPlayer> onClose = sp -> { };
     private boolean finalized = false;
 
@@ -105,6 +106,16 @@ public final class UtopiaGui {
         return editable;
     }
 
+    /** Active le rendu en grille (respecte les positions ligne/colonne) au lieu de lignes centrees. */
+    public UtopiaGui gridLayout(boolean grid) {
+        this.gridLayout = grid;
+        return this;
+    }
+
+    public boolean gridLayout() {
+        return gridLayout;
+    }
+
     boolean isEditable(int slot) {
         return editable.contains(slot);
     }
@@ -113,16 +124,16 @@ public final class UtopiaGui {
         return editor;
     }
 
-    Consumer<ServerPlayer> action(int slot) {
+    public Consumer<ServerPlayer> action(int slot) {
         return actions.get(slot);
     }
 
-    Consumer<ServerPlayer> rightAction(int slot) {
+    public Consumer<ServerPlayer> rightAction(int slot) {
         return rightActions.get(slot);
     }
 
     /** Declenche le rappel de fermeture une seule fois. */
-    void fireClose(ServerPlayer player) {
+    public void fireClose(ServerPlayer player) {
         if (!finalized) {
             finalized = true;
             onClose.accept(player);

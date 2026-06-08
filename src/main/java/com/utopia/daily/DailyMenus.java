@@ -91,7 +91,7 @@ public final class DailyMenus {
                 },
                 sp -> openPlayerCalendar(sp, ym.minusMonths(1)),
                 sp -> openPlayerCalendar(sp, ym.plusMonths(1)),
-                ServerPlayer::closeContainer);
+                com.utopia.gui.Menus::close);
 
         // Resume de l'etat (slot 45).
         int streak = DailyManager.currentStreak(server, id);

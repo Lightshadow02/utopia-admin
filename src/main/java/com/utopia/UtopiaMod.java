@@ -31,8 +31,10 @@ public final class UtopiaMod {
     public UtopiaMod(IEventBus modEventBus, ModContainer modContainer) {
         // Enregistre la configuration commune (fichier config/utopia-common.toml).
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-        // Enregistre le type de menu custom (pour l'ecran client).
+        // Enregistre le type de menu custom (conteneur vanilla pour l'editeur a slots).
         com.utopia.gui.UtopiaMenuType.register(modEventBus);
+        // Enregistre les paquets reseau (menus owo-ui).
+        modEventBus.addListener(com.utopia.net.UtopiaNet::onRegister);
         // Cote client uniquement : enregistre l'ecran custom du menu.
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
             com.utopia.client.UtopiaClient.init(modEventBus);
