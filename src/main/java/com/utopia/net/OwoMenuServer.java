@@ -36,6 +36,10 @@ public final class OwoMenuServer {
     private record Session(int id, UtopiaGui gui, AmountPrompt amount, TextPrompt text) {
     }
 
+    /** Une entree de l'ecran d'accueil (hub) : icone + libelle + sous-libelle + action au clic. */
+    public record HubEntry(ItemStack icon, Component label, Component sublabel, Consumer<ServerPlayer> action) {
+    }
+
     private static final Map<UUID, Session> SESSIONS = new ConcurrentHashMap<>();
     private static final AtomicInteger COUNTER = new AtomicInteger();
 
@@ -55,6 +59,32 @@ public final class OwoMenuServer {
         }
         PacketDistributor.sendToPlayer(player,
                 MenuS2CPayload.of(new OpenMenuPayload(id, gui.title(), gui.rows(), items, clickable, gui.gridLayout())));
+    }
+
+    /**
+     * Ouvre l'ecran d'accueil "riche" (hub) : un en-tete, des lignes de stats deja formatees et une
+     * liste de gros boutons. {@code onRefresh} est declenche par le bouton "Rafraichir" (typiquement
+     * pour rouvrir le hub avec des donnees a jour). Les actions reutilisent le canal de menu existant.
+     */
+    public static void openHub(ServerPlayer player, Component title, List<Component> stats,
+                               List<HubEntry> entries, Consumer<ServerPlayer> onRefresh) {
+        int id = COUNTER.incrementAndGet();
+        int n = entries.size();
+        int refreshId = n; // slot d'action dedie au bouton "Rafraichir"
+        int rows = Math.max(1, (refreshId + 1 + 8) / 9);
+
+        UtopiaGui gui = new UtopiaGui(rows, title);
+        List<OpenHubPayload.Button> buttons = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            HubEntry e = entries.get(i);
+            gui.button(i, e.icon(), e.action());
+            buttons.add(new OpenHubPayload.Button(i, e.icon(), e.label(), e.sublabel()));
+        }
+        gui.button(refreshId, ItemStack.EMPTY, onRefresh != null ? onRefresh : sp -> { });
+
+        SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
+        PacketDistributor.sendToPlayer(player,
+                MenuS2CPayload.of(new OpenHubPayload(id, title, stats, buttons, refreshId)));
     }
 
     /** Ouvre un ecran de saisie de montant ; {@code onConfirm} recoit la valeur (deja bornee). */

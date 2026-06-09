@@ -1,20 +1,25 @@
 package com.utopia.menu;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.utopia.Config;
 import com.utopia.daily.DailyMenus;
+import com.utopia.data.ParcelData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.economy.EconomyMenus;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
 import com.utopia.gui.UtopiaGui;
+import com.utopia.net.OwoMenuServer;
 import com.utopia.parcel.ParcelMenus;
 import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
@@ -27,31 +32,38 @@ public final class MainMenu {
     }
 
     public static void open(ServerPlayer player) {
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Menu", ChatFormatting.GOLD));
+        MinecraftServer server = player.server;
 
-        gui.button(10, Icons.icon(Items.GRASS_BLOCK, Icons.label("Mes parcelles", ChatFormatting.GREEN),
-                List.of(Icons.lore("Gerer / vendre tes parcelles", ChatFormatting.GRAY))),
-                sp -> ParcelMenus.openMyParcels(sp, 0));
-        gui.button(11, Icons.icon(Items.EMERALD, Icons.label("Boutique de parcelles", ChatFormatting.GREEN),
-                List.of(Icons.lore("Acheter une parcelle en vente", ChatFormatting.GRAY))),
-                sp -> ParcelMenus.openShop(sp));
-        gui.button(12, Icons.icon(EconomyManager.coinItem(), Icons.label("Banque", ChatFormatting.GOLD),
-                List.of(Icons.lore("Solde, payer, retirer, deposer", ChatFormatting.GRAY))),
-                sp -> EconomyMenus.openPlayerMenu(sp));
-        gui.button(13, Icons.icon(Items.CHEST, Icons.label("Recompense quotidienne", ChatFormatting.GOLD),
-                List.of(Icons.lore("Reclame ta recompense du jour", ChatFormatting.GRAY))),
-                sp -> DailyMenus.openPlayerMenu(sp));
-        gui.button(14, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter a un joueur", ChatFormatting.LIGHT_PURPLE),
-                List.of(Icons.lore("Envoyer une demande de TP (/tpa)", ChatFormatting.GRAY))),
-                MainMenu::openTpaPicker);
-        gui.button(15, Icons.icon(Items.COMPASS, Icons.label("Retour au spawn", ChatFormatting.AQUA),
-                List.of(Icons.lore("Te teleporte au spawn du serveur", ChatFormatting.GRAY))),
+        // En-tete + statistiques (deja formatees cote serveur).
+        Component title = Component.literal("UTOPIA - " + player.getGameProfile().getName())
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+
+        long balance = EconomyManager.getBalance(server, player.getUUID());
+        int coins = EconomyManager.countCoins(player);
+        int parcels = ParcelData.get(server).ownedBy(player.getUUID()).size();
+        List<Component> stats = List.of(
+                stat("Solde en banque : ", EconomyManager.format(balance) + " $", ChatFormatting.GOLD),
+                stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA),
+                stat("Parcelles possedees : ", Integer.toString(parcels), ChatFormatting.GREEN));
+
+        // Gros boutons d'acces rapide.
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(entry(Items.GRASS_BLOCK, "Mes parcelles", ChatFormatting.GREEN, "Gerer / vendre",
+                sp -> ParcelMenus.openMyParcels(sp, 0)));
+        entries.add(entry(Items.EMERALD, "Boutique", ChatFormatting.GREEN, "Acheter une parcelle",
+                ParcelMenus::openShop));
+        entries.add(entry(EconomyManager.coinItem(), "Banque", ChatFormatting.GOLD, "Solde, payer, retirer",
+                EconomyMenus::openPlayerMenu));
+        entries.add(entry(Items.CHEST, "Recompense", ChatFormatting.GOLD, "Ta recompense du jour",
+                DailyMenus::openPlayerMenu));
+        entries.add(entry(Items.ENDER_PEARL, "Se teleporter", ChatFormatting.LIGHT_PURPLE, "Vers un joueur (/tpa)",
+                MainMenu::openTpaPicker));
+        entries.add(entry(Items.COMPASS, "Retour au spawn", ChatFormatting.AQUA, "Spawn du serveur",
                 sp -> {
                     Menus.close(sp);
                     runAs(sp, "spawn");
-                });
-        gui.button(16, Icons.icon(Items.WRITTEN_BOOK, Icons.label("Quetes", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Ouvre le livre de quetes", ChatFormatting.GRAY))),
+                }));
+        entries.add(entry(Items.WRITTEN_BOOK, "Quetes", ChatFormatting.YELLOW, "Livre de quetes",
                 sp -> {
                     String cmd = Config.MENU_QUEST_COMMAND.get();
                     if (cmd == null || cmd.isBlank()) {
@@ -60,12 +72,24 @@ public final class MainMenu {
                     }
                     Menus.close(sp);
                     runAs(sp, cmd);
-                });
+                }));
 
-        gui.button(22, Icons.icon(Items.BARRIER, Icons.label("Fermer", ChatFormatting.RED), List.of()),
-                com.utopia.gui.Menus::close);
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open);
+    }
+
+    /** Construit une ligne de stat "label: valeur" (label gris, valeur coloree). */
+    private static Component stat(String label, String value, ChatFormatting valueColor) {
+        return Component.literal(label).withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(value).withStyle(s -> s.withColor(valueColor).withItalic(false)));
+    }
+
+    /** Construit une entree de hub (icone + libelle colore + sous-libelle gris + action). */
+    private static OwoMenuServer.HubEntry entry(net.minecraft.world.level.ItemLike item, String label,
+                                                ChatFormatting color, String sublabel, java.util.function.Consumer<ServerPlayer> action) {
+        return new OwoMenuServer.HubEntry(new ItemStack(item),
+                Icons.label(label, color),
+                Icons.lore(sublabel, ChatFormatting.GRAY),
+                action);
     }
 
     /** Selecteur de joueur en ligne -> envoie une demande /tpa. */

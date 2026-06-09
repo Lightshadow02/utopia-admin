@@ -21,6 +21,7 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
     public static final int CLOSE = 1;
     public static final int OPEN_AMOUNT = 2;
     public static final int OPEN_TEXT = 3;
+    public static final int OPEN_HUB = 4;
 
     public static final Type<MenuS2CPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(UtopiaMod.MODID, "menu_s2c"));
@@ -35,6 +36,7 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
             case CLOSE -> CloseMenuPayload.STREAM_CODEC.encode(buf, (CloseMenuPayload) p.data);
             case OPEN_AMOUNT -> OpenAmountPayload.STREAM_CODEC.encode(buf, (OpenAmountPayload) p.data);
             case OPEN_TEXT -> OpenTextPayload.STREAM_CODEC.encode(buf, (OpenTextPayload) p.data);
+            case OPEN_HUB -> OpenHubPayload.STREAM_CODEC.encode(buf, (OpenHubPayload) p.data);
             default -> throw new IllegalStateException("Variante S2C inconnue : " + p.kind);
         }
     }
@@ -46,6 +48,7 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
             case CLOSE -> CloseMenuPayload.STREAM_CODEC.decode(buf);
             case OPEN_AMOUNT -> OpenAmountPayload.STREAM_CODEC.decode(buf);
             case OPEN_TEXT -> OpenTextPayload.STREAM_CODEC.decode(buf);
+            case OPEN_HUB -> OpenHubPayload.STREAM_CODEC.decode(buf);
             default -> throw new IllegalStateException("Variante S2C inconnue : " + kind);
         };
         return new MenuS2CPayload(kind, data);
@@ -65,6 +68,10 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
 
     public static MenuS2CPayload of(OpenTextPayload p) {
         return new MenuS2CPayload(OPEN_TEXT, p);
+    }
+
+    public static MenuS2CPayload of(OpenHubPayload p) {
+        return new MenuS2CPayload(OPEN_HUB, p);
     }
 
     @Override

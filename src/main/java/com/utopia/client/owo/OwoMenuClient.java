@@ -2,6 +2,7 @@ package com.utopia.client.owo;
 
 import com.utopia.net.CloseMenuPayload;
 import com.utopia.net.OpenAmountPayload;
+import com.utopia.net.OpenHubPayload;
 import com.utopia.net.OpenMenuPayload;
 import com.utopia.net.OpenTextPayload;
 
@@ -23,8 +24,14 @@ public final class OwoMenuClient {
             Minecraft mc = Minecraft.getInstance();
             if (mc.screen instanceof UtopiaOwoMenuScreen screen && screen.sessionId() == payload.sessionId()) {
                 mc.setScreen(null);
+            } else if (mc.screen instanceof UtopiaHubScreen hub && hub.sessionId() == payload.sessionId()) {
+                mc.setScreen(null);
             }
         });
+    }
+
+    public static void handleHub(OpenHubPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaHubScreen(payload)));
     }
 
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {
