@@ -54,7 +54,7 @@ public final class OwoMenuServer {
             }
         }
         PacketDistributor.sendToPlayer(player,
-                new OpenMenuPayload(id, gui.title(), gui.rows(), items, clickable, gui.gridLayout()));
+                MenuS2CPayload.of(new OpenMenuPayload(id, gui.title(), gui.rows(), items, clickable, gui.gridLayout())));
     }
 
     /** Ouvre un ecran de saisie de montant ; {@code onConfirm} recoit la valeur (deja bornee). */
@@ -63,7 +63,7 @@ public final class OwoMenuServer {
         int id = COUNTER.incrementAndGet();
         SESSIONS.put(player.getUUID(), new Session(id, null, new AmountPrompt(min, max, onConfirm), null));
         PacketDistributor.sendToPlayer(player,
-                new OpenAmountPayload(id, title, info, confirmLabel, defaultValue, min, max));
+                MenuS2CPayload.of(new OpenAmountPayload(id, title, info, confirmLabel, defaultValue, min, max)));
     }
 
     /** Ouvre un ecran de saisie de texte ; {@code onConfirm} recoit la chaine saisie. */
@@ -72,7 +72,7 @@ public final class OwoMenuServer {
         int id = COUNTER.incrementAndGet();
         SESSIONS.put(player.getUUID(), new Session(id, null, null, new TextPrompt(onConfirm)));
         PacketDistributor.sendToPlayer(player,
-                new OpenTextPayload(id, title, info, confirmLabel, defaultText, maxLength));
+                MenuS2CPayload.of(new OpenTextPayload(id, title, info, confirmLabel, defaultText, maxLength)));
     }
 
     /** Ferme l'ecran owo cote client + declenche le rappel de fermeture eventuel. */
@@ -82,7 +82,7 @@ public final class OwoMenuServer {
             if (s.gui() != null) {
                 s.gui().fireClose(player);
             }
-            PacketDistributor.sendToPlayer(player, new CloseMenuPayload(s.id()));
+            PacketDistributor.sendToPlayer(player, MenuS2CPayload.of(new CloseMenuPayload(s.id())));
         }
     }
 

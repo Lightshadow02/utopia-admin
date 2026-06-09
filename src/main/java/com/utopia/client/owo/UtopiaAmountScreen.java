@@ -1,6 +1,7 @@
 package com.utopia.client.owo;
 
 import com.utopia.net.AmountResultPayload;
+import com.utopia.net.MenuC2SPayload;
 import com.utopia.net.MenuClickPayload;
 import com.utopia.net.OpenAmountPayload;
 
@@ -114,7 +115,7 @@ public class UtopiaAmountScreen extends BaseOwoScreen<FlowLayout> {
             value = data.defaultValue();
         }
         value = Math.max(data.min(), Math.min(data.max(), value));
-        PacketDistributor.sendToServer(new AmountResultPayload(data.sessionId(), value));
+        PacketDistributor.sendToServer(MenuC2SPayload.of(new AmountResultPayload(data.sessionId(), value)));
         // Le serveur ouvrira le menu suivant (qui remplacera cet ecran).
     }
 
@@ -123,7 +124,7 @@ public class UtopiaAmountScreen extends BaseOwoScreen<FlowLayout> {
         super.removed();
         if (!closeSent) {
             closeSent = true;
-            PacketDistributor.sendToServer(new MenuClickPayload(data.sessionId(), -1, 0));
+            PacketDistributor.sendToServer(MenuC2SPayload.of(new MenuClickPayload(data.sessionId(), -1, 0)));
         }
     }
 }

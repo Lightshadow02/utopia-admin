@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.utopia.net.MenuC2SPayload;
 import com.utopia.net.MenuClickPayload;
 import com.utopia.net.OpenMenuPayload;
 
@@ -223,7 +224,7 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
 
     private void click(int slot, int button) {
         int mapped = button == 1 ? 1 : 0; // 1 = clic droit
-        PacketDistributor.sendToServer(new MenuClickPayload(data.sessionId(), slot, mapped));
+        PacketDistributor.sendToServer(MenuC2SPayload.of(new MenuClickPayload(data.sessionId(), slot, mapped)));
         Minecraft.getInstance().getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
     }
@@ -233,7 +234,7 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
         super.removed();
         if (!closeSent) {
             closeSent = true;
-            PacketDistributor.sendToServer(new MenuClickPayload(data.sessionId(), -1, 0));
+            PacketDistributor.sendToServer(MenuC2SPayload.of(new MenuClickPayload(data.sessionId(), -1, 0)));
         }
     }
 }
