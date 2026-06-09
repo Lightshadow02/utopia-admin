@@ -57,8 +57,22 @@ public final class RoomCommands {
                         .then(Commands.argument("id", StringArgumentType.word()).executes(RoomCommands::delete)))
                 .then(Commands.literal("list").executes(RoomCommands::list));
 
-        var node = dispatcher.register(root);
-        dispatcher.register(Commands.literal("auberge").requires(s -> s.hasPermission(2)).redirect(node));
+        dispatcher.register(root);
+
+        // /auberge : ouvre le menu de gestion des chambres. Accessible aux op ET aux aubergistes
+        // designes par un op (via /admin -> Aubergistes). Les sous-commandes /room restent op-only.
+        dispatcher.register(Commands.literal("auberge")
+                .requires(RoomCommands::canOpenAuberge)
+                .executes(RoomCommands::menu));
+    }
+
+    /** Vrai si la source est op (niveau 2) ou un aubergiste designe. */
+    private static boolean canOpenAuberge(CommandSourceStack source) {
+        if (source.hasPermission(2)) {
+            return true;
+        }
+        return source.getEntity() instanceof ServerPlayer p
+                && RoomData.get(p.server).isAubergiste(p.getUUID());
     }
 
     private static Room byId(ServerPlayer player, CommandContext<CommandSourceStack> ctx) {

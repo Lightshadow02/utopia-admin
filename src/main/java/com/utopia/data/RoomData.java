@@ -1,9 +1,11 @@
 package com.utopia.data;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import com.utopia.parcel.Parcel;
@@ -25,8 +27,33 @@ public final class RoomData extends SavedData {
             new SavedData.Factory<>(RoomData::new, RoomData::load, null);
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
+    private final Set<UUID> aubergistes = new HashSet<>();
 
     public RoomData() {
+    }
+
+    // -------- Aubergistes (joueurs autorises a ouvrir /auberge, designes par un op) --------
+
+    public boolean isAubergiste(UUID id) {
+        return aubergistes.contains(id);
+    }
+
+    public Collection<UUID> aubergistes() {
+        return aubergistes;
+    }
+
+    /** Ajoute/retire le statut d'aubergiste ; renvoie le nouvel etat (true = aubergiste). */
+    public boolean toggleAubergiste(UUID id) {
+        boolean now;
+        if (aubergistes.contains(id)) {
+            aubergistes.remove(id);
+            now = false;
+        } else {
+            aubergistes.add(id);
+            now = true;
+        }
+        setDirty();
+        return now;
     }
 
     public static RoomData get(MinecraftServer server) {
@@ -92,6 +119,14 @@ public final class RoomData extends SavedData {
             }
             data.rooms.put(room.id().toLowerCase(Locale.ROOT), room);
         }
+        ListTag aub = tag.getList("aubergistes", Tag.TAG_STRING);
+        for (int i = 0; i < aub.size(); i++) {
+            try {
+                data.aubergistes.add(UUID.fromString(aub.getString(i)));
+            } catch (IllegalArgumentException ignored) {
+                // uuid corrompu
+            }
+        }
         return data;
     }
 
@@ -120,6 +155,11 @@ public final class RoomData extends SavedData {
             list.add(rt);
         }
         tag.put("rooms", list);
+        ListTag aub = new ListTag();
+        for (UUID id : aubergistes) {
+            aub.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+        }
+        tag.put("aubergistes", aub);
         return tag;
     }
 }

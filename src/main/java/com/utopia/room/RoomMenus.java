@@ -9,10 +9,11 @@ import com.utopia.data.RoomData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
-import com.utopia.gui.UtopiaGui;
+import com.utopia.net.OwoMenuServer;
 import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -28,45 +29,45 @@ public final class RoomMenus {
         return RoomData.get(server).get(id);
     }
 
-    /** Liste de toutes les chambres. */
+    /** Liste de toutes les chambres (ecran riche). */
     public static void openAuberge(ServerPlayer admin) {
         MinecraftServer server = admin.server;
         List<Room> rooms = new ArrayList<>(RoomData.get(server).all());
         rooms.sort(Comparator.comparing(Room::id, String.CASE_INSENSITIVE_ORDER));
+        boolean op = admin.hasPermissions(2);
 
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Auberge - chambres", ChatFormatting.GOLD));
-        int slot = 0;
+        Component title = Icons.label("Auberge - chambres", ChatFormatting.GOLD);
+        List<Component> stats = List.of(Component.literal(rooms.size() + " chambre(s)")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (Room r : rooms) {
-            if (slot > 44) {
-                break;
-            }
             String rid = r.id();
-            gui.button(slot++, Icons.icon(r.frozen() ? Items.BLUE_ICE : r.isAssigned() ? Items.RED_BED : Items.WHITE_BED,
-                            Icons.label((r.frozen() ? "[GELEE] " : "") + "Chambre " + rid,
-                                    r.frozen() ? ChatFormatting.AQUA : ChatFormatting.WHITE), List.of(
-                            Icons.lore("Occupant : " + (r.isAssigned() ? r.occupantName() : "libre"),
-                                    r.isAssigned() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                            Icons.lore("Prix : " + EconomyManager.format(r.pricePerDay()) + "/jour x " + r.days(), ChatFormatting.GOLD),
-                            Icons.lore("Clic : gerer", ChatFormatting.YELLOW))),
-                    sp -> openRoom(sp, rid));
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(r.frozen() ? Items.BLUE_ICE : r.isAssigned() ? Items.RED_BED : Items.WHITE_BED),
+                    Icons.label((r.frozen() ? "[GELEE] " : "") + "Chambre " + rid,
+                            r.frozen() ? ChatFormatting.AQUA : ChatFormatting.WHITE),
+                    Icons.lore("Occupant : " + (r.isAssigned() ? r.occupantName() : "libre")
+                            + " - " + EconomyManager.format(r.pricePerDay()) + "/j x " + r.days(), ChatFormatting.GRAY),
+                    sp -> openRoom(sp, rid)));
         }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucune chambre", ChatFormatting.RED),
-                    List.of(Icons.lore("Recois l'outil, trace, puis /room create <id>", ChatFormatting.GRAY))));
+        // Outil de creation : reserve aux op (la creation de chambre passe par /room create).
+        if (op) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(RoomManager.wandItem()),
+                    Icons.label("Recevoir l'outil chambre", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore("Trace, puis /room create <id>", ChatFormatting.GRAY),
+                    sp -> {
+                        sp.getInventory().add(new ItemStack(RoomManager.wandItem()));
+                        sp.sendSystemMessage(Messages.success("Outil chambre recu."));
+                        com.utopia.gui.Menus.close(sp);
+                    }));
         }
-        gui.button(49, Icons.icon(Items.BLAZE_ROD, Icons.label("Recevoir l'outil chambre", ChatFormatting.LIGHT_PURPLE),
-                List.of(Icons.lore("Clic gauche = coin 1, clic droit = coin 2 (Y compris)", ChatFormatting.GRAY),
-                        Icons.lore("Puis /room create <id>", ChatFormatting.DARK_GRAY))),
-                sp -> {
-                    sp.getInventory().add(new ItemStack(RoomManager.wandItem()));
-                    sp.sendSystemMessage(Messages.success("Outil chambre recu."));
-                    com.utopia.gui.Menus.close(sp);
-                });
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                RoomMenus::openAuberge, op ? com.utopia.menu.AdminMenu::open : null);
     }
 
-    /** Gestion d'une chambre. */
+    /** Gestion d'une chambre (ecran riche). */
     public static void openRoom(ServerPlayer admin, String roomId) {
         MinecraftServer server = admin.server;
         Room r = get(server, roomId);
@@ -74,103 +75,115 @@ public final class RoomMenus {
             admin.sendSystemMessage(Messages.error("Chambre introuvable."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Chambre : " + r.name(), ChatFormatting.GOLD));
-        gui.set(4, Icons.icon(r.frozen() ? Items.BLUE_ICE : Items.WHITE_BED, Icons.label("Chambre " + r.id(), ChatFormatting.AQUA), List.of(
-                Icons.lore("Occupant : " + (r.isAssigned() ? r.occupantName() : "libre"),
+        Component title = Icons.label("Chambre : " + r.name(), ChatFormatting.GOLD);
+        List<Component> stats = List.of(
+                stat("Occupant : ", r.isAssigned() ? r.occupantName() : "libre",
                         r.isAssigned() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                Icons.lore("Prix : " + EconomyManager.format(r.pricePerDay()) + "/jour", ChatFormatting.GOLD),
-                Icons.lore("Duree : " + r.days() + " jours (cout " + EconomyManager.format(r.totalCost()) + ")", ChatFormatting.GRAY),
-                Icons.lore("Etat : " + (r.frozen() ? "GELEE (acces coupe)" : "active"),
-                        r.frozen() ? ChatFormatting.RED : ChatFormatting.GREEN))));
+                stat("Prix : ", EconomyManager.format(r.pricePerDay()) + "/jour", ChatFormatting.GOLD),
+                stat("Duree : ", r.days() + " jours (cout " + EconomyManager.format(r.totalCost()) + ")", ChatFormatting.AQUA),
+                stat("Etat : ", r.frozen() ? "GELEE (acces coupe)" : "active",
+                        r.frozen() ? ChatFormatting.RED : ChatFormatting.GREEN));
 
-        gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Attribuer a un joueur", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Tu avances le cout ; le joueur rembourse", ChatFormatting.GRAY))),
-                sp -> openAssignPicker(sp, roomId));
-        gui.button(12, r.frozen()
-                        ? Icons.icon(Items.GREEN_DYE, Icons.label("Degeler", ChatFormatting.GREEN),
-                                List.of(Icons.lore("Rend l'acces au joueur", ChatFormatting.GRAY)))
-                        : Icons.icon(Items.BLUE_ICE, Icons.label("Geler (freeze)", ChatFormatting.AQUA),
-                                List.of(Icons.lore("Coupe l'acces du joueur a sa chambre", ChatFormatting.GRAY))),
+        boolean frozen = r.frozen();
+        long curPrice = r.pricePerDay();
+        int curDays = r.days();
+        boolean assigned = r.isAssigned();
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
+                Icons.label("Attribuer a un joueur", ChatFormatting.YELLOW),
+                Icons.lore("Tu avances le cout ; le joueur rembourse", ChatFormatting.GRAY),
+                sp -> openAssignPicker(sp, roomId)));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(frozen ? Items.GREEN_DYE : Items.BLUE_ICE),
+                Icons.label(frozen ? "Degeler" : "Geler (freeze)", frozen ? ChatFormatting.GREEN : ChatFormatting.AQUA),
+                Icons.lore(frozen ? "Rend l'acces au joueur" : "Coupe l'acces du joueur", ChatFormatting.GRAY),
                 sp -> {
-                    Room cur = get(server, roomId);
+                    Room cur = get(sp.server, roomId);
                     if (cur != null) {
                         cur.setFrozen(!cur.frozen());
-                        RoomData.get(server).setDirty();
-                        notifyFreeze(server, cur);
+                        RoomData.get(sp.server).setDirty();
+                        notifyFreeze(sp.server, cur);
                     }
                     openRoom(sp, roomId);
-                });
-        gui.button(14, Icons.icon(Items.SUNFLOWER, Icons.label("Prix / jour", ChatFormatting.GOLD),
-                List.of(Icons.lore("Actuel : " + EconomyManager.format(r.pricePerDay()), ChatFormatting.GRAY))),
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SUNFLOWER),
+                Icons.label("Prix / jour", ChatFormatting.GOLD),
+                Icons.lore("Actuel : " + EconomyManager.format(curPrice), ChatFormatting.GRAY),
                 sp -> Menus.promptAmount(sp, Icons.label("Prix par jour", ChatFormatting.GOLD), List.of(),
-                        Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, r.pricePerDay()), 0, 100_000_000L,
+                        Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, curPrice), 0, 100_000_000L,
                         v -> {
-                            Room cur = get(server, roomId);
+                            Room cur = get(sp.server, roomId);
                             if (cur != null) {
                                 cur.setPricePerDay(v);
-                                RoomData.get(server).setDirty();
+                                RoomData.get(sp.server).setDirty();
                             }
                             openRoom(sp, roomId);
-                        }));
-        gui.button(16, Icons.icon(Items.CLOCK, Icons.label("Duree (jours)", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Actuel : " + r.days() + " jours", ChatFormatting.GRAY))),
+                        })));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CLOCK),
+                Icons.label("Duree (jours)", ChatFormatting.YELLOW),
+                Icons.lore("Actuel : " + curDays + " jours", ChatFormatting.GRAY),
                 sp -> Menus.promptAmount(sp, Icons.label("Nombre de jours", ChatFormatting.YELLOW), List.of(),
-                        Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, r.days()), 0, 100000L,
+                        Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, curDays), 0, 100000L,
                         v -> {
-                            Room cur = get(server, roomId);
+                            Room cur = get(sp.server, roomId);
                             if (cur != null) {
                                 cur.setDays((int) v);
-                                RoomData.get(server).setDirty();
+                                RoomData.get(sp.server).setDirty();
                             }
                             openRoom(sp, roomId);
-                        }));
-        if (r.isAssigned()) {
-            gui.button(20, Icons.icon(Items.BARRIER, Icons.label("Liberer la chambre", ChatFormatting.RED),
-                    List.of(Icons.lore("Retire l'occupant", ChatFormatting.GRAY))),
+                        })));
+        if (assigned) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                    Icons.label("Liberer la chambre", ChatFormatting.RED),
+                    Icons.lore("Retire l'occupant", ChatFormatting.GRAY),
                     sp -> {
-                        Room cur = get(server, roomId);
+                        Room cur = get(sp.server, roomId);
                         if (cur != null) {
                             cur.setOccupant(null, null);
                             cur.setFrozen(false);
-                            RoomData.get(server).setDirty();
+                            RoomData.get(sp.server).setDirty();
                         }
                         openRoom(sp, roomId);
-                    });
+                    }));
         }
-        gui.button(24, Icons.icon(Items.LAVA_BUCKET, Icons.label("Supprimer la chambre", ChatFormatting.RED), List.of()),
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LAVA_BUCKET),
+                Icons.label("Supprimer la chambre", ChatFormatting.RED),
+                Icons.lore("Definitif", ChatFormatting.GRAY),
                 sp -> {
-                    RoomData.get(server).remove(roomId);
+                    RoomData.get(sp.server).remove(roomId);
                     sp.sendSystemMessage(Messages.success("Chambre supprimee."));
                     openAuberge(sp);
-                });
-        gui.button(18, Icons.icon(Items.OAK_DOOR, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                RoomMenus::openAuberge);
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+                }));
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openRoom(sp, roomId), RoomMenus::openAuberge);
     }
 
     private static void openAssignPicker(ServerPlayer admin, String roomId) {
         MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Attribuer a quel joueur ?", ChatFormatting.GOLD));
-        int slot = 0;
+        Component title = Icons.label("Attribuer - choisir un joueur", ChatFormatting.GOLD);
+        List<Component> stats = List.of(Component.literal("Chambre : " + roomId)
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
-            if (slot > 44) {
-                break;
-            }
             UUID id = target.getUUID();
             String tname = target.getGameProfile().getName();
-            gui.button(slot++, Icons.playerHead(target, Icons.label(tname, ChatFormatting.WHITE),
-                    List.of(Icons.lore("Clic : definir prix puis jours", ChatFormatting.GRAY))),
-                    sp -> openAssignPrice(sp, roomId, id, tname));
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(tname, ChatFormatting.WHITE), List.of()),
+                    Icons.label(tname, ChatFormatting.WHITE),
+                    Icons.lore("Definir prix puis jours", ChatFormatting.GRAY),
+                    sp -> openAssignPrice(sp, roomId, id, tname)));
         }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucun joueur en ligne", ChatFormatting.RED),
-                    List.of(Icons.lore("Utilise /room assign <id> <joueur> <prix> <jours>", ChatFormatting.GRAY))));
-        }
-        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openRoom(sp, roomId));
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openAssignPicker(sp, roomId), sp -> openRoom(sp, roomId));
+    }
+
+    /** Ligne de stat "label: valeur" (label gris, valeur coloree). */
+    private static Component stat(String label, String value, ChatFormatting valueColor) {
+        return Component.literal(label).withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(value).withStyle(s -> s.withColor(valueColor).withItalic(false)));
     }
 
     private static void openAssignPrice(ServerPlayer admin, String roomId, UUID targetId, String targetName) {
