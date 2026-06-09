@@ -258,6 +258,7 @@ public final class UtopiaEvents {
         if (t % 10 == 0) {
             ParcelManager.renderTraces(server);
             ParcelHolograms.renderPreviews(server);
+            RoomManager.renderSelections(server);
         }
         // Synchronisation des hologrammes + balayage anti-feu (toutes les ~2s).
         if (t % 40 == 0) {
