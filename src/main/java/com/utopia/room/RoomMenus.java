@@ -137,14 +137,6 @@ public final class RoomMenus {
                         openRoom(sp, roomId);
                     });
         }
-        gui.button(22, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
-                sp -> {
-                    Room cur = get(server, roomId);
-                    if (cur != null) {
-                        RoomManager.teleport(sp, cur);
-                    }
-                    com.utopia.gui.Menus.close(sp);
-                });
         gui.button(24, Icons.icon(Items.LAVA_BUCKET, Icons.label("Supprimer la chambre", ChatFormatting.RED), List.of()),
                 sp -> {
                     RoomData.get(server).remove(roomId);

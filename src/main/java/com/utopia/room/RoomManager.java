@@ -6,14 +6,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.utopia.Config;
 import com.utopia.parcel.Parcel;
-import com.utopia.util.Messages;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -65,20 +61,5 @@ public final class RoomManager {
 
     public static void clearCorners(UUID playerId) {
         CORNERS.remove(playerId);
-    }
-
-    /** Teleporte au centre de la chambre. */
-    public static void teleport(ServerPlayer player, Room room) {
-        double[] c = room.center();
-        if (c == null) {
-            player.sendSystemMessage(Messages.error("Cette chambre n'a pas de zone."));
-            return;
-        }
-        ServerLevel level = player.server.getLevel(ResourceKey.create(Registries.DIMENSION, room.dimension()));
-        if (level == null) {
-            level = player.serverLevel();
-        }
-        player.teleportTo(level, c[0], c[1], c[2], player.getYRot(), player.getXRot());
-        player.sendSystemMessage(Messages.success("Teleporte a la chambre " + room.id() + "."));
     }
 }

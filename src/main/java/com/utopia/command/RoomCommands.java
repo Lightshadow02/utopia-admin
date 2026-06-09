@@ -53,8 +53,6 @@ public final class RoomCommands {
                 .then(Commands.literal("setdays")
                         .then(Commands.argument("id", StringArgumentType.word())
                                 .then(Commands.argument("days", IntegerArgumentType.integer(0)).executes(RoomCommands::setdays))))
-                .then(Commands.literal("tp")
-                        .then(Commands.argument("id", StringArgumentType.word()).executes(RoomCommands::tp)))
                 .then(Commands.literal("delete")
                         .then(Commands.argument("id", StringArgumentType.word()).executes(RoomCommands::delete)))
                 .then(Commands.literal("list").executes(RoomCommands::list));
@@ -196,15 +194,6 @@ public final class RoomCommands {
         return 1;
     }
 
-    private static int tp(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ServerPlayer player = ctx.getSource().getPlayerOrException();
-        Room r = byId(player, ctx);
-        if (r == null) {
-            return 0;
-        }
-        RoomManager.teleport(player, r);
-        return 1;
-    }
 
     private static int delete(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
