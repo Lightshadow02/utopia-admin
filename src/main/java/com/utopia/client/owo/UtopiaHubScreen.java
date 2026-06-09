@@ -121,6 +121,10 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
         footer.horizontalAlignment(HorizontalAlignment.CENTER);
         footer.child(smallButton(Component.literal("Rafraichir").withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),
                 () -> click(data.refreshId())));
+        if (data.backId() >= 0) {
+            footer.child(smallButton(Component.literal("Retour").withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)),
+                    () -> click(data.backId())));
+        }
         footer.child(smallButton(Component.literal("Fermer").withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)),
                 () -> Minecraft.getInstance().setScreen(null)));
         panel.child(footer);

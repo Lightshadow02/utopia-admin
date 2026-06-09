@@ -1,5 +1,6 @@
 package com.utopia.economy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import com.utopia.data.BalTopData;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
 import com.utopia.gui.UtopiaGui;
+import com.utopia.net.OwoMenuServer;
 import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
@@ -121,37 +123,49 @@ public final class EconomyMenus {
 
     // ============================================================ Menu joueur (/balance menu)
 
-    /** Menu joueur : solde, payer un joueur, retirer, deposer. */
+    /** Menu joueur "riche" (ecran owo) : solde, deposer, retirer, payer. */
     public static void openPlayerMenu(ServerPlayer player) {
         MinecraftServer server = player.server;
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Banque", ChatFormatting.DARK_AQUA));
+        long balance = EconomyManager.getBalance(server, player.getUUID());
+        int coins = EconomyManager.countCoins(player);
 
-        gui.set(4, Icons.icon(EconomyManager.coinItem(), Icons.label("Votre solde", ChatFormatting.GOLD),
-                List.of(Icons.lore(EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GREEN))));
+        Component title = Icons.label("Banque", ChatFormatting.GOLD);
+        List<Component> stats = List.of(
+                stat("Solde en banque : ", EconomyManager.format(balance) + " $", ChatFormatting.GOLD),
+                stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA));
 
-        gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Payer un joueur", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Envoyer de l'argent a un joueur en ligne", ChatFormatting.GRAY))),
-                EconomyMenus::openPayPicker);
-        gui.button(12, Icons.icon(Items.EMERALD, Icons.label("Retirer en pieces", ChatFormatting.GREEN),
-                List.of(Icons.lore("Sortir des pieces dans l'inventaire", ChatFormatting.GRAY))),
-                EconomyMenus::openWithdrawMenu);
-        gui.button(14, Icons.icon(Items.HOPPER, Icons.label("Deposer mes pieces", ChatFormatting.AQUA),
-                List.of(Icons.lore("Met toutes les pieces de l'inventaire en banque", ChatFormatting.GRAY))),
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.HOPPER),
+                Icons.label("Deposer mes pieces", ChatFormatting.AQUA),
+                Icons.lore("Met toutes les pieces en banque", ChatFormatting.GRAY),
                 sp -> {
                     int count = EconomyManager.countCoins(sp);
                     if (count <= 0) {
                         sp.sendSystemMessage(Messages.warn("Vous n'avez aucune piece a deposer."));
                     } else {
                         int taken = EconomyManager.takeCoins(sp, count);
-                        EconomyManager.add(server, sp.getUUID(), taken);
+                        EconomyManager.add(sp.server, sp.getUUID(), taken);
                         sp.sendSystemMessage(Messages.success("Depose " + EconomyManager.format(taken) + "."));
                     }
                     openPlayerMenu(sp);
-                });
-        gui.button(22, Icons.icon(Items.ARROW, Icons.label("Retour au menu", ChatFormatting.YELLOW), List.of()),
-                com.utopia.menu.MainMenu::open);
-        gui.fillEmpty();
-        Menus.open(player, gui);
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(EconomyManager.coinItem()),
+                Icons.label("Retirer en pieces", ChatFormatting.GREEN),
+                Icons.lore("Sortir des pieces dans l'inventaire", ChatFormatting.GRAY),
+                EconomyMenus::openWithdrawMenu));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
+                Icons.label("Payer un joueur", ChatFormatting.YELLOW),
+                Icons.lore("Envoyer de l'argent a un joueur en ligne", ChatFormatting.GRAY),
+                EconomyMenus::openPayPicker));
+
+        OwoMenuServer.openHub(player, title, stats, entries,
+                EconomyMenus::openPlayerMenu, com.utopia.menu.MainMenu::open);
+    }
+
+    /** Ligne de stat "label: valeur" (label gris, valeur coloree). */
+    private static Component stat(String label, String value, ChatFormatting valueColor) {
+        return Component.literal(label).withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(value).withStyle(s -> s.withColor(valueColor).withItalic(false)));
     }
 
     private static void openPayPicker(ServerPlayer player) {

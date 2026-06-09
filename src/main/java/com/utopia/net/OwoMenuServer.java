@@ -67,11 +67,14 @@ public final class OwoMenuServer {
      * pour rouvrir le hub avec des donnees a jour). Les actions reutilisent le canal de menu existant.
      */
     public static void openHub(ServerPlayer player, Component title, List<Component> stats,
-                               List<HubEntry> entries, Consumer<ServerPlayer> onRefresh) {
+                               List<HubEntry> entries, Consumer<ServerPlayer> onRefresh,
+                               Consumer<ServerPlayer> onBack) {
         int id = COUNTER.incrementAndGet();
         int n = entries.size();
-        int refreshId = n; // slot d'action dedie au bouton "Rafraichir"
-        int rows = Math.max(1, (refreshId + 1 + 8) / 9);
+        int refreshId = n;                              // slot d'action du bouton "Rafraichir"
+        int backId = onBack != null ? n + 1 : -1;       // slot d'action du bouton "Retour" (optionnel)
+        int maxSlot = onBack != null ? backId : refreshId;
+        int rows = Math.max(1, (maxSlot + 9) / 9);
 
         UtopiaGui gui = new UtopiaGui(rows, title);
         List<OpenHubPayload.Button> buttons = new ArrayList<>(n);
@@ -81,10 +84,13 @@ public final class OwoMenuServer {
             buttons.add(new OpenHubPayload.Button(i, e.icon(), e.label(), e.sublabel()));
         }
         gui.button(refreshId, ItemStack.EMPTY, onRefresh != null ? onRefresh : sp -> { });
+        if (onBack != null) {
+            gui.button(backId, ItemStack.EMPTY, onBack);
+        }
 
         SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
         PacketDistributor.sendToPlayer(player,
-                MenuS2CPayload.of(new OpenHubPayload(id, title, stats, buttons, refreshId)));
+                MenuS2CPayload.of(new OpenHubPayload(id, title, stats, buttons, refreshId, backId)));
     }
 
     /**

@@ -22,7 +22,7 @@ import net.minecraft.world.item.ItemStack;
  * <p>Transporte via {@link MenuS2CPayload} (variante {@code OPEN_HUB}) ; pas de canal reseau dedie.
  */
 public record OpenHubPayload(int sessionId, Component title, List<Component> stats,
-                             List<Button> buttons, int refreshId) implements CustomPacketPayload {
+                             List<Button> buttons, int refreshId, int backId) implements CustomPacketPayload {
 
     /** Un bouton du hub : {@code id} (renvoye au clic), icone, libelle et sous-libelle. */
     public record Button(int id, ItemStack icon, Component label, Component sublabel) {
@@ -49,6 +49,7 @@ public record OpenHubPayload(int sessionId, Component title, List<Component> sta
             ComponentSerialization.STREAM_CODEC.encode(buf, b.sublabel());
         }
         buf.writeVarInt(p.refreshId);
+        buf.writeVarInt(p.backId);
     }
 
     private static OpenHubPayload decode(RegistryFriendlyByteBuf buf) {
@@ -65,7 +66,8 @@ public record OpenHubPayload(int sessionId, Component title, List<Component> sta
             buttons.add(new Button(id, icon, label, sublabel));
         }
         int refreshId = buf.readVarInt();
-        return new OpenHubPayload(sessionId, title, stats, buttons, refreshId);
+        int backId = buf.readVarInt();
+        return new OpenHubPayload(sessionId, title, stats, buttons, refreshId, backId);
     }
 
     @Override

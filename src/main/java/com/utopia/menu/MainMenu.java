@@ -74,7 +74,7 @@ public final class MainMenu {
                     runAs(sp, cmd);
                 }));
 
-        OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open);
+        OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open, null);
     }
 
     /** Construit une ligne de stat "label: valeur" (label gris, valeur coloree). */
