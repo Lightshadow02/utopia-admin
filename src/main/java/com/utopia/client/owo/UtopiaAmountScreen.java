@@ -51,13 +51,13 @@ public class UtopiaAmountScreen extends BaseOwoScreen<FlowLayout> {
         root.verticalAlignment(VerticalAlignment.CENTER);
 
         FlowLayout panel = Containers.verticalFlow(Sizing.content(), Sizing.content());
-        panel.surface(Surface.DARK_PANEL);
+        panel.surface(OwoStyle.PANEL);
         panel.padding(Insets.of(14));
         panel.gap(8);
         panel.horizontalAlignment(HorizontalAlignment.CENTER);
 
         FlowLayout titleBar = Containers.horizontalFlow(Sizing.content(), Sizing.content());
-        titleBar.surface(Surface.PANEL_INSET);
+        titleBar.surface(OwoStyle.HEADER);
         titleBar.padding(Insets.of(6));
         titleBar.horizontalAlignment(HorizontalAlignment.CENTER);
         titleBar.child(Components.label(data.title()).shadow(true));
@@ -90,13 +90,13 @@ public class UtopiaAmountScreen extends BaseOwoScreen<FlowLayout> {
     private FlowLayout button(Component label, Runnable action) {
         FlowLayout b = Containers.horizontalFlow(Sizing.content(), Sizing.content());
         b.padding(Insets.of(6));
-        b.surface(Surface.PANEL_INSET);
+        b.surface(OwoStyle.BTN);
         b.cursorStyle(CursorStyle.POINTER);
         b.horizontalAlignment(HorizontalAlignment.CENTER);
         b.verticalAlignment(VerticalAlignment.CENTER);
         b.child(Components.label(label));
-        b.mouseEnter().subscribe(() -> b.surface(Surface.PANEL));
-        b.mouseLeave().subscribe(() -> b.surface(Surface.PANEL_INSET));
+        b.mouseEnter().subscribe(() -> b.surface(OwoStyle.BTN_HOVER));
+        b.mouseLeave().subscribe(() -> b.surface(OwoStyle.BTN));
         b.mouseDown().subscribe((mouseX, mouseY, mouseButton) -> {
             action.run();
             Minecraft.getInstance().getSoundManager()

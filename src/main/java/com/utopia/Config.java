@@ -67,6 +67,9 @@ public final class Config {
     // Chambres d'auberge
     public static final ModConfigSpec.ConfigValue<String> ROOM_WAND_ITEM;
 
+    // Menu central
+    public static final ModConfigSpec.ConfigValue<String> MENU_QUEST_COMMAND;
+
     public static final ModConfigSpec SPEC;
 
     static {
@@ -208,6 +211,12 @@ public final class Config {
         ROOM_WAND_ITEM = BUILDER
                 .comment("Outil de selection des chambres (clic gauche = coin 1, clic droit = coin 2 ; le Y compte).")
                 .define("wandItem", "minecraft:blaze_rod");
+        BUILDER.pop();
+
+        BUILDER.comment("Menu central (/menu).").push("menu");
+        MENU_QUEST_COMMAND = BUILDER
+                .comment("Commande lancee par le bouton 'Quetes' du /menu (ex: 'ftbquests'). Vide = bouton inactif.")
+                .define("questCommand", "ftbquests");
         BUILDER.pop();
 
         SPEC = BUILDER.build();

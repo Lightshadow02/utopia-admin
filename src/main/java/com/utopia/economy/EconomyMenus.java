@@ -148,6 +148,8 @@ public final class EconomyMenus {
                     }
                     openPlayerMenu(sp);
                 });
+        gui.button(22, Icons.icon(Items.ARROW, Icons.label("Retour au menu", ChatFormatting.YELLOW), List.of()),
+                com.utopia.menu.MainMenu::open);
         gui.fillEmpty();
         Menus.open(player, gui);
     }

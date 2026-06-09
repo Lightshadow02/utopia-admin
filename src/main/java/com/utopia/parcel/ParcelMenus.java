@@ -166,6 +166,8 @@ public final class ParcelMenus {
             gui.button(26, Icons.icon(Items.ARROW, Icons.label("Suivante ->", ChatFormatting.YELLOW), List.of()),
                     sp -> openMyParcels(sp, (i + 1) % owned.size()));
         }
+        gui.button(22, Icons.icon(Items.ARROW, Icons.label("Retour au menu", ChatFormatting.YELLOW), List.of()),
+                com.utopia.menu.MainMenu::open);
         gui.fillEmpty();
         Menus.open(player, gui);
     }
@@ -511,7 +513,7 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(6, Icons.label("Parcelles en vente", ChatFormatting.DARK_AQUA));
         int slot = 0;
         for (Parcel p : sale) {
-            if (slot > 53) {
+            if (slot > 44) {
                 break;
             }
             String pid = p.id();
@@ -536,6 +538,8 @@ public final class ParcelMenus {
         if (slot == 0) {
             gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucune parcelle en vente", ChatFormatting.RED), List.of()));
         }
+        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour au menu", ChatFormatting.YELLOW), List.of()),
+                com.utopia.menu.MainMenu::open);
         gui.fillEmpty();
         Menus.open(player, gui);
     }
