@@ -87,6 +87,18 @@ public final class OwoMenuServer {
                 MenuS2CPayload.of(new OpenHubPayload(id, title, stats, buttons, refreshId)));
     }
 
+    /**
+     * Ouvre un ecran "riche" dont les actions sont portees par {@code actionGui} (clic sur un id ->
+     * {@code actionGui.action(id)}) et dont l'affichage est decrit par {@code payloadFactory} (recoit
+     * l'id de session a inclure dans le paquet). Utilise pour les ecrans owo dedies (daily, etc.).
+     */
+    public static void openScreen(ServerPlayer player, UtopiaGui actionGui,
+                                  java.util.function.IntFunction<MenuS2CPayload> payloadFactory) {
+        int id = COUNTER.incrementAndGet();
+        SESSIONS.put(player.getUUID(), new Session(id, actionGui, null, null));
+        PacketDistributor.sendToPlayer(player, payloadFactory.apply(id));
+    }
+
     /** Ouvre un ecran de saisie de montant ; {@code onConfirm} recoit la valeur (deja bornee). */
     public static void openAmount(ServerPlayer player, Component title, List<Component> info, Component confirmLabel,
                                   long defaultValue, long min, long max, LongConsumer onConfirm) {

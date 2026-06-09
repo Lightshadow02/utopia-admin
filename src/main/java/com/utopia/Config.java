@@ -215,8 +215,8 @@ public final class Config {
 
         BUILDER.comment("Menu central (/menu).").push("menu");
         MENU_QUEST_COMMAND = BUILDER
-                .comment("Commande lancee par le bouton 'Quetes' du /menu (ex: 'ftbquests'). Vide = bouton inactif.")
-                .define("questCommand", "ftbquests");
+                .comment("Commande lancee par le bouton 'Quetes' du /menu (ex: 'ftbquests open_book'). Vide = bouton inactif.")
+                .define("questCommand", "ftbquests open_book");
         BUILDER.pop();
 
         SPEC = BUILDER.build();

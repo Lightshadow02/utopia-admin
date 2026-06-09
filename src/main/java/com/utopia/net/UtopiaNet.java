@@ -32,6 +32,8 @@ public final class UtopiaNet {
                         com.utopia.client.owo.OwoMenuClient.handleTextPrompt((OpenTextPayload) payload.data(), context);
                 case MenuS2CPayload.OPEN_HUB ->
                         com.utopia.client.owo.OwoMenuClient.handleHub((OpenHubPayload) payload.data(), context);
+                case MenuS2CPayload.OPEN_DAILY ->
+                        com.utopia.client.owo.OwoMenuClient.handleDaily((OpenDailyPayload) payload.data(), context);
                 default -> { /* variante inconnue : ignore */ }
             }
         });

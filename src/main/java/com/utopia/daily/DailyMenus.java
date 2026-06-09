@@ -13,6 +13,9 @@ import com.utopia.Config;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
 import com.utopia.gui.UtopiaGui;
+import com.utopia.net.MenuS2CPayload;
+import com.utopia.net.OpenDailyPayload;
+import com.utopia.net.OwoMenuServer;
 import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
@@ -34,7 +37,110 @@ public final class DailyMenus {
     // =============================================================================================
 
     public static void openPlayerMenu(ServerPlayer player) {
-        openPlayerCalendar(player, YearMonth.from(DailyManager.today()));
+        openPlayerCalendarRich(player, YearMonth.from(DailyManager.today()));
+    }
+
+    /**
+     * Calendrier joueur "riche" (ecran owo dedie) : grille mensuelle coloree par etat + streak +
+     * prochaine recompense. Les actions (reclamer, mois precedent/suivant, retour au menu) passent
+     * par {@link OwoMenuServer#openScreen}.
+     */
+    public static void openPlayerCalendarRich(ServerPlayer player, YearMonth ym) {
+        MinecraftServer server = player.server;
+        UUID id = player.getUUID();
+        LocalDate today = DailyManager.today();
+        long todayEpoch = today.toEpochDay();
+
+        int firstWeekday = ym.atDay(1).getDayOfWeek().getValue() - 1; // 0 = lundi
+        int daysInMonth = ym.lengthOfMonth();
+
+        List<OpenDailyPayload.Day> days = new ArrayList<>(daysInMonth);
+        for (int dn = 1; dn <= daysInMonth; dn++) {
+            LocalDate date = ym.atDay(dn);
+            long epoch = date.toEpochDay();
+            boolean claimed = DailyManager.hasClaimed(server, id, epoch);
+            int state;
+            ItemStack reward = ItemStack.EMPTY;
+            if (date.isEqual(today)) {
+                state = claimed ? OpenDailyPayload.TODAY_DONE : OpenDailyPayload.CLAIMABLE;
+                reward = firstReward(date);
+            } else if (date.isAfter(today)) {
+                state = OpenDailyPayload.FUTURE;
+                reward = firstReward(date);
+            } else if (claimed) {
+                state = OpenDailyPayload.CLAIMED;
+            } else if (epoch >= todayEpoch - 70) {
+                state = OpenDailyPayload.MISSED;
+            } else {
+                state = OpenDailyPayload.OTHER;
+            }
+            days.add(new OpenDailyPayload.Day(dn, state, reward));
+        }
+
+        int streak = DailyManager.currentStreak(server, id);
+        boolean available = DailyManager.isAvailable(server, id);
+        Component streakLine = Component.literal("Serie : " + streak + " jour" + (streak > 1 ? "s" : ""))
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
+
+        // Prochaine recompense (aujourd'hui si dispo, sinon demain).
+        LocalDate nextDay = available ? today : today.plusDays(1);
+        List<Component> nextLore = new ArrayList<>();
+        nextLore.add(Component.literal(available
+                ? "Recompense du jour : disponible !"
+                : "Prochaine dans " + Messages.formatDuration(DailyManager.secondsUntilTomorrow()))
+                .withStyle(s -> s.withColor(available ? ChatFormatting.GREEN : ChatFormatting.YELLOW).withItalic(false)));
+        ItemStack nextIcon = new ItemStack(Items.CHEST);
+        boolean firstSpec = true;
+        for (String spec : DailyManager.rewardSpecsFor(nextDay)) {
+            ItemStack st = DailyManager.specToStack(spec);
+            if (!st.isEmpty()) {
+                if (firstSpec) {
+                    nextIcon = st.copy();
+                    firstSpec = false;
+                }
+                nextLore.add(Component.literal(" - " + st.getCount() + "x " + st.getHoverName().getString())
+                        .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
+            }
+        }
+
+        Component title = Component.literal("Recompenses - " + monthName(ym) + " " + ym.getYear())
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+
+        // Actions (portees par un UtopiaGui : clic id -> action).
+        int claimId = 0;
+        int prevId = 1;
+        int nextId = 2;
+        int backId = 3;
+        UtopiaGui gui = new UtopiaGui(1, title);
+        gui.button(claimId, ItemStack.EMPTY, sp -> {
+            DailyManager.claim(sp);
+            openPlayerCalendarRich(sp, YearMonth.from(DailyManager.today()));
+        });
+        gui.button(prevId, ItemStack.EMPTY, sp -> openPlayerCalendarRich(sp, ym.minusMonths(1)));
+        gui.button(nextId, ItemStack.EMPTY, sp -> openPlayerCalendarRich(sp, ym.plusMonths(1)));
+        gui.button(backId, ItemStack.EMPTY, com.utopia.menu.MainMenu::open);
+
+        final ItemStack nextIconF = nextIcon;
+        OwoMenuServer.openScreen(player, gui, sid -> MenuS2CPayload.of(new OpenDailyPayload(
+                sid, title, streakLine, firstWeekday, daysInMonth, days,
+                nextIconF, nextLore, prevId, nextId, claimId, backId, available)));
+    }
+
+    /** Premiere recompense (non vide) prevue pour {@code date}, ou un stack vide. */
+    private static ItemStack firstReward(LocalDate date) {
+        for (String spec : DailyManager.rewardSpecsFor(date)) {
+            ItemStack st = DailyManager.specToStack(spec);
+            if (!st.isEmpty()) {
+                return st;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /** Nom du mois en francais, premiere lettre en majuscule. */
+    private static String monthName(YearMonth ym) {
+        String m = ym.getMonth().getDisplayName(TextStyle.FULL, Locale.FRENCH);
+        return m.isEmpty() ? m : Character.toUpperCase(m.charAt(0)) + m.substring(1);
     }
 
     public static void openPlayerCalendar(ServerPlayer player, YearMonth ym) {
