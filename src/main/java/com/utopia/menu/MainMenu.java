@@ -3,6 +3,7 @@ package com.utopia.menu;
 import java.util.List;
 
 import com.utopia.Config;
+import com.utopia.daily.DailyMenus;
 import com.utopia.economy.EconomyManager;
 import com.utopia.economy.EconomyMenus;
 import com.utopia.gui.Icons;
@@ -37,6 +38,9 @@ public final class MainMenu {
         gui.button(12, Icons.icon(EconomyManager.coinItem(), Icons.label("Banque", ChatFormatting.GOLD),
                 List.of(Icons.lore("Solde, payer, retirer, deposer", ChatFormatting.GRAY))),
                 sp -> EconomyMenus.openPlayerMenu(sp));
+        gui.button(13, Icons.icon(Items.CHEST, Icons.label("Recompense quotidienne", ChatFormatting.GOLD),
+                List.of(Icons.lore("Reclame ta recompense du jour", ChatFormatting.GRAY))),
+                sp -> DailyMenus.openPlayerMenu(sp));
         gui.button(14, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter a un joueur", ChatFormatting.LIGHT_PURPLE),
                 List.of(Icons.lore("Envoyer une demande de TP (/tpa)", ChatFormatting.GRAY))),
                 MainMenu::openTpaPicker);

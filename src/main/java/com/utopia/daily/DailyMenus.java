@@ -122,6 +122,9 @@ public final class DailyMenus {
         gui.set(53, Icons.icon(nextItem.getItem(), Math.max(1, nextItem.getCount()),
                 Icons.label("Prochaine recompense", ChatFormatting.GREEN), nextLore));
 
+        gui.button(44, Icons.icon(Items.ARROW, Icons.label("Retour au menu", ChatFormatting.YELLOW), List.of()),
+                com.utopia.menu.MainMenu::open);
+
         Menus.open(player, gui);
     }
 
