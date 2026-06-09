@@ -74,7 +74,9 @@ public final class DailyMenus {
             } else {
                 state = OpenDailyPayload.OTHER;
             }
-            days.add(new OpenDailyPayload.Day(dn, state, reward));
+            // Seul le jour reclamable est cliquable (id = claimId = 0).
+            int actionId = state == OpenDailyPayload.CLAIMABLE ? 0 : -1;
+            days.add(new OpenDailyPayload.Day(dn, state, reward, actionId));
         }
 
         int streak = DailyManager.currentStreak(server, id);
@@ -245,7 +247,7 @@ public final class DailyMenus {
                 Icons.label("Calendrier des recompenses", ChatFormatting.YELLOW),
                 List.of(Icons.lore("Planifier les recompenses par date", ChatFormatting.GRAY),
                         Icons.lore("(1 a 2 mois a l'avance)", ChatFormatting.DARK_GRAY))),
-                sp -> openAdminCalendar(sp, YearMonth.from(DailyManager.today())));
+                sp -> openAdminCalendarRich(sp, YearMonth.from(DailyManager.today())));
 
         gui.button(12, Icons.icon(Items.WRITABLE_BOOK,
                 Icons.label("Recompense par defaut", ChatFormatting.YELLOW),
@@ -328,6 +330,87 @@ public final class DailyMenus {
                     admin.sendSystemMessage(Messages.success(specs.size() + " item(s) planifie(s) pour le " + date + "."));
                 },
                 sp -> openAdminCalendar(sp, backTo));
+    }
+
+    // =============================================================================================
+    // Calendrier admin "riche" (meme ecran que le calendrier joueur) : clic sur un jour = editer
+    // =============================================================================================
+
+    public static void openAdminCalendarRich(ServerPlayer admin, YearMonth ym) {
+        DailyCalendar cal = DailyManager.calendar();
+        LocalDate today = DailyManager.today();
+
+        int firstWeekday = ym.atDay(1).getDayOfWeek().getValue() - 1; // 0 = lundi
+        int daysInMonth = ym.lengthOfMonth();
+
+        int prevId = 90;
+        int nextId = 91;
+        int backId = 92;
+        UtopiaGui gui = new UtopiaGui(12, Component.literal("Calendrier")); // assez de slots pour 1..31 + 90..92
+
+        List<OpenDailyPayload.Day> days = new ArrayList<>(daysInMonth);
+        int planned = 0;
+        for (int dn = 1; dn <= daysInMonth; dn++) {
+            LocalDate date = ym.atDay(dn);
+            boolean isPast = date.isBefore(today);
+            int state;
+            ItemStack reward = ItemStack.EMPTY;
+            int actionId;
+            if (isPast) {
+                state = OpenDailyPayload.OTHER;
+                actionId = -1;
+            } else {
+                boolean has = cal.rewardSize(date) > 0;
+                if (has) {
+                    planned++;
+                }
+                state = has ? OpenDailyPayload.CLAIMED : OpenDailyPayload.FUTURE;
+                reward = has ? firstSpecStack(cal.getReward(date)) : ItemStack.EMPTY;
+                actionId = dn; // clic -> editer ce jour
+                final LocalDate dd = date;
+                gui.button(dn, ItemStack.EMPTY, sp -> openDayEditorRich(sp, dd, ym));
+            }
+            days.add(new OpenDailyPayload.Day(dn, state, reward, actionId));
+        }
+        gui.button(prevId, ItemStack.EMPTY, sp -> openAdminCalendarRich(sp, ym.minusMonths(1)));
+        gui.button(nextId, ItemStack.EMPTY, sp -> openAdminCalendarRich(sp, ym.plusMonths(1)));
+        gui.button(backId, ItemStack.EMPTY, DailyMenus::openAdminMenu);
+
+        Component title = Component.literal("Calendrier - " + monthName(ym) + " " + ym.getYear())
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true));
+        Component plannedLine = Component.literal(planned + " jour(s) planifie(s)")
+                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withItalic(false));
+        List<Component> help = List.of(
+                Component.literal("Clic sur un jour : editer sa recompense")
+                        .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),
+                Component.literal("Vert = planifie | violet = vide | gris = passe")
+                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        OwoMenuServer.openScreen(admin, gui, sid -> MenuS2CPayload.of(new OpenDailyPayload(
+                sid, title, plannedLine, firstWeekday, daysInMonth, days,
+                new ItemStack(Items.WRITABLE_BOOK), help, prevId, nextId, -1, backId, false)));
+    }
+
+    private static void openDayEditorRich(ServerPlayer admin, LocalDate date, YearMonth backTo) {
+        openItemsEditor(admin,
+                Icons.label("Recompense du " + date, ChatFormatting.DARK_AQUA),
+                DailyManager.calendar().getReward(date),
+                specs -> {
+                    DailyManager.calendar().setReward(date, specs);
+                    admin.sendSystemMessage(Messages.success(specs.size() + " item(s) planifie(s) pour le " + date + "."));
+                },
+                sp -> openAdminCalendarRich(sp, backTo));
+    }
+
+    /** Premiere recompense (non vide) d'une liste de specs, ou un stack vide. */
+    private static ItemStack firstSpecStack(List<? extends String> specs) {
+        for (String spec : specs) {
+            ItemStack st = DailyManager.specToStack(spec);
+            if (!st.isEmpty()) {
+                return st;
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     // =============================================================================================

@@ -183,12 +183,12 @@ public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
             }
         }
 
-        if (d.state() == OpenDailyPayload.CLAIMABLE) {
+        if (d.actionId() >= 0) {
             cell.cursorStyle(CursorStyle.POINTER);
-            cell.mouseEnter().subscribe(() -> cell.surface(CLAIMABLE_HOVER));
-            cell.mouseLeave().subscribe(() -> cell.surface(cellSurface(OpenDailyPayload.CLAIMABLE)));
+            cell.mouseEnter().subscribe(() -> cell.surface(CELL_HOVER));
+            cell.mouseLeave().subscribe(() -> cell.surface(cellSurface(d.state())));
             cell.mouseDown().subscribe((mouseX, mouseY, mouseButton) -> {
-                click(data.claimId());
+                click(d.actionId());
                 return true;
             });
         }
@@ -197,8 +197,8 @@ public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
 
     // --- couleurs par etat ---
 
-    private static final Surface CLAIMABLE_HOVER =
-            Surface.flat(0xFF5A4715).and(Surface.outline(0xFFFFC83C));
+    private static final Surface CELL_HOVER =
+            Surface.flat(0xFF39456E).and(Surface.outline(0xFFFFFFFF));
 
     private static Surface cellSurface(int state) {
         return switch (state) {

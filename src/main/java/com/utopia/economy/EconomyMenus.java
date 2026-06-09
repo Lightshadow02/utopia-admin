@@ -23,8 +23,6 @@ import net.minecraft.world.item.Items;
 /** Menu admin d'economie : liste des joueurs, donner / retirer 1, 10, 100, 1000. */
 public final class EconomyMenus {
 
-    private static final int[] AMOUNTS = { 1, 10, 100, 1000 };
-
     private EconomyMenus() {
     }
 
@@ -73,44 +71,44 @@ public final class EconomyMenus {
         Menus.open(admin, gui);
     }
 
-    /** Panneau d'un joueur : donner / retirer des montants. */
+    /** Panneau d'un joueur (ecran riche) : saisir un montant, puis Ajouter ou Retirer. */
     public static void openPlayerEco(ServerPlayer admin, UUID targetId) {
         MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(5,
-                Icons.label("Solde : " + nameOf(server, targetId), ChatFormatting.DARK_AQUA));
+        String name = nameOf(server, targetId);
+        long balance = EconomyManager.getBalance(server, targetId);
 
-        gui.set(4, head(server, targetId, Icons.label(nameOf(server, targetId), ChatFormatting.WHITE),
-                List.of(Icons.lore("Solde : " + EconomyManager.format(EconomyManager.getBalance(server, targetId)), ChatFormatting.GOLD))));
+        Component title = Icons.label("Solde : " + name, ChatFormatting.GOLD);
+        List<Component> stats = List.of(
+                stat("Joueur : ", name, ChatFormatting.AQUA),
+                stat("Solde : ", EconomyManager.format(balance) + " $", ChatFormatting.GOLD));
 
-        int[] giveSlots = { 10, 11, 12, 13 };
-        int[] takeSlots = { 19, 20, 21, 22 };
-        for (int i = 0; i < AMOUNTS.length; i++) {
-            int amount = AMOUNTS[i];
-            gui.button(giveSlots[i], Icons.icon(Items.EMERALD,
-                    Icons.label("+ " + amount, ChatFormatting.GREEN),
-                    List.of(Icons.lore("Donner " + EconomyManager.format(amount), ChatFormatting.GRAY))),
-                    sp -> {
-                        EconomyManager.add(server, targetId, amount);
-                        notifyTarget(server, targetId);
-                        openPlayerEco(sp, targetId);
-                    });
-            gui.button(takeSlots[i], Icons.icon(Items.REDSTONE,
-                    Icons.label("- " + amount, ChatFormatting.RED),
-                    List.of(Icons.lore("Retirer " + EconomyManager.format(amount), ChatFormatting.GRAY))),
-                    sp -> {
-                        long bal = EconomyManager.getBalance(server, targetId);
-                        EconomyManager.setBalance(server, targetId, Math.max(0L, bal - amount));
-                        notifyTarget(server, targetId);
-                        openPlayerEco(sp, targetId);
-                    });
-        }
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.EMERALD),
+                Icons.label("Ajouter", ChatFormatting.GREEN),
+                Icons.lore("Saisir le montant a crediter", ChatFormatting.GRAY),
+                sp -> Menus.promptAmount(sp, Icons.label("Montant a ajouter", ChatFormatting.GREEN),
+                        List.of(Icons.lore("Joueur : " + name, ChatFormatting.GRAY)),
+                        Icons.label("Ajouter", ChatFormatting.GREEN), 100, 1, 1_000_000_000L,
+                        v -> {
+                            EconomyManager.add(sp.server, targetId, v);
+                            notifyTarget(sp.server, targetId);
+                            openPlayerEco(sp, targetId);
+                        })));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.REDSTONE),
+                Icons.label("Retirer", ChatFormatting.RED),
+                Icons.lore("Saisir le montant a retirer", ChatFormatting.GRAY),
+                sp -> Menus.promptAmount(sp, Icons.label("Montant a retirer", ChatFormatting.RED),
+                        List.of(Icons.lore("Joueur : " + name, ChatFormatting.GRAY)),
+                        Icons.label("Retirer", ChatFormatting.RED), 100, 1, 1_000_000_000L,
+                        v -> {
+                            long bal = EconomyManager.getBalance(sp.server, targetId);
+                            EconomyManager.setBalance(sp.server, targetId, Math.max(0L, bal - v));
+                            notifyTarget(sp.server, targetId);
+                            openPlayerEco(sp, targetId);
+                        })));
 
-        gui.set(15, Icons.icon(Items.PAPER, Icons.label("Donner (vert) / Retirer (rouge)", ChatFormatting.AQUA),
-                List.of(Icons.lore("Montants : 1, 10, 100, 1000", ChatFormatting.GRAY))));
-        gui.button(40, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                EconomyMenus::openAdminMenu);
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openPlayerEco(sp, targetId), EconomyMenus::openAdminMenu);
     }
 
     private static void notifyTarget(MinecraftServer server, UUID targetId) {

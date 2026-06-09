@@ -36,8 +36,12 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
     public static final int MISSED = 4;      // manque (rouge)
     public static final int FUTURE = 5;      // a venir (violet)
 
-    /** Une case de jour : numero, etat, et icone de recompense (peut etre vide). */
-    public record Day(int day, int state, ItemStack reward) {
+    /**
+     * Une case de jour : numero, etat, icone de recompense (peut etre vide) et {@code actionId}.
+     * Si {@code actionId >= 0}, la case est cliquable et un clic renvoie cet id (reclamer cote joueur,
+     * editer la recompense cote admin). {@code -1} = case non cliquable.
+     */
+    public record Day(int day, int state, ItemStack reward, int actionId) {
     }
 
     public static final Type<OpenDailyPayload> TYPE =
@@ -60,6 +64,7 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
             buf.writeVarInt(d.day());
             buf.writeByte(d.state());
             ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, d.reward());
+            buf.writeVarInt(d.actionId());
         }
         ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.nextIcon);
         COMPONENTS.encode(buf, p.nextLore);
@@ -82,7 +87,8 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
             int day = buf.readVarInt();
             int state = buf.readByte();
             ItemStack reward = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
-            days.add(new Day(day, state, reward));
+            int actionId = buf.readVarInt();
+            days.add(new Day(day, state, reward, actionId));
         }
         ItemStack nextIcon = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
         List<Component> nextLore = COMPONENTS.decode(buf);
