@@ -143,6 +143,8 @@ public final class Parcel {
     private double holoDy;
     private double holoDz;
     private final Map<UUID, EnumSet<Flag>> members = new HashMap<>();
+    /** Droits accordes a TOUT LE MONDE (sert surtout aux parcelles Admin : ex. interagir mais pas detruire). */
+    private final EnumSet<Flag> publicFlags = EnumSet.noneOf(Flag.class);
 
     public Parcel(String id, String name, ResourceLocation dimension) {
         this.id = id;
@@ -284,6 +286,30 @@ public final class Parcel {
         return members;
     }
 
+    /** Droits accordes a tout le monde sur cette parcelle (utilise surtout pour les parcelles Admin). */
+    public EnumSet<Flag> publicFlags() {
+        return publicFlags;
+    }
+
+    public boolean publicAllows(Flag flag) {
+        return publicFlags.contains(flag);
+    }
+
+    public void setPublicFlag(Flag flag, boolean on) {
+        if (on) {
+            publicFlags.add(flag);
+        } else {
+            publicFlags.remove(flag);
+        }
+    }
+
+    public void setPublicFlags(EnumSet<Flag> flags) {
+        publicFlags.clear();
+        if (flags != null) {
+            publicFlags.addAll(flags);
+        }
+    }
+
     /** Definit les permissions d'un membre (ensemble vide => retire le membre). */
     public void setMember(UUID player, EnumSet<Flag> flags) {
         if (flags == null || flags.isEmpty()) {
@@ -310,9 +336,12 @@ public final class Parcel {
         return false;
     }
 
-    /** Le joueur a-t-il ce droit sur la parcelle ? (proprietaire = tous les droits). */
+    /** Le joueur a-t-il ce droit sur la parcelle ? (proprietaire = tous les droits ; droits publics = tout le monde). */
     public boolean allows(UUID player, Flag flag) {
         if (isOwner(player)) {
+            return true;
+        }
+        if (publicFlags.contains(flag)) {
             return true;
         }
         EnumSet<Flag> set = members.get(player);

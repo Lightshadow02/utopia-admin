@@ -379,9 +379,10 @@ public final class ParcelManager {
             return !room.frozen() && room.isOccupant(player.getUUID());
         }
         ParcelData data = ParcelData.get(player.server);
-        // Priorite aux zones administratives, meme si une parcelle normale les chevauche.
-        if (data.adminParcelAt(dim, x, y, z) != null) {
-            return false;
+        // Zones administratives prioritaires : acces selon leurs droits publics (par defaut interagir, pas detruire).
+        Parcel adminP = data.adminParcelAt(dim, x, y, z);
+        if (adminP != null) {
+            return adminP.allows(player.getUUID(), flag);
         }
         Parcel parcel = data.parcelAt(dim, x, y, z);
         if (parcel == null) {
@@ -400,6 +401,11 @@ public final class ParcelManager {
             parcel.setForSale(false);
             parcel.setOwner(null, null);
             parcel.members().clear();
+            // Par defaut : tout le monde peut interagir (clic droit) mais pas detruire/poser.
+            parcel.setPublicFlags(java.util.EnumSet.of(Parcel.Flag.DOORS, Parcel.Flag.CONTAINERS,
+                    Parcel.Flag.MACHINES, Parcel.Flag.CREATE));
+        } else {
+            parcel.setPublicFlags(java.util.EnumSet.noneOf(Parcel.Flag.class));
         }
     }
 

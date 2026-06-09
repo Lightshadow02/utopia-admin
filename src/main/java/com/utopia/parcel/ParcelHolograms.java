@@ -35,7 +35,7 @@ public final class ParcelHolograms {
 
     private static final String HOLO_PARCEL = "utopiaHoloParcel";
     private static final String HOLO_LINE = "utopiaHoloLine";
-    private static final int LINES = 4;
+    private static final int LINES = 5;
     private static final double LINE_GAP = 0.28;
 
     private static final DustParticleOptions ORANGE = new DustParticleOptions(new Vector3f(1.0F, 0.55F, 0.0F), 1.0F);
@@ -211,6 +211,8 @@ public final class ParcelHolograms {
         return List.of(
                 Component.literal("ID: " + p.id()).withStyle(ChatFormatting.YELLOW),
                 Component.literal("A VENDRE").withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)),
+                Component.literal("[" + p.type().label() + "]")
+                        .withStyle(p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
                 Component.literal(seller).withStyle(p.isOwned() ? ChatFormatting.AQUA : ChatFormatting.GRAY),
                 Component.literal(EconomyManager.format(p.price())).withStyle(ChatFormatting.GOLD));
     }

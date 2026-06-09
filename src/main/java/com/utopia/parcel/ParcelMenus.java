@@ -607,6 +607,11 @@ public final class ParcelMenus {
             admin.sendSystemMessage(Messages.error("Parcelle introuvable."));
             return;
         }
+        // Parcelle Admin : menu simplifie (TP, apercu, droits globaux, statut, supprimer).
+        if (p.isAdmin()) {
+            openAdminZoneMenu(admin, parcelId, p);
+            return;
+        }
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Admin : " + p.name(), ChatFormatting.DARK_RED));
 
         gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), List.of(
@@ -687,6 +692,114 @@ public final class ParcelMenus {
                 ParcelMenus::openAdminAll);
         gui.fillEmpty();
         Menus.open(admin, gui);
+    }
+
+    /** Menu simplifie d'une zone Admin : apercu, TP, droits globaux, statut, suppression. */
+    private static void openAdminZoneMenu(ServerPlayer admin, String parcelId, Parcel p) {
+        MinecraftServer server = admin.server;
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Zone Admin : " + p.id(), ChatFormatting.DARK_RED));
+        gui.set(4, Icons.icon(Items.BEDROCK, Icons.label("Zone Admin : " + p.id(), ChatFormatting.RED), List.of(
+                Icons.lore("Protegee (anti-grief), hors shop", ChatFormatting.GRAY),
+                Icons.lore("Regions : " + p.regionCount(), ChatFormatting.DARK_GRAY),
+                Icons.lore("Droits de tous : " + publicFlagsSummary(p), ChatFormatting.AQUA))));
+
+        gui.button(10, Icons.icon(Items.GLOWSTONE_DUST, Icons.label("Voir les delimitations (30s)", ChatFormatting.YELLOW), List.of()),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        ParcelHolograms.startPreview(sp, cur);
+                    }
+                    com.utopia.gui.Menus.close(sp);
+                });
+        gui.button(12, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        teleportTo(sp, cur);
+                    }
+                    com.utopia.gui.Menus.close(sp);
+                });
+        gui.button(14, Icons.icon(Items.PLAYER_HEAD, Icons.label("Droits de TOUS les joueurs", ChatFormatting.YELLOW),
+                List.of(Icons.lore("Ce que tout le monde peut faire ici", ChatFormatting.GRAY))),
+                sp -> openAdminPublicFlags(sp, parcelId));
+        gui.button(16, Icons.icon(Items.GRASS_BLOCK, Icons.label("Retirer le statut Admin", ChatFormatting.YELLOW),
+                List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY))),
+                sp -> {
+                    Parcel cur = getParcel(server, parcelId);
+                    if (cur != null) {
+                        ParcelManager.makeAdmin(cur, false);
+                        ParcelData.get(server).setDirty();
+                        sp.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " n'est plus admin."));
+                    }
+                    openAdminParcel(sp, parcelId);
+                });
+        gui.button(21, Icons.icon(Items.BARRIER, Icons.label("Supprimer la zone", ChatFormatting.RED), List.of()),
+                sp -> openDeleteConfirm(sp, parcelId));
+        gui.button(23, Icons.icon(Items.ARROW, Icons.label("Retour (liste)", ChatFormatting.YELLOW), List.of()),
+                sp -> openAdminAll(sp));
+        gui.fillEmpty();
+        Menus.open(admin, gui);
+    }
+
+    /** Droits accordes a TOUS les joueurs sur une zone Admin (interagir, detruire, etc.). */
+    public static void openAdminPublicFlags(ServerPlayer admin, String parcelId) {
+        MinecraftServer server = admin.server;
+        Parcel p = getParcel(server, parcelId);
+        if (p == null) {
+            admin.sendSystemMessage(Messages.error("Parcelle introuvable."));
+            return;
+        }
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Droits de tous : " + p.id(), ChatFormatting.DARK_RED));
+        gui.set(4, Icons.icon(Items.PAPER, Icons.label("Ce que TOUT LE MONDE peut faire", ChatFormatting.AQUA), List.of(
+                Icons.lore("Clique un droit pour l'activer / le couper", ChatFormatting.GRAY),
+                Icons.lore("Par defaut : interagir OUI, detruire NON", ChatFormatting.DARK_GRAY))));
+        int[] slots = { 10, 11, 12, 13, 14 };
+        Parcel.Flag[] flags = Parcel.Flag.values();
+        for (int i = 0; i < flags.length; i++) {
+            Parcel.Flag flag = flags[i];
+            boolean on = p.publicAllows(flag);
+            gui.button(slots[i], Icons.icon(on ? Items.LIME_DYE : Items.GRAY_DYE,
+                    Icons.label(flagLabel(flag) + " : " + (on ? "OUI" : "non"), on ? ChatFormatting.GREEN : ChatFormatting.RED),
+                    List.of(Icons.lore(flagDesc(flag), ChatFormatting.GRAY))),
+                    sp -> {
+                        Parcel cur = getParcel(server, parcelId);
+                        if (cur != null) {
+                            cur.setPublicFlag(flag, !cur.publicAllows(flag));
+                            ParcelData.get(server).setDirty();
+                        }
+                        openAdminPublicFlags(sp, parcelId);
+                    });
+        }
+        gui.button(22, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
+                sp -> openAdminParcel(sp, parcelId));
+        gui.fillEmpty();
+        Menus.open(admin, gui);
+    }
+
+    private static String publicFlagsSummary(Parcel p) {
+        if (p.publicFlags().isEmpty()) {
+            return "aucun";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Parcel.Flag f : Parcel.Flag.values()) {
+            if (p.publicAllows(f)) {
+                if (sb.length() > 0) {
+                    sb.append(", ");
+                }
+                sb.append(flagLabel(f));
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String flagDesc(Parcel.Flag f) {
+        return switch (f) {
+            case BUILD -> "Casser / poser des blocs";
+            case CONTAINERS -> "Ouvrir coffres / conteneurs";
+            case DOORS -> "Portes / boutons / leviers";
+            case MACHINES -> "Fours / etablis / redstone";
+            case CREATE -> "Blocs du mod Create";
+        };
     }
 
     private static void openDeleteConfirm(ServerPlayer admin, String parcelId) {

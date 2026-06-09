@@ -146,6 +146,7 @@ public final class ParcelData extends SavedData {
             parcel.setForSale(pt.getBoolean("forSale"));
             parcel.setAdmin(pt.getBoolean("admin"));
             parcel.setType(Parcel.Type.fromName(pt.getString("type")));
+            parcel.setPublicFlags(Parcel.Flag.fromMask(pt.getInt("publicFlags")));
             parcel.setHoloOffset(pt.getDouble("holoDx"), pt.getDouble("holoDy"), pt.getDouble("holoDz"));
             if (pt.contains("owner")) {
                 try {
@@ -196,6 +197,7 @@ public final class ParcelData extends SavedData {
             pt.putBoolean("forSale", p.forSale());
             pt.putBoolean("admin", p.isAdmin());
             pt.putString("type", p.type().name());
+            pt.putInt("publicFlags", Parcel.Flag.mask(p.publicFlags()));
             pt.putDouble("holoDx", p.holoDx());
             pt.putDouble("holoDy", p.holoDy());
             pt.putDouble("holoDz", p.holoDz());
