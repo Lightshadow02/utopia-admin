@@ -70,8 +70,12 @@ public final class MainMenu {
                         sp.sendSystemMessage(Messages.warn("Bouton Quetes non configure (config menu.questCommand)."));
                         return;
                     }
+                    cmd = cmd.trim();
+                    if (cmd.equals("ftbquests")) {
+                        cmd = "ftbquests open_book"; // auto-correction de l'ancienne valeur incomplete
+                    }
                     Menus.close(sp);
-                    runAs(sp, cmd);
+                    runAsOp(sp, cmd); // permission elevee : le livre s'ouvre meme pour les non-op
                 }));
 
         OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open, null);
@@ -123,5 +127,11 @@ public final class MainMenu {
 
     private static void runAs(ServerPlayer player, String command) {
         player.server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
+    }
+
+    /** Execute une commande au nom du joueur mais avec permission op (niveau 4). */
+    private static void runAsOp(ServerPlayer player, String command) {
+        player.server.getCommands().performPrefixedCommand(
+                player.createCommandSourceStack().withPermission(4), command);
     }
 }
