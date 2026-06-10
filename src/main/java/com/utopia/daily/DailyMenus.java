@@ -241,31 +241,31 @@ public final class DailyMenus {
     // =============================================================================================
 
     public static void openAdminMenu(ServerPlayer admin) {
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Daily - Administration", ChatFormatting.DARK_AQUA));
+        Component title = Component.literal("Daily - Administration")
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true));
+        List<Component> stats = List.of(Component.literal("Planification des recompenses & gestion des joueurs")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
-        gui.button(10, Icons.icon(Items.CHEST,
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST),
                 Icons.label("Calendrier des recompenses", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Planifier les recompenses par date", ChatFormatting.GRAY),
-                        Icons.lore("(1 a 2 mois a l'avance)", ChatFormatting.DARK_GRAY))),
-                sp -> openAdminCalendarRich(sp, YearMonth.from(DailyManager.today())));
-
-        gui.button(12, Icons.icon(Items.WRITABLE_BOOK,
+                Icons.lore("Planifier par date (1-2 mois a l'avance)", ChatFormatting.GRAY),
+                sp -> openAdminCalendarRich(sp, YearMonth.from(DailyManager.today()))));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
                 Icons.label("Recompense par defaut", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Donnee les jours SANS planning", ChatFormatting.GRAY))),
-                DailyMenus::openBaseRewardEditor);
-
-        gui.button(14, Icons.icon(Items.PLAYER_HEAD,
+                Icons.lore("Donnee les jours sans planning", ChatFormatting.GRAY),
+                DailyMenus::openBaseRewardEditor));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
                 Icons.label("Gestion des joueurs", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Series, reset, forcer une recompense", ChatFormatting.GRAY))),
-                DailyMenus::openPlayerList);
-
-        gui.button(16, Icons.icon(Items.COMPARATOR,
+                Icons.lore("Series, reset, forcer une recompense", ChatFormatting.GRAY),
+                DailyMenus::openPlayerList));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPARATOR),
                 Icons.label("Parametres actuels", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Afficher la configuration dans le chat", ChatFormatting.GRAY))),
-                DailyMenus::showSettings);
+                Icons.lore("Afficher la config dans le chat", ChatFormatting.GRAY),
+                DailyMenus::showSettings));
 
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                DailyMenus::openAdminMenu, com.utopia.menu.AdminMenu::open);
     }
 
     private static void showSettings(ServerPlayer admin) {
