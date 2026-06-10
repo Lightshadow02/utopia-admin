@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
  */
 public record OpenDailyPayload(int sessionId, Component title, Component streak,
                                int firstWeekday, int daysInMonth, List<Day> days,
-                               ItemStack nextIcon, List<Component> nextLore,
+                               List<ItemStack> nextIcons, List<Component> nextLore,
                                int prevId, int nextId, int claimId, int backId,
                                boolean canClaim) implements CustomPacketPayload {
 
@@ -41,7 +41,7 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
      * Si {@code actionId >= 0}, la case est cliquable et un clic renvoie cet id (reclamer cote joueur,
      * editer la recompense cote admin). {@code -1} = case non cliquable.
      */
-    public record Day(int day, int state, ItemStack reward, int actionId) {
+    public record Day(int day, int state, List<ItemStack> rewards, int actionId) {
     }
 
     public static final Type<OpenDailyPayload> TYPE =
@@ -49,6 +49,8 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
 
     private static final StreamCodec<RegistryFriendlyByteBuf, List<Component>> COMPONENTS =
             ComponentSerialization.STREAM_CODEC.apply(ByteBufCodecs.list());
+    private static final StreamCodec<RegistryFriendlyByteBuf, List<ItemStack>> ITEMS =
+            ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list());
 
     public static final StreamCodec<RegistryFriendlyByteBuf, OpenDailyPayload> STREAM_CODEC =
             StreamCodec.of(OpenDailyPayload::encode, OpenDailyPayload::decode);
@@ -63,10 +65,10 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
         for (Day d : p.days) {
             buf.writeVarInt(d.day());
             buf.writeByte(d.state());
-            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, d.reward());
+            ITEMS.encode(buf, d.rewards());
             buf.writeVarInt(d.actionId());
         }
-        ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.nextIcon);
+        ITEMS.encode(buf, p.nextIcons);
         COMPONENTS.encode(buf, p.nextLore);
         buf.writeVarInt(p.prevId);
         buf.writeVarInt(p.nextId);
@@ -86,11 +88,11 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
         for (int i = 0; i < n; i++) {
             int day = buf.readVarInt();
             int state = buf.readByte();
-            ItemStack reward = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+            List<ItemStack> rewards = ITEMS.decode(buf);
             int actionId = buf.readVarInt();
-            days.add(new Day(day, state, reward, actionId));
+            days.add(new Day(day, state, rewards, actionId));
         }
-        ItemStack nextIcon = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+        List<ItemStack> nextIcons = ITEMS.decode(buf);
         List<Component> nextLore = COMPONENTS.decode(buf);
         int prevId = buf.readVarInt();
         int nextId = buf.readVarInt();
@@ -98,7 +100,7 @@ public record OpenDailyPayload(int sessionId, Component title, Component streak,
         int backId = buf.readVarInt();
         boolean canClaim = buf.readBoolean();
         return new OpenDailyPayload(sessionId, title, streak, firstWeekday, daysInMonth, days,
-                nextIcon, nextLore, prevId, nextId, claimId, backId, canClaim);
+                nextIcons, nextLore, prevId, nextId, claimId, backId, canClaim);
     }
 
     @Override

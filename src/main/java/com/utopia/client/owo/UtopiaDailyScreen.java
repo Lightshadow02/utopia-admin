@@ -1,5 +1,6 @@
 package com.utopia.client.owo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.utopia.net.MenuC2SPayload;
@@ -44,6 +45,13 @@ public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
     private final OpenDailyPayload data;
     private boolean closeSent = false;
 
+    /** Une icone qui defile entre plusieurs items de recompense. */
+    private record Cycler(ItemComponent comp, List<ItemStack> stacks) {
+    }
+
+    private final List<Cycler> cyclers = new ArrayList<>();
+    private int cycleTicks = 0;
+
     public UtopiaDailyScreen(OpenDailyPayload data) {
         super(data.title());
         this.data = data;
@@ -59,7 +67,23 @@ public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        cycleTicks++;
+        if (cycleTicks % 25 != 0 || cyclers.isEmpty()) {
+            return; // change d'item ~ toutes les 1,25 s
+        }
+        int idx = cycleTicks / 25;
+        for (Cycler c : cyclers) {
+            if (c.stacks().size() > 1) {
+                c.comp().stack(c.stacks().get(idx % c.stacks().size()));
+            }
+        }
+    }
+
+    @Override
     protected void build(FlowLayout root) {
+        cyclers.clear();
         root.surface(Surface.VANILLA_TRANSLUCENT);
         root.horizontalAlignment(HorizontalAlignment.CENTER);
         root.verticalAlignment(VerticalAlignment.CENTER);
@@ -118,17 +142,21 @@ public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
         }
         panel.child(grid);
 
-        // Carte "prochaine recompense".
-        if (!data.nextLore().isEmpty() || !data.nextIcon().isEmpty()) {
+        // Carte "prochaine recompense" (icone qui defile entre les items s'il y en a plusieurs).
+        if (!data.nextLore().isEmpty() || !data.nextIcons().isEmpty()) {
             FlowLayout next = Containers.horizontalFlow(Sizing.fixed(GRID_WIDTH), Sizing.content());
             next.surface(OwoStyle.INFO);
             next.padding(Insets.of(6));
             next.gap(7);
             next.verticalAlignment(VerticalAlignment.CENTER);
-            if (!data.nextIcon().isEmpty()) {
-                ItemComponent icon = Components.item(data.nextIcon());
+            if (!data.nextIcons().isEmpty()) {
+                ItemComponent icon = Components.item(data.nextIcons().get(0));
                 icon.setTooltipFromStack(false);
+                icon.showOverlay(true);
                 next.child(icon);
+                if (data.nextIcons().size() > 1) {
+                    cyclers.add(new Cycler(icon, data.nextIcons()));
+                }
             }
             FlowLayout col = Containers.verticalFlow(Sizing.content(), Sizing.content());
             col.gap(1);
@@ -172,14 +200,13 @@ public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
         cell.child(Components.label(Component.literal(Integer.toString(d.day()))
                 .withStyle(s -> s.withColor(numberColor(d.state())).withItalic(false))));
 
-        if (!d.reward().isEmpty()) {
-            ItemComponent icon = Components.item(d.reward());
+        if (!d.rewards().isEmpty()) {
+            ItemComponent icon = Components.item(d.rewards().get(0));
             icon.setTooltipFromStack(true);
+            icon.showOverlay(true);
             cell.child(icon);
-            int count = d.reward().getCount();
-            if (count > 1) {
-                cell.child(Components.label(Component.literal("x" + count)
-                        .withStyle(s -> s.withColor(ChatFormatting.GREEN).withItalic(false))));
+            if (d.rewards().size() > 1) {
+                cyclers.add(new Cycler(icon, d.rewards()));
             }
         }
 

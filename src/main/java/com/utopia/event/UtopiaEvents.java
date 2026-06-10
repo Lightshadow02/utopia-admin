@@ -260,6 +260,7 @@ public final class UtopiaEvents {
         if (t % 10 == 0) {
             ParcelManager.renderTraces(server);
             ParcelHolograms.renderPreviews(server);
+            ParcelHolograms.renderNearby(server); // contour au sol des parcelles a < 20 blocs
             RoomManager.renderSelections(server);
         }
         // Synchronisation des hologrammes + balayage anti-feu (toutes les ~2s).

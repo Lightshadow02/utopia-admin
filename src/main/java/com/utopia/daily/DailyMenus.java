@@ -60,13 +60,13 @@ public final class DailyMenus {
             long epoch = date.toEpochDay();
             boolean claimed = DailyManager.hasClaimed(server, id, epoch);
             int state;
-            ItemStack reward = ItemStack.EMPTY;
+            List<ItemStack> rewards = new ArrayList<>();
             if (date.isEqual(today)) {
                 state = claimed ? OpenDailyPayload.TODAY_DONE : OpenDailyPayload.CLAIMABLE;
-                reward = firstReward(date);
+                rewards = allRewards(date);
             } else if (date.isAfter(today)) {
                 state = OpenDailyPayload.FUTURE;
-                reward = firstReward(date);
+                rewards = allRewards(date);
             } else if (claimed) {
                 state = OpenDailyPayload.CLAIMED;
             } else if (epoch >= todayEpoch - 70) {
@@ -76,7 +76,7 @@ public final class DailyMenus {
             }
             // Seul le jour reclamable est cliquable (id = claimId = 0).
             int actionId = state == OpenDailyPayload.CLAIMABLE ? 0 : -1;
-            days.add(new OpenDailyPayload.Day(dn, state, reward, actionId));
+            days.add(new OpenDailyPayload.Day(dn, state, rewards, actionId));
         }
 
         int streak = DailyManager.currentStreak(server, id);
@@ -91,18 +91,17 @@ public final class DailyMenus {
                 ? "Recompense du jour : disponible !"
                 : "Prochaine dans " + Messages.formatDuration(DailyManager.secondsUntilTomorrow()))
                 .withStyle(s -> s.withColor(available ? ChatFormatting.GREEN : ChatFormatting.YELLOW).withItalic(false)));
-        ItemStack nextIcon = new ItemStack(Items.CHEST);
-        boolean firstSpec = true;
+        List<ItemStack> nextIcons = new ArrayList<>();
         for (String spec : DailyManager.rewardSpecsFor(nextDay)) {
             ItemStack st = DailyManager.specToStack(spec);
             if (!st.isEmpty()) {
-                if (firstSpec) {
-                    nextIcon = st.copy();
-                    firstSpec = false;
-                }
+                nextIcons.add(st);
                 nextLore.add(Component.literal(" - " + st.getCount() + "x " + st.getHoverName().getString())
                         .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
             }
+        }
+        if (nextIcons.isEmpty()) {
+            nextIcons.add(new ItemStack(Items.CHEST));
         }
 
         Component title = Component.literal("Recompenses - " + monthName(ym) + " " + ym.getYear())
@@ -122,21 +121,14 @@ public final class DailyMenus {
         gui.button(nextId, ItemStack.EMPTY, sp -> openPlayerCalendarRich(sp, ym.plusMonths(1)));
         gui.button(backId, ItemStack.EMPTY, com.utopia.menu.MainMenu::open);
 
-        final ItemStack nextIconF = nextIcon;
         OwoMenuServer.openScreen(player, gui, sid -> MenuS2CPayload.of(new OpenDailyPayload(
                 sid, title, streakLine, firstWeekday, daysInMonth, days,
-                nextIconF, nextLore, prevId, nextId, claimId, backId, available)));
+                nextIcons, nextLore, prevId, nextId, claimId, backId, available)));
     }
 
-    /** Premiere recompense (non vide) prevue pour {@code date}, ou un stack vide. */
-    private static ItemStack firstReward(LocalDate date) {
-        for (String spec : DailyManager.rewardSpecsFor(date)) {
-            ItemStack st = DailyManager.specToStack(spec);
-            if (!st.isEmpty()) {
-                return st;
-            }
-        }
-        return ItemStack.EMPTY;
+    /** Toutes les recompenses (non vides) prevues pour {@code date}. */
+    private static List<ItemStack> allRewards(LocalDate date) {
+        return allSpecStacks(DailyManager.rewardSpecsFor(date));
     }
 
     /** Nom du mois en francais, premiere lettre en majuscule. */
@@ -366,7 +358,7 @@ public final class DailyMenus {
             LocalDate date = ym.atDay(dn);
             boolean isPast = date.isBefore(today);
             int state;
-            ItemStack reward = ItemStack.EMPTY;
+            List<ItemStack> rewards = new ArrayList<>();
             int actionId;
             if (isPast) {
                 state = OpenDailyPayload.OTHER;
@@ -377,12 +369,12 @@ public final class DailyMenus {
                     planned++;
                 }
                 state = has ? OpenDailyPayload.CLAIMED : OpenDailyPayload.FUTURE;
-                reward = has ? firstSpecStack(cal.getReward(date)) : ItemStack.EMPTY;
+                rewards = has ? allSpecStacks(cal.getReward(date)) : new ArrayList<>();
                 actionId = dn; // clic -> editer ce jour
                 final LocalDate dd = date;
                 gui.button(dn, ItemStack.EMPTY, sp -> openDayEditorRich(sp, dd, ym));
             }
-            days.add(new OpenDailyPayload.Day(dn, state, reward, actionId));
+            days.add(new OpenDailyPayload.Day(dn, state, rewards, actionId));
         }
         gui.button(prevId, ItemStack.EMPTY, sp -> openAdminCalendarRich(sp, ym.minusMonths(1)));
         gui.button(nextId, ItemStack.EMPTY, sp -> openAdminCalendarRich(sp, ym.plusMonths(1)));
@@ -400,7 +392,7 @@ public final class DailyMenus {
 
         OwoMenuServer.openScreen(admin, gui, sid -> MenuS2CPayload.of(new OpenDailyPayload(
                 sid, title, plannedLine, firstWeekday, daysInMonth, days,
-                new ItemStack(Items.WRITABLE_BOOK), help, prevId, nextId, -1, backId, false)));
+                List.of(new ItemStack(Items.WRITABLE_BOOK)), help, prevId, nextId, -1, backId, false)));
     }
 
     private static void openDayEditorRich(ServerPlayer admin, LocalDate date, YearMonth backTo) {
@@ -414,15 +406,16 @@ public final class DailyMenus {
                 sp -> openAdminCalendarRich(sp, backTo));
     }
 
-    /** Premiere recompense (non vide) d'une liste de specs, ou un stack vide. */
-    private static ItemStack firstSpecStack(List<? extends String> specs) {
+    /** Toutes les recompenses (non vides) d'une liste de specs. */
+    private static List<ItemStack> allSpecStacks(List<? extends String> specs) {
+        List<ItemStack> out = new ArrayList<>();
         for (String spec : specs) {
             ItemStack st = DailyManager.specToStack(spec);
             if (!st.isEmpty()) {
-                return st;
+                out.add(st);
             }
         }
-        return ItemStack.EMPTY;
+        return out;
     }
 
     // =============================================================================================

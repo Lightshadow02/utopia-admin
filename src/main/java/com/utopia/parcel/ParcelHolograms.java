@@ -90,6 +90,55 @@ public final class ParcelHolograms {
         }
     }
 
+    /** Distance (blocs) en deca de laquelle le contour d'une parcelle s'affiche automatiquement au joueur. */
+    private static final double NEAR_DIST = 20.0;
+
+    /**
+     * Affiche automatiquement le contour (au sol) des parcelles proches de chaque joueur (&lt; 20 blocs).
+     * A appeler periodiquement depuis le tick serveur.
+     */
+    public static void renderNearby(MinecraftServer server) {
+        ParcelData data = ParcelData.get(server);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            ServerLevel level = player.serverLevel();
+            ResourceLocation dim = level.dimension().location();
+            double px = player.getX();
+            double pz = player.getZ();
+            for (Parcel parcel : data.all()) {
+                if (!parcel.dimension().equals(dim)) {
+                    continue;
+                }
+                if (isNear(parcel, px, pz)) {
+                    drawOutline(level, player, parcel);
+                }
+            }
+        }
+    }
+
+    /** Vrai si le point (px, pz) est a moins de {@link #NEAR_DIST} blocs d'une boite/sommet de la parcelle. */
+    private static boolean isNear(Parcel parcel, double px, double pz) {
+        double maxSq = NEAR_DIST * NEAR_DIST;
+        for (Parcel.Box b : parcel.boxes()) {
+            double nx = Math.max(b.minX(), Math.min(px, b.maxX() + 1.0));
+            double nz = Math.max(b.minZ(), Math.min(pz, b.maxZ() + 1.0));
+            double dx = px - nx;
+            double dz = pz - nz;
+            if (dx * dx + dz * dz <= maxSq) {
+                return true;
+            }
+        }
+        for (Parcel.Poly poly : parcel.polys()) {
+            for (int i = 0; i < poly.xs().length; i++) {
+                double dx = px - (poly.xs()[i] + 0.5);
+                double dz = pz - (poly.zs()[i] + 0.5);
+                if (dx * dx + dz * dz <= maxSq) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private static void drawOutline(ServerLevel level, ServerPlayer player, Parcel parcel) {
         // Bleu = Habitation, Jaune = Commerce, Rouge = zone Admin.
         DustParticleOptions edgeColor;
