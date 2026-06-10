@@ -58,7 +58,8 @@ public final class OwoMenuServer {
             }
         }
         PacketDistributor.sendToPlayer(player,
-                MenuS2CPayload.of(new OpenMenuPayload(id, gui.title(), gui.rows(), items, clickable, gui.gridLayout())));
+                MenuS2CPayload.of(new OpenMenuPayload(id, gui.title(), gui.rows(), items, clickable,
+                        gui.gridLayout(), gui.iconOnly())));
     }
 
     /**

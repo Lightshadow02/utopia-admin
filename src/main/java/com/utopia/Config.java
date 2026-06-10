@@ -38,6 +38,7 @@ public final class Config {
     // ----------------------------------------------------------------------------------------
     public static final ModConfigSpec.IntValue DAILY_COOLDOWN_HOURS;
     public static final ModConfigSpec.BooleanValue DAILY_ANNOUNCE;
+    public static final ModConfigSpec.BooleanValue DAILY_DEFAULT_ENABLED;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> DAILY_ITEMS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> DAILY_COMMANDS;
 
@@ -123,6 +124,10 @@ public final class Config {
         DAILY_ANNOUNCE = BUILDER
                 .comment("Annoncer a tout le serveur quand un joueur reclame sa recompense.")
                 .define("announce", false);
+        DAILY_DEFAULT_ENABLED = BUILDER
+                .comment("Donner la recompense par defaut (items + commandes ci-dessous) les jours SANS planning calendaire.",
+                        "false = seuls les jours explicitement planifies dans le calendrier donnent quelque chose.")
+                .define("defaultRewardEnabled", true);
         DAILY_ITEMS = BUILDER
                 .comment("Items donnes a chaque recompense quotidienne (peut etre vide).")
                 .defineListAllowEmpty("items",

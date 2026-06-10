@@ -27,6 +27,7 @@ public final class UtopiaGui {
     private final Set<Integer> editable = new HashSet<>();
     private boolean editor = false;
     private boolean gridLayout = false;
+    private boolean iconOnly = false;
     private Consumer<ServerPlayer> onClose = sp -> { };
     private boolean finalized = false;
 
@@ -114,6 +115,19 @@ public final class UtopiaGui {
 
     public boolean gridLayout() {
         return gridLayout;
+    }
+
+    /** Rendu en icones seules (sans libelle, infobulle au survol) ; implique le mode grille. */
+    public UtopiaGui iconOnly(boolean v) {
+        this.iconOnly = v;
+        if (v) {
+            this.gridLayout = true;
+        }
+        return this;
+    }
+
+    public boolean iconOnly() {
+        return iconOnly;
     }
 
     boolean isEditable(int slot) {

@@ -166,10 +166,37 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
             if (isHidden(stack)) {
                 continue;
             }
-            grid.child(chip(stack, i, clickable.contains(i), 0), i / COLS, i % COLS);
+            FlowLayout cell = data.iconOnly() ? iconCell(stack, i, clickable.contains(i))
+                    : chip(stack, i, clickable.contains(i), 0);
+            grid.child(cell, i / COLS, i % COLS);
         }
         body.child(grid);
         return rows;
+    }
+
+    /** Cellule "icone seule" (sans libelle, infobulle au survol) pour les menus compacts. */
+    private FlowLayout iconCell(ItemStack stack, int slot, boolean isClickable) {
+        ItemComponent icon = Components.item(stack);
+        icon.setTooltipFromStack(true);
+
+        FlowLayout cell = Containers.horizontalFlow(Sizing.fixed(22), Sizing.fixed(22));
+        cell.horizontalAlignment(HorizontalAlignment.CENTER);
+        cell.verticalAlignment(VerticalAlignment.CENTER);
+        cell.margins(Insets.of(1));
+        cell.child(icon);
+        if (isClickable) {
+            cell.surface(BTN);
+            cell.cursorStyle(CursorStyle.POINTER);
+            cell.mouseEnter().subscribe(() -> cell.surface(BTN_HOVER));
+            cell.mouseLeave().subscribe(() -> cell.surface(BTN));
+            cell.mouseDown().subscribe((mouseX, mouseY, button) -> {
+                click(slot, button);
+                return true;
+            });
+        } else {
+            cell.surface(INFO);
+        }
+        return cell;
     }
 
     private static boolean isHidden(ItemStack stack) {

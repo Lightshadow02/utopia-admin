@@ -255,6 +255,17 @@ public final class DailyMenus {
                 Icons.label("Recompense par defaut", ChatFormatting.YELLOW),
                 Icons.lore("Donnee les jours sans planning", ChatFormatting.GRAY),
                 DailyMenus::openBaseRewardEditor));
+        boolean defOn = Config.DAILY_DEFAULT_ENABLED.get();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(defOn ? Items.LIME_DYE : Items.GRAY_DYE),
+                Icons.label("Defaut : " + (defOn ? "ACTIVE" : "DESACTIVE"),
+                        defOn ? ChatFormatting.GREEN : ChatFormatting.RED),
+                Icons.lore(defOn ? "Jours non planifies = recompense par defaut" : "Seuls les jours planifies donnent",
+                        ChatFormatting.GRAY),
+                sp -> {
+                    Config.DAILY_DEFAULT_ENABLED.set(!Config.DAILY_DEFAULT_ENABLED.get());
+                    Config.DAILY_DEFAULT_ENABLED.save();
+                    openAdminMenu(sp);
+                }));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
                 Icons.label("Gestion des joueurs", ChatFormatting.YELLOW),
                 Icons.lore("Series, reset, forcer une recompense", ChatFormatting.GRAY),
@@ -343,10 +354,11 @@ public final class DailyMenus {
         int firstWeekday = ym.atDay(1).getDayOfWeek().getValue() - 1; // 0 = lundi
         int daysInMonth = ym.lengthOfMonth();
 
-        int prevId = 90;
-        int nextId = 91;
-        int backId = 92;
-        UtopiaGui gui = new UtopiaGui(12, Component.literal("Calendrier")); // assez de slots pour 1..31 + 90..92
+        // Les jours occupent les ids 1..31 ; la nav doit rester < 54 (UtopiaGui plafonne a 6 rangees).
+        int prevId = 50;
+        int nextId = 51;
+        int backId = 52;
+        UtopiaGui gui = new UtopiaGui(6, Component.literal("Calendrier"));
 
         List<OpenDailyPayload.Day> days = new ArrayList<>(daysInMonth);
         int planned = 0;

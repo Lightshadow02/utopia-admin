@@ -66,6 +66,9 @@ public final class DailyManager {
         if (c.hasReward(date)) {
             return new ArrayList<>(c.getReward(date));
         }
+        if (!Config.DAILY_DEFAULT_ENABLED.get()) {
+            return new ArrayList<>(); // defaut desactive : un jour non planifie ne donne rien
+        }
         List<String> base = new ArrayList<>();
         for (String s : Config.DAILY_ITEMS.get()) {
             base.add(s);
@@ -125,10 +128,13 @@ public final class DailyManager {
             newStreak = 1; // jour(s) manque(s) -> serie reinitialisee
         }
 
-        // Recompense du jour (calendrier ou base) + commandes de base.
+        // Recompense du jour (calendrier ou base) + commandes de base (si le defaut est actif).
         List<String> items = rewardSpecsFor(today);
         int itemsGiven = giveItems(player, items);
-        runCommands(server, player, Config.DAILY_COMMANDS.get());
+        boolean defaultCommands = Config.DAILY_DEFAULT_ENABLED.get() && !Config.DAILY_COMMANDS.get().isEmpty();
+        if (defaultCommands) {
+            runCommands(server, player, Config.DAILY_COMMANDS.get());
+        }
 
         // Recompenses de palier (streak).
         List<Integer> reachedMilestones = new ArrayList<>();
@@ -155,7 +161,7 @@ public final class DailyManager {
             player.sendSystemMessage(Messages.success("Palier de serie atteint : recompense bonus du jour " + day + " !")
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
         }
-        if (itemsGiven == 0 && Config.DAILY_COMMANDS.get().isEmpty()) {
+        if (itemsGiven == 0 && !defaultCommands) {
             player.sendSystemMessage(Messages.info("(Aucune recompense particuliere prevue aujourd'hui.)"));
         }
 

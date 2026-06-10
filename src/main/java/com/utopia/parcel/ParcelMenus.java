@@ -6,6 +6,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.mojang.authlib.GameProfile;
 import com.utopia.data.ParcelData;
@@ -620,47 +621,64 @@ public final class ParcelMenus {
             openAdminZoneMenu(admin, parcelId, p);
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Admin : " + p.name(), ChatFormatting.DARK_RED));
+        // Menu compact : icones seules (infobulle au survol), positions en grille.
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Admin : " + p.name(), ChatFormatting.DARK_RED)).iconOnly(true);
+        Parcel.Type other = p.type() == Parcel.Type.COMMERCE ? Parcel.Type.HABITATION : Parcel.Type.COMMERCE;
 
+        // Categorie : icone en haut a GAUCHE (slot 0), avec confirmation.
+        gui.button(0, Icons.icon(p.type() == Parcel.Type.COMMERCE ? Items.YELLOW_WOOL : Items.BLUE_WOOL,
+                Icons.label("Categorie : " + p.type().label(),
+                        p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                List.of(Icons.lore("Clic : passer en " + other.label(), ChatFormatting.GRAY),
+                        Icons.lore("Contour bleu (habitation) / jaune (commerce)", ChatFormatting.DARK_GRAY))),
+                sp -> openConfirm(sp, Icons.label("Changer la categorie ?", ChatFormatting.GOLD),
+                        List.of(Icons.lore(p.type().label() + " -> " + other.label(), ChatFormatting.GRAY)),
+                        s2 -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur != null) {
+                                cur.setType(cur.type() == Parcel.Type.COMMERCE ? Parcel.Type.HABITATION : Parcel.Type.COMMERCE);
+                                ParcelData.get(server).setDirty();
+                            }
+                            openAdminParcel(s2, parcelId);
+                        },
+                        s2 -> openAdminParcel(s2, parcelId)));
+
+        // Info (centre haut, slot 4).
         gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), List.of(
-                Icons.lore(p.isAdmin() ? "Categorie : ADMIN (protegee, hors shop)" : "Categorie : " + p.type().label(),
-                        p.isAdmin() ? ChatFormatting.RED : p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                Icons.lore("Categorie : " + p.type().label(),
+                        p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
                 Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GOLD),
                 Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                         p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                Icons.lore("Dernier prix paye : " + EconomyManager.format(p.lastPaid()), ChatFormatting.DARK_GRAY),
                 Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY))));
 
-        // Bascule Habitation / Commerce (couleur du contour + item exige a l'achat).
-        gui.button(6, Icons.icon(p.type() == Parcel.Type.COMMERCE ? Items.YELLOW_WOOL : Items.BLUE_WOOL,
-                Icons.label("Categorie : " + p.type().label(), p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
-                List.of(Icons.lore("Clic : basculer Habitation / Commerce", ChatFormatting.GRAY),
-                        Icons.lore("Contour bleu (habitation) / jaune (commerce)", ChatFormatting.DARK_GRAY))),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        cur.setType(cur.type() == Parcel.Type.COMMERCE ? Parcel.Type.HABITATION : Parcel.Type.COMMERCE);
-                        ParcelData.get(server).setDirty();
-                    }
-                    openAdminParcel(sp, parcelId);
-                });
+        // Supprimer : icone en haut a DROITE (slot 8), avec confirmation.
+        gui.button(8, Icons.icon(Items.BARRIER, Icons.label("Supprimer la parcelle", ChatFormatting.RED),
+                List.of(Icons.lore("Suppression definitive (confirmation)", ChatFormatting.GRAY))),
+                sp -> openDeleteConfirm(sp, parcelId));
+
+        // Actions (rangee du milieu).
         gui.button(10, Icons.icon(Items.PLAYER_HEAD, Icons.label("Gerer les membres", ChatFormatting.YELLOW), List.of()),
                 sp -> openMembersMenu(sp, parcelId));
-        gui.button(12, Icons.icon(Items.NAME_TAG, Icons.label("Transferer (changer proprio)", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Choisir un nouveau proprietaire", ChatFormatting.GRAY))),
+        gui.button(11, Icons.icon(Items.NAME_TAG, Icons.label("Transferer le proprietaire", ChatFormatting.YELLOW), List.of()),
                 sp -> openTransferPicker(sp, parcelId));
-        gui.button(14, Icons.icon(Items.GOLD_BLOCK, Icons.label("Remettre en vente (Mairie)", ChatFormatting.GOLD),
-                List.of(Icons.lore("Retire au proprio, reliste au dernier prix paye", ChatFormatting.GRAY),
-                        Icons.lore("Prix : " + EconomyManager.format(p.lastPaid()), ChatFormatting.GREEN))),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        ParcelManager.repossess(server, cur);
-                        sp.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " remise en vente (" + EconomyManager.format(cur.price()) + ")."));
-                    }
-                    openAdminParcel(sp, parcelId);
-                });
-        gui.button(16, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
+        gui.button(12, Icons.icon(Items.GOLD_BLOCK, Icons.label("Remettre en vente (Mairie)", ChatFormatting.GOLD),
+                List.of(Icons.lore("Prix : " + EconomyManager.format(p.lastPaid()), ChatFormatting.GREEN))),
+                sp -> openConfirm(sp, Icons.label("Remettre en vente ?", ChatFormatting.GOLD),
+                        List.of(Icons.lore("Retire au proprio, reliste a " + EconomyManager.format(p.lastPaid()), ChatFormatting.GRAY)),
+                        s2 -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur != null) {
+                                ParcelManager.repossess(server, cur);
+                                s2.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " remise en vente."));
+                            }
+                            openAdminParcel(s2, parcelId);
+                        },
+                        s2 -> openAdminParcel(s2, parcelId)));
+        gui.button(13, Icons.icon(Items.SUNFLOWER, Icons.label("Changer le prix", ChatFormatting.GOLD),
+                List.of(Icons.lore("Actuel : " + EconomyManager.format(p.price()), ChatFormatting.GRAY))),
+                sp -> openAdminPriceMenu(sp, parcelId));
+        gui.button(14, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
                 sp -> {
                     Parcel cur = getParcel(server, parcelId);
                     if (cur != null) {
@@ -668,48 +686,58 @@ public final class ParcelMenus {
                     }
                     com.utopia.gui.Menus.close(sp);
                 });
-        // Bascule parcelle Admin : protection serveur, hors shop, sans proprietaire.
-        gui.button(24, p.isAdmin()
-                        ? Icons.icon(Items.GRASS_BLOCK, Icons.label("Retirer le statut Admin", ChatFormatting.YELLOW),
-                                List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY)))
-                        : Icons.icon(Items.BEDROCK, Icons.label("Marquer comme Admin", ChatFormatting.RED),
-                                List.of(Icons.lore("Protegee anti-grief, hors shop, sans proprio", ChatFormatting.GRAY))),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        ParcelManager.makeAdmin(cur, !cur.isAdmin());
-                        ParcelData.get(server).setDirty();
-                        sp.sendSystemMessage(Messages.success(cur.isAdmin()
-                                ? "Parcelle " + cur.id() + " marquee ADMIN (protegee, hors shop)."
-                                : "Parcelle " + cur.id() + " n'est plus admin."));
-                    }
-                    openAdminParcel(sp, parcelId);
-                });
+        gui.button(15, Icons.icon(Items.BEDROCK, Icons.label("Marquer comme Admin", ChatFormatting.RED),
+                List.of(Icons.lore("Protegee anti-grief, hors shop, sans proprio", ChatFormatting.GRAY))),
+                sp -> openConfirm(sp, Icons.label("Marquer comme Admin ?", ChatFormatting.RED),
+                        List.of(Icons.lore("Protegee, hors shop, sans proprietaire", ChatFormatting.GRAY)),
+                        s2 -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur != null) {
+                                ParcelManager.makeAdmin(cur, true);
+                                ParcelData.get(server).setDirty();
+                                s2.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " marquee ADMIN."));
+                            }
+                            openAdminParcel(s2, parcelId);
+                        },
+                        s2 -> openAdminParcel(s2, parcelId)));
         if (p.forSale()) {
-            gui.button(22, Icons.icon(Items.ARMOR_STAND, Icons.label("Deplacer l'hologramme", ChatFormatting.AQUA),
-                    List.of(Icons.lore("Fleches pour ajuster X / Y / Z", ChatFormatting.GRAY))),
+            gui.button(16, Icons.icon(Items.ARMOR_STAND, Icons.label("Deplacer l'hologramme", ChatFormatting.AQUA), List.of()),
                     sp -> openHoloMove(sp, parcelId, true));
         }
-        gui.button(20, Icons.icon(Items.SUNFLOWER, Icons.label("Changer le prix", ChatFormatting.GOLD),
-                List.of(Icons.lore("Prix actuel : " + EconomyManager.format(p.price()), ChatFormatting.GRAY))),
-                sp -> openAdminPriceMenu(sp, parcelId));
-        gui.button(8, Icons.icon(Items.BARRIER, Icons.label("Supprimer la parcelle", ChatFormatting.RED),
-                List.of(Icons.lore("Suppression definitive (avec confirmation)", ChatFormatting.GRAY))),
-                sp -> openDeleteConfirm(sp, parcelId));
-        gui.button(18, Icons.icon(Items.ARROW, Icons.label("Retour (liste)", ChatFormatting.YELLOW), List.of()),
+
+        // Retour : fleche en bas a gauche (slot 18).
+        gui.button(18, Icons.icon(Items.ARROW, Icons.label("< Retour", ChatFormatting.YELLOW), List.of()),
                 ParcelMenus::openAdminAll);
+        Menus.open(admin, gui);
+    }
+
+    /** Petit ecran de confirmation generique (Confirmer / Annuler) avec une icone d'info. */
+    private static void openConfirm(ServerPlayer admin, Component title, List<Component> lore,
+                                    Consumer<ServerPlayer> onYes, Consumer<ServerPlayer> onCancel) {
+        UtopiaGui gui = new UtopiaGui(3, title);
+        gui.set(4, Icons.icon(Items.PAPER, title, lore));
+        gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("Confirmer", ChatFormatting.GREEN), List.of()),
+                onYes::accept);
+        gui.button(15, Icons.icon(Items.RED_DYE, Icons.label("Annuler", ChatFormatting.RED), List.of()),
+                onCancel::accept);
         gui.fillEmpty();
         Menus.open(admin, gui);
     }
 
-    /** Menu simplifie d'une zone Admin : apercu, TP, droits globaux, statut, suppression. */
+    /** Menu compact d'une zone Admin : apercu, TP, droits globaux, statut, suppression. */
     private static void openAdminZoneMenu(ServerPlayer admin, String parcelId, Parcel p) {
         MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Zone Admin : " + p.id(), ChatFormatting.DARK_RED));
+        UtopiaGui gui = new UtopiaGui(3, Icons.label("Zone Admin : " + p.id(), ChatFormatting.DARK_RED)).iconOnly(true);
+
         gui.set(4, Icons.icon(Items.BEDROCK, Icons.label("Zone Admin : " + p.id(), ChatFormatting.RED), List.of(
                 Icons.lore("Protegee (anti-grief), hors shop", ChatFormatting.GRAY),
                 Icons.lore("Regions : " + p.regionCount(), ChatFormatting.DARK_GRAY),
                 Icons.lore("Droits de tous : " + publicFlagsSummary(p), ChatFormatting.AQUA))));
+
+        // Supprimer : icone en haut a DROITE (slot 8), avec confirmation.
+        gui.button(8, Icons.icon(Items.BARRIER, Icons.label("Supprimer la zone", ChatFormatting.RED),
+                List.of(Icons.lore("Suppression definitive (confirmation)", ChatFormatting.GRAY))),
+                sp -> openDeleteConfirm(sp, parcelId));
 
         gui.button(10, Icons.icon(Items.GLOWSTONE_DUST, Icons.label("Voir les delimitations (30s)", ChatFormatting.YELLOW), List.of()),
                 sp -> {
@@ -732,20 +760,22 @@ public final class ParcelMenus {
                 sp -> openAdminPublicFlags(sp, parcelId));
         gui.button(16, Icons.icon(Items.GRASS_BLOCK, Icons.label("Retirer le statut Admin", ChatFormatting.YELLOW),
                 List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY))),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        ParcelManager.makeAdmin(cur, false);
-                        ParcelData.get(server).setDirty();
-                        sp.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " n'est plus admin."));
-                    }
-                    openAdminParcel(sp, parcelId);
-                });
-        gui.button(21, Icons.icon(Items.BARRIER, Icons.label("Supprimer la zone", ChatFormatting.RED), List.of()),
-                sp -> openDeleteConfirm(sp, parcelId));
-        gui.button(23, Icons.icon(Items.ARROW, Icons.label("Retour (liste)", ChatFormatting.YELLOW), List.of()),
+                sp -> openConfirm(sp, Icons.label("Retirer le statut Admin ?", ChatFormatting.YELLOW),
+                        List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY)),
+                        s2 -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur != null) {
+                                ParcelManager.makeAdmin(cur, false);
+                                ParcelData.get(server).setDirty();
+                                s2.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " n'est plus admin."));
+                            }
+                            openAdminParcel(s2, parcelId);
+                        },
+                        s2 -> openAdminParcel(s2, parcelId)));
+
+        // Retour : fleche en bas a gauche (slot 18).
+        gui.button(18, Icons.icon(Items.ARROW, Icons.label("< Retour", ChatFormatting.YELLOW), List.of()),
                 sp -> openAdminAll(sp));
-        gui.fillEmpty();
         Menus.open(admin, gui);
     }
 
