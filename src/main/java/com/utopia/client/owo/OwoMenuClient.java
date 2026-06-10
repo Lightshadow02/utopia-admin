@@ -5,6 +5,7 @@ import com.utopia.net.OpenAmountPayload;
 import com.utopia.net.OpenDailyPayload;
 import com.utopia.net.OpenHubPayload;
 import com.utopia.net.OpenMenuPayload;
+import com.utopia.net.OpenPanelPayload;
 import com.utopia.net.OpenTextPayload;
 
 import net.minecraft.client.Minecraft;
@@ -29,6 +30,8 @@ public final class OwoMenuClient {
                 mc.setScreen(null);
             } else if (mc.screen instanceof UtopiaDailyScreen daily && daily.sessionId() == payload.sessionId()) {
                 mc.setScreen(null);
+            } else if (mc.screen instanceof UtopiaPanelScreen panel && panel.sessionId() == payload.sessionId()) {
+                mc.setScreen(null);
             }
         });
     }
@@ -39,6 +42,10 @@ public final class OwoMenuClient {
 
     public static void handleDaily(OpenDailyPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaDailyScreen(payload)));
+    }
+
+    public static void handlePanel(OpenPanelPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaPanelScreen(payload)));
     }
 
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {

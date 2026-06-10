@@ -40,6 +40,14 @@ public final class OwoMenuServer {
     public record HubEntry(ItemStack icon, Component label, Component sublabel, Consumer<ServerPlayer> action) {
     }
 
+    /** Une ligne d'un panneau de reglages : libelle + valeur + (libelle de bouton + action, optionnels). */
+    public record PanelRow(Component label, Component value, Component buttonLabel, Consumer<ServerPlayer> action) {
+    }
+
+    /** Un bouton d'action du pied de page d'un panneau. */
+    public record PanelAction(Component label, Consumer<ServerPlayer> action) {
+    }
+
     private static final Map<UUID, Session> SESSIONS = new ConcurrentHashMap<>();
     private static final AtomicInteger COUNTER = new AtomicInteger();
 
@@ -104,6 +112,50 @@ public final class OwoMenuServer {
         int id = COUNTER.incrementAndGet();
         SESSIONS.put(player.getUUID(), new Session(id, actionGui, null, null));
         PacketDistributor.sendToPlayer(player, payloadFactory.apply(id));
+    }
+
+    /**
+     * Ouvre un ecran "panneau de reglages" : une liste de lignes (libelle + valeur + bouton optionnel)
+     * et un pied de page d'actions, avec retour + rafraichir. Tous les ids restent &lt; 54 (taille max
+     * du conteneur d'actions). Reutilise le canal de menu existant.
+     */
+    public static void openPanel(ServerPlayer player, Component title, List<PanelRow> rows,
+                                 List<PanelAction> footer, Consumer<ServerPlayer> onRefresh,
+                                 Consumer<ServerPlayer> onBack) {
+        int id = COUNTER.incrementAndGet();
+        UtopiaGui gui = new UtopiaGui(6, title); // 54 slots d'actions
+
+        List<OpenPanelPayload.Row> netRows = new ArrayList<>(rows.size());
+        int nextId = 0;
+        for (PanelRow r : rows) {
+            int buttonId = -1;
+            if (r.action() != null) {
+                buttonId = nextId++;
+                gui.button(buttonId, ItemStack.EMPTY, r.action());
+            }
+            netRows.add(new OpenPanelPayload.Row(r.label(), r.value(), buttonId,
+                    r.buttonLabel() == null ? Component.empty() : r.buttonLabel()));
+        }
+        List<OpenPanelPayload.Action> netFooter = new ArrayList<>(footer.size());
+        for (PanelAction a : footer) {
+            int aid = nextId++;
+            gui.button(aid, ItemStack.EMPTY, a.action());
+            netFooter.add(new OpenPanelPayload.Action(aid, a.label()));
+        }
+        int refreshId = -1;
+        if (onRefresh != null) {
+            refreshId = nextId++;
+            gui.button(refreshId, ItemStack.EMPTY, onRefresh);
+        }
+        int backId = -1;
+        if (onBack != null) {
+            backId = nextId++;
+            gui.button(backId, ItemStack.EMPTY, onBack);
+        }
+
+        SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
+        PacketDistributor.sendToPlayer(player,
+                MenuS2CPayload.of(new OpenPanelPayload(id, title, netRows, netFooter, refreshId, backId)));
     }
 
     /** Ouvre un ecran de saisie de montant ; {@code onConfirm} recoit la valeur (deja bornee). */

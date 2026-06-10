@@ -34,6 +34,8 @@ public final class UtopiaNet {
                         com.utopia.client.owo.OwoMenuClient.handleHub((OpenHubPayload) payload.data(), context);
                 case MenuS2CPayload.OPEN_DAILY ->
                         com.utopia.client.owo.OwoMenuClient.handleDaily((OpenDailyPayload) payload.data(), context);
+                case MenuS2CPayload.OPEN_PANEL ->
+                        com.utopia.client.owo.OwoMenuClient.handlePanel((OpenPanelPayload) payload.data(), context);
                 default -> { /* variante inconnue : ignore */ }
             }
         });
