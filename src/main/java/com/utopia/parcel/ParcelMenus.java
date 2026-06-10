@@ -247,44 +247,67 @@ public final class ParcelMenus {
             player.sendSystemMessage(Messages.error("Acces refuse."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Vendre : " + p.name(), ChatFormatting.GOLD));
-
         long refund = Math.round(p.lastPaid() * ParcelManager.SERVER_BUYBACK_RATE);
-        gui.button(10, Icons.icon(Items.HOPPER, Icons.label("Vendre a la Mairie", ChatFormatting.YELLOW), List.of(
-                Icons.lore("Immediat. Remboursement : " + EconomyManager.format(refund) + " (75%)", ChatFormatting.GRAY),
-                Icons.lore("La parcelle repart en vente cote Mairie.", ChatFormatting.DARK_GRAY))),
-                sp -> {
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("A la Mairie", ChatFormatting.GRAY),
+                Icons.label(EconomyManager.format(refund) + " (75%)", ChatFormatting.GOLD),
+                Icons.label("Vendre", ChatFormatting.YELLOW),
+                sp -> openConfirm(sp, Icons.label("Vendre a la Mairie ?", ChatFormatting.GOLD),
+                        List.of(Icons.lore("Rembourse " + EconomyManager.format(refund) + " ; la parcelle repart en vente Mairie", ChatFormatting.GRAY)),
+                        s2 -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur == null || !cur.isOwner(s2.getUUID())) {
+                                s2.sendSystemMessage(Messages.error("Vous n'etes pas proprietaire."));
+                                return;
+                            }
+                            long r = ParcelManager.sellToServer(s2, cur);
+                            s2.sendSystemMessage(Messages.success("Parcelle vendue a la Mairie. Rembourse : " + EconomyManager.format(r) + "."));
+                            com.utopia.gui.Menus.close(s2);
+                        },
+                        s2 -> openSellMenu(s2, parcelId))));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Aux joueurs", ChatFormatting.GRAY),
+                Icons.label(p.forSale() ? EconomyManager.format(p.price()) : "prix libre",
+                        p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label("Definir", ChatFormatting.YELLOW),
+                sp -> openListPriceMenu(sp, parcelId)));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("En vente", ChatFormatting.GRAY),
+                Icons.label(p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non",
+                        p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                p.forSale() ? Icons.label("Retirer", ChatFormatting.RED) : null,
+                p.forSale() ? sp -> {
                     Parcel cur = getParcel(server, parcelId);
-                    if (cur == null || !cur.isOwner(sp.getUUID())) {
-                        sp.sendSystemMessage(Messages.error("Vous n'etes pas proprietaire."));
-                        return;
+                    if (cur != null && canManage(sp, cur)) {
+                        cur.setForSale(false);
+                        ParcelData.get(server).setDirty();
+                        sp.sendSystemMessage(Messages.success("Parcelle retiree de la vente."));
                     }
-                    long r = ParcelManager.sellToServer(sp, cur);
-                    sp.sendSystemMessage(Messages.success("Parcelle vendue a la Mairie. Rembourse : " + EconomyManager.format(r) + "."));
-                    com.utopia.gui.Menus.close(sp);
-                });
+                    openSellMenu(sp, parcelId);
+                } : null));
 
-        gui.button(13, Icons.icon(EconomyManager.coinItem(), Icons.label("Mettre en vente (joueurs)", ChatFormatting.GOLD),
-                List.of(Icons.lore("Choisir un prix ; un joueur pourra l'acheter", ChatFormatting.GRAY))),
-                sp -> openListPriceMenu(sp, parcelId));
+        OwoMenuServer.openPanel(player, Icons.label("Vendre - " + p.id(), ChatFormatting.GOLD),
+                rows, List.of(), sp -> openSellMenu(sp, parcelId), sp -> backToParcelMenu(sp, parcelId));
+    }
 
-        if (p.forSale()) {
-            gui.button(15, Icons.icon(Items.BARRIER, Icons.label("Retirer de la vente", ChatFormatting.RED), List.of()),
-                    sp -> {
-                        Parcel cur = getParcel(server, parcelId);
-                        if (cur != null && canManage(sp, cur)) {
-                            cur.setForSale(false);
-                            ParcelData.get(server).setDirty();
-                            sp.sendSystemMessage(Messages.success("Parcelle retiree de la vente."));
-                        }
-                        openParcelMenuFor(sp, parcelId);
-                    });
+    /** Retour contextuel : proprietaire -> "Mes parcelles" ; sinon (admin) -> panneau admin. */
+    private static void backToParcelMenu(ServerPlayer player, String parcelId) {
+        Parcel p = getParcel(player.server, parcelId);
+        if (p != null && p.isOwner(player.getUUID())) {
+            List<Parcel> owned = new ArrayList<>(ParcelData.get(player.server).ownedBy(player.getUUID()));
+            owned.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
+            int idx = 0;
+            for (int i = 0; i < owned.size(); i++) {
+                if (owned.get(i).id().equalsIgnoreCase(parcelId)) {
+                    idx = i;
+                    break;
+                }
+            }
+            openMyParcels(player, idx);
+        } else {
+            openAdminParcel(player, parcelId);
         }
-
-        gui.button(26, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openParcelMenuFor(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(player, gui);
     }
 
     /** Reglage du prix de mise en vente (joueurs) par paliers. */
@@ -372,31 +395,27 @@ public final class ParcelMenus {
             player.sendSystemMessage(Messages.error("Acces refuse."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Membres : " + p.name(), ChatFormatting.DARK_AQUA));
+        Component title = Icons.label("Membres - " + p.id(), ChatFormatting.DARK_AQUA);
+        List<Component> stats = List.of(Component.literal(p.members().size() + " membre(s)")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
-        int slot = 0;
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LIME_DYE),
+                Icons.label("+ Ajouter un membre", ChatFormatting.GREEN),
+                Icons.lore("Choisir un joueur en ligne", ChatFormatting.GRAY),
+                sp -> openAddMemberMenu(sp, parcelId)));
         for (var entry : p.members().entrySet()) {
-            if (slot > 44) {
-                break;
-            }
             UUID memberId = entry.getKey();
-            List<Component> lore = new ArrayList<>();
-            for (Parcel.Flag f : FLAGS) {
-                boolean on = entry.getValue().contains(f);
-                lore.add(Icons.lore((on ? "[x] " : "[ ] ") + flagLabel(f), on ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
-            }
-            lore.add(Icons.lore("Clic pour modifier", ChatFormatting.YELLOW));
-            gui.button(slot++, head(server, memberId, Icons.label(nameOf(server, memberId), ChatFormatting.WHITE), lore),
-                    sp -> openMemberEditMenu(sp, parcelId, memberId));
+            int count = entry.getValue().size();
+            entries.add(new OwoMenuServer.HubEntry(
+                    head(server, memberId, Icons.label(nameOf(server, memberId), ChatFormatting.WHITE), List.of()),
+                    Icons.label(nameOf(server, memberId), ChatFormatting.WHITE),
+                    Icons.lore(count + " droit(s)", ChatFormatting.AQUA),
+                    sp -> openMemberEditMenu(sp, parcelId, memberId)));
         }
 
-        gui.button(49, Icons.icon(Items.LIME_DYE, Icons.label("Ajouter un membre", ChatFormatting.GREEN),
-                List.of(Icons.lore("Choisir un joueur en ligne", ChatFormatting.GRAY))),
-                sp -> openAddMemberMenu(sp, parcelId));
-        gui.button(53, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openParcelMenuFor(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        OwoMenuServer.openHub(player, title, stats, entries,
+                sp -> openMembersMenu(sp, parcelId), sp -> backToParcelMenu(sp, parcelId));
     }
 
     public static void openMemberEditMenu(ServerPlayer player, String parcelId, UUID memberId) {
@@ -412,35 +431,34 @@ public final class ParcelMenus {
             return;
         }
 
-        UtopiaGui gui = new UtopiaGui(3,
-                Icons.label("Droits : " + nameOf(server, memberId), ChatFormatting.DARK_AQUA));
-        gui.set(4, head(server, memberId, Icons.label(nameOf(server, memberId), ChatFormatting.WHITE),
-                List.of(Icons.lore("Cliquez les boutons pour activer/desactiver", ChatFormatting.GRAY))));
-
-        int[] slots = { 10, 11, 12, 13, 14 };
-        for (int i = 0; i < FLAGS.length; i++) {
-            Parcel.Flag flag = FLAGS[i];
+        Component title = Icons.label("Droits de " + nameOf(server, memberId), ChatFormatting.DARK_AQUA);
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (Parcel.Flag flag : FLAGS) {
             boolean on = flags.contains(flag);
-            gui.button(slots[i], Icons.icon(on ? Items.LIME_DYE : Items.GRAY_DYE,
-                    Icons.label(flagLabel(flag), on ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                    List.of(Icons.lore(on ? "Active - clic pour desactiver" : "Desactive - clic pour activer", ChatFormatting.GRAY))),
-                    sp -> toggleFlag(sp, parcelId, memberId, flag));
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(flagLabel(flag), ChatFormatting.GRAY),
+                    Icons.label(on ? "OUI" : "non", on ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                    Icons.label("Changer", ChatFormatting.YELLOW),
+                    sp -> toggleFlag(sp, parcelId, memberId, flag)));
         }
 
-        gui.button(21, Icons.icon(Items.BARRIER, Icons.label("Retirer ce membre", ChatFormatting.RED), List.of()),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null && canManage(sp, cur)) {
-                        cur.setMember(memberId, EnumSet.noneOf(Parcel.Flag.class));
-                        ParcelData.get(server).setDirty();
-                        sp.sendSystemMessage(Messages.success(nameOf(server, memberId) + " retire de la parcelle."));
-                    }
-                    openMembersMenu(sp, parcelId);
-                });
-        gui.button(23, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openMembersMenu(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Retirer le membre", ChatFormatting.RED),
+                        sp -> openConfirm(sp, Icons.label("Retirer ce membre ?", ChatFormatting.RED),
+                                List.of(Icons.lore(nameOf(server, memberId) + " perdra tous ses droits", ChatFormatting.GRAY)),
+                                s2 -> {
+                                    Parcel cur = getParcel(server, parcelId);
+                                    if (cur != null && canManage(s2, cur)) {
+                                        cur.setMember(memberId, EnumSet.noneOf(Parcel.Flag.class));
+                                        ParcelData.get(server).setDirty();
+                                        s2.sendSystemMessage(Messages.success(nameOf(server, memberId) + " retire de la parcelle."));
+                                    }
+                                    openMembersMenu(s2, parcelId);
+                                },
+                                s2 -> openMemberEditMenu(s2, parcelId, memberId))));
+
+        OwoMenuServer.openPanel(player, title, rows, footer,
+                sp -> openMemberEditMenu(sp, parcelId, memberId), sp -> openMembersMenu(sp, parcelId));
     }
 
     private static void toggleFlag(ServerPlayer player, String parcelId, UUID memberId, Parcel.Flag flag) {
@@ -476,38 +494,30 @@ public final class ParcelMenus {
             player.sendSystemMessage(Messages.error("Acces refuse."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Ajouter un membre", ChatFormatting.DARK_AQUA));
-
-        int slot = 0;
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer online : server.getPlayerList().getPlayers()) {
-            if (slot > 44) {
-                break;
-            }
             UUID id = online.getUUID();
             if (p.isOwner(id) || p.members().containsKey(id)) {
                 continue; // deja proprietaire ou membre
             }
-            gui.button(slot++, Icons.playerHead(online, Icons.label(online.getGameProfile().getName(), ChatFormatting.WHITE),
-                    List.of(Icons.lore("Clic pour ajouter (tous les droits par defaut)", ChatFormatting.GRAY))),
+            String oname = online.getGameProfile().getName();
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(online, Icons.label(oname, ChatFormatting.WHITE), List.of()),
+                    Icons.label(oname, ChatFormatting.WHITE),
+                    Icons.lore("Ajouter (tous les droits)", ChatFormatting.GRAY),
                     sp -> {
                         Parcel cur = getParcel(server, parcelId);
                         if (cur != null && canManage(sp, cur)) {
                             cur.setMember(id, EnumSet.allOf(Parcel.Flag.class));
                             ParcelData.get(server).setDirty();
-                            sp.sendSystemMessage(Messages.success(online.getGameProfile().getName() + " ajoute. Ajustez ses droits."));
+                            sp.sendSystemMessage(Messages.success(oname + " ajoute. Ajustez ses droits."));
                             openMemberEditMenu(sp, parcelId, id);
                         }
-                    });
-        }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucun joueur disponible", ChatFormatting.RED),
-                    List.of(Icons.lore("Les joueurs hors ligne s'ajoutent via /parcel trust", ChatFormatting.GRAY))));
+                    }));
         }
 
-        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openMembersMenu(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        OwoMenuServer.openHub(player, Icons.label("Ajouter un membre", ChatFormatting.DARK_AQUA),
+                List.of(), entries, sp -> openAddMemberMenu(sp, parcelId), sp -> openMembersMenu(sp, parcelId));
     }
 
     // ----------------------------------------------------------------------------------- shop joueur
