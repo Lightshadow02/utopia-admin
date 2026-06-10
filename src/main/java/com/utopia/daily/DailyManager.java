@@ -116,6 +116,13 @@ public final class DailyManager {
             return false;
         }
 
+        // Inventaire plein : on bloque la reclamation pour ne rien jeter au sol / perdre.
+        List<String> todaySpecs = rewardSpecsFor(today);
+        if (!force && !hasRoomFor(player, todaySpecs)) {
+            player.sendSystemMessage(Messages.warn("Inventaire plein ! Libere de la place avant de reclamer ta recompense."));
+            return false;
+        }
+
         // Calcul de la serie.
         int newStreak;
         if (alreadyToday) {
@@ -129,7 +136,7 @@ public final class DailyManager {
         }
 
         // Recompense du jour (calendrier ou base) + commandes de base (si le defaut est actif).
-        List<String> items = rewardSpecsFor(today);
+        List<String> items = todaySpecs;
         int itemsGiven = giveItems(player, items);
         boolean defaultCommands = Config.DAILY_DEFAULT_ENABLED.get() && !Config.DAILY_COMMANDS.get().isEmpty();
         if (defaultCommands) {
@@ -304,6 +311,43 @@ public final class DailyManager {
             }
         }
         return out;
+    }
+
+    /** Vrai s'il reste assez de slots libres dans l'inventaire principal pour toutes les recompenses. */
+    private static boolean hasRoomFor(ServerPlayer player, List<? extends String> itemSpecs) {
+        int needed = 0;
+        for (String spec : itemSpecs) {
+            String trimmed = spec.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            String[] parts = trimmed.split("\\s+");
+            ResourceLocation id = ResourceLocation.tryParse(parts[0]);
+            if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) {
+                continue;
+            }
+            int count = 1;
+            if (parts.length >= 2) {
+                try {
+                    count = Math.max(1, Integer.parseInt(parts[1]));
+                } catch (NumberFormatException ignored) {
+                    count = 1;
+                }
+            }
+            int maxStack = new ItemStack(BuiltInRegistries.ITEM.get(id)).getMaxStackSize();
+            needed += (count + maxStack - 1) / maxStack;
+        }
+        if (needed == 0) {
+            return true;
+        }
+        int free = 0;
+        var main = player.getInventory().items;
+        for (int i = 0; i < main.size(); i++) {
+            if (main.get(i).isEmpty()) {
+                free++;
+            }
+        }
+        return free >= needed;
     }
 
     /** Donne tous les items decrits par la liste de specs. Renvoie le nombre d'entrees distribuees. */

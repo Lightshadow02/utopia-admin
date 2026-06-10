@@ -149,19 +149,7 @@ public final class ParcelMenus {
                     Icons.lore("Ajuster X / Y / Z", ChatFormatting.GRAY),
                     sp -> openHoloMove(sp, parcelId, false)));
         }
-        // TP vers la parcelle : reserve aux admins (op niveau 2).
-        if (player.hasPermissions(2)) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_PEARL),
-                    Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE),
-                    Icons.lore("Vers la parcelle", ChatFormatting.GRAY),
-                    sp -> {
-                        Parcel cur = getParcel(sp.server, parcelId);
-                        if (cur != null) {
-                            teleportTo(sp, cur);
-                        }
-                        com.utopia.gui.Menus.close(sp);
-                    }));
-        }
+        // (Pas de teleportation cote joueur : reservee a l'admin.)
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GLOWSTONE_DUST),
                 Icons.label("Voir les delimitations", ChatFormatting.YELLOW),
                 Icons.lore("Affiche le contour 30 s", ChatFormatting.GRAY),
@@ -585,26 +573,48 @@ public final class ParcelMenus {
         if (slot == 0) {
             gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucune parcelle", ChatFormatting.RED), List.of()));
         }
-        // Creer une parcelle Admin depuis le trace en cours (rangee du bas).
-        gui.button(49, Icons.icon(Items.BEDROCK, Icons.label("Creer une parcelle Admin", ChatFormatting.RED),
-                List.of(Icons.lore("Trace d'abord la zone au wand (clic droit au sol)", ChatFormatting.GRAY),
-                        Icons.lore("Puis saisis un identifiant", ChatFormatting.GRAY))),
-                sp -> Menus.promptText(sp,
-                        Icons.label("Nouvelle parcelle Admin", ChatFormatting.DARK_RED),
-                        List.of(Icons.lore("Identifiant (lettres, chiffres, _ , -)", ChatFormatting.GRAY),
-                                Icons.lore("La zone = ton trace au wand", ChatFormatting.DARK_GRAY)),
-                        Icons.label("Creer", ChatFormatting.GREEN), "", 24,
-                        id -> {
-                            Parcel created = ParcelManager.createFromTrace(sp, id, true);
-                            if (created != null) {
-                                sp.sendSystemMessage(Messages.success("Parcelle Admin '" + created.id() + "' creee."));
-                                openAdminParcel(sp, created.id());
-                            } else {
-                                openAdminAll(sp);
-                            }
-                        }));
+        // Rangee du bas : outil + creation par type (trace d'abord la zone au wand).
+        gui.button(45, Icons.icon(ParcelManager.wandItem(), Icons.label("Recevoir le wand parcelle", ChatFormatting.LIGHT_PURPLE),
+                List.of(Icons.lore("Clic droit au sol pour tracer les points", ChatFormatting.GRAY),
+                        Icons.lore("Puis utilise un bouton Creer ci-dessous", ChatFormatting.DARK_GRAY))),
+                sp -> {
+                    sp.getInventory().add(new ItemStack(ParcelManager.wandItem()));
+                    sp.sendSystemMessage(Messages.success("Wand parcelle recu. Clic droit au sol pour tracer."));
+                    com.utopia.gui.Menus.close(sp);
+                });
+        gui.button(47, Icons.icon(Items.BLUE_WOOL, Icons.label("Creer : Habitation", ChatFormatting.AQUA),
+                List.of(Icons.lore("Parcelle classique (contour bleu)", ChatFormatting.GRAY))),
+                sp -> promptCreate(sp, "Habitation", false, Parcel.Type.HABITATION));
+        gui.button(48, Icons.icon(Items.YELLOW_WOOL, Icons.label("Creer : Commerce", ChatFormatting.YELLOW),
+                List.of(Icons.lore("Parcelle classique (contour jaune)", ChatFormatting.GRAY))),
+                sp -> promptCreate(sp, "Commerce", false, Parcel.Type.COMMERCE));
+        gui.button(49, Icons.icon(Items.BEDROCK, Icons.label("Creer : Admin", ChatFormatting.RED),
+                List.of(Icons.lore("Protegee anti-grief, hors shop", ChatFormatting.GRAY))),
+                sp -> promptCreate(sp, "Admin", true, null));
         gui.fillEmpty();
         Menus.open(admin, gui);
+    }
+
+    /** Demande un identifiant puis cree une parcelle du type voulu a partir du trace au wand. */
+    private static void promptCreate(ServerPlayer admin, String typeLabel, boolean adminParcel, Parcel.Type type) {
+        Menus.promptText(admin,
+                Icons.label("Nouvelle parcelle " + typeLabel, ChatFormatting.DARK_AQUA),
+                List.of(Icons.lore("Identifiant (lettres, chiffres, _ , -)", ChatFormatting.GRAY),
+                        Icons.lore("La zone = ton trace au wand", ChatFormatting.DARK_GRAY)),
+                Icons.label("Creer", ChatFormatting.GREEN), "", 24,
+                id -> {
+                    Parcel created = ParcelManager.createFromTrace(admin, id, adminParcel);
+                    if (created != null) {
+                        if (!adminParcel && type != null) {
+                            created.setType(type);
+                            ParcelData.get(admin.server).setDirty();
+                        }
+                        admin.sendSystemMessage(Messages.success("Parcelle " + typeLabel + " '" + created.id() + "' creee."));
+                        openAdminParcel(admin, created.id());
+                    } else {
+                        openAdminAll(admin);
+                    }
+                });
     }
 
     // ----------------------------------------------------------------------------------- admin : menu parcelle

@@ -42,7 +42,7 @@ public final class MainMenu {
         int coins = EconomyManager.countCoins(player);
         int parcels = ParcelData.get(server).ownedBy(player.getUUID()).size();
         List<Component> stats = List.of(
-                stat("Solde en banque : ", EconomyManager.format(balance) + " $", ChatFormatting.GOLD),
+                stat("Solde en banque : ", EconomyManager.format(balance) + " Utopieces", ChatFormatting.GOLD),
                 stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA),
                 stat("Parcelles possedees : ", Integer.toString(parcels), ChatFormatting.GREEN));
 
