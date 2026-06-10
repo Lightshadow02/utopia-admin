@@ -258,6 +258,10 @@ public final class DailyMenus {
                     Config.DAILY_DEFAULT_ENABLED.save();
                     openAdminMenu(sp);
                 }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.FIREWORK_ROCKET),
+                Icons.label("Series (streak)", ChatFormatting.GOLD),
+                Icons.lore("Activer + paliers de jours consecutifs", ChatFormatting.GRAY),
+                DailyMenus::openStreakAdmin));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
                 Icons.label("Gestion des joueurs", ChatFormatting.YELLOW),
                 Icons.lore("Series, reset, forcer une recompense", ChatFormatting.GRAY),
@@ -280,6 +284,91 @@ public final class DailyMenus {
                 + " item(s) | commandes : " + Config.DAILY_COMMANDS.get().size()
                 + " | paliers : " + Config.DAILY_STREAK_MILESTONES.get().size()));
         admin.sendSystemMessage(Messages.info("(commandes/paliers : config/utopia-common.toml | calendrier : config/utopia/daily_calendar.json)"));
+    }
+
+    // =============================================================================================
+    // Series (streak) : activation, reset, paliers de jours consecutifs
+    // =============================================================================================
+
+    public static void openStreakAdmin(ServerPlayer admin) {
+        boolean enabled = Config.DAILY_STREAK_ENABLED.get();
+        int resetH = Config.DAILY_STREAK_RESET_HOURS.get();
+        List<? extends String> milestones = Config.DAILY_STREAK_MILESTONES.get();
+
+        Component title = Component.literal("Series (streak)")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Serie", ChatFormatting.GRAY),
+                Icons.label(enabled ? "ACTIVE" : "DESACTIVE", enabled ? ChatFormatting.GREEN : ChatFormatting.RED),
+                Icons.label("Changer", ChatFormatting.YELLOW),
+                sp -> {
+                    Config.DAILY_STREAK_ENABLED.set(!Config.DAILY_STREAK_ENABLED.get());
+                    Config.DAILY_STREAK_ENABLED.save();
+                    openStreakAdmin(sp);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Reset apres", ChatFormatting.GRAY),
+                Icons.label(resetH + " h", ChatFormatting.AQUA),
+                Icons.label("Modifier", ChatFormatting.YELLOW),
+                sp -> Menus.promptAmount(sp, Icons.label("Reset de la serie (heures)", ChatFormatting.GOLD),
+                        List.of(Icons.lore("Sans reclamer pendant ce delai, la serie repart a 1", ChatFormatting.GRAY)),
+                        Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, resetH), 1, 8760,
+                        v -> {
+                            Config.DAILY_STREAK_RESET_HOURS.set((int) v);
+                            Config.DAILY_STREAK_RESET_HOURS.save();
+                            openStreakAdmin(sp);
+                        })));
+        for (int i = 0; i < milestones.size(); i++) {
+            final int idx = i;
+            String[] parts = milestones.get(i).split("\\|", -1);
+            String day = parts.length > 0 ? parts[0].trim() : "?";
+            String itemsPart = parts.length > 1 ? parts[1].trim() : "";
+            int itemCount = itemsPart.isEmpty() ? 0 : itemsPart.split(",").length;
+            boolean periodic = day.startsWith("*");
+            String dayLabel = periodic ? "Tous les " + day.substring(1) + " j" : "Palier jour " + day;
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(dayLabel, ChatFormatting.GRAY),
+                    Icons.label(itemCount + " item(s)", ChatFormatting.GREEN),
+                    Icons.label("Retirer", ChatFormatting.RED),
+                    sp -> {
+                        List<String> cur = new ArrayList<>(Config.DAILY_STREAK_MILESTONES.get());
+                        if (idx < cur.size()) {
+                            cur.remove(idx);
+                            Config.DAILY_STREAK_MILESTONES.set(cur);
+                            Config.DAILY_STREAK_MILESTONES.save();
+                        }
+                        openStreakAdmin(sp);
+                    }));
+        }
+
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Ajouter un palier", ChatFormatting.GREEN),
+                        DailyMenus::promptAddMilestone));
+
+        OwoMenuServer.openPanel(admin, title, rows, footer,
+                DailyMenus::openStreakAdmin, DailyMenus::openAdminMenu);
+    }
+
+    /** Ajoute un palier : demande le jour (nombre), puis ouvre l'editeur d'items. */
+    private static void promptAddMilestone(ServerPlayer admin) {
+        Menus.promptAmount(admin, Icons.label("Jour du palier", ChatFormatting.GOLD),
+                List.of(Icons.lore("La serie atteint ce nombre de jours -> recompense bonus", ChatFormatting.GRAY),
+                        Icons.lore("(les paliers recurrents *N s'editent dans la config)", ChatFormatting.DARK_GRAY)),
+                Icons.label("Suivant : items", ChatFormatting.GREEN), 7, 1, 3650,
+                day -> openItemsEditor(admin,
+                        Icons.label("Items du palier (jour " + day + ")", ChatFormatting.DARK_AQUA),
+                        List.of(),
+                        specs -> {
+                            List<String> cur = new ArrayList<>(Config.DAILY_STREAK_MILESTONES.get());
+                            cur.add(day + " | " + String.join(", ", specs) + " | ");
+                            Config.DAILY_STREAK_MILESTONES.set(cur);
+                            Config.DAILY_STREAK_MILESTONES.save();
+                            admin.sendSystemMessage(Messages.success("Palier ajoute (jour " + day + ", " + specs.size() + " item(s))."));
+                            openStreakAdmin(admin);
+                        },
+                        DailyMenus::openStreakAdmin));
     }
 
     // =============================================================================================
