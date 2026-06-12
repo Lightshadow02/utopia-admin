@@ -125,34 +125,37 @@ public final class ParcelMenus {
         Parcel p = owned.get(i);
         String parcelId = p.id();
 
-        Component title = Icons.label("Mes parcelles (" + (i + 1) + "/" + owned.size() + ") : " + p.id(),
-                ChatFormatting.GREEN);
-        List<Component> stats = List.of(
-                stat("Type : ", p.type().label(),
-                        p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
-                stat("En vente : ", p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non",
-                        p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                stat("Regions : ", p.regionCount() + "  |  Membres : " + p.members().size(), ChatFormatting.AQUA));
+        // Style "panneau de reglages" (comme le menu admin) : libelle + valeur + bouton.
+        int total = owned.size();
+        Component title = Icons.label("Parcelle " + p.id() + " (" + (i + 1) + "/" + total + ")", ChatFormatting.GREEN);
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
-                Icons.label("Gerer les membres", ChatFormatting.YELLOW),
-                Icons.lore("Ajouter / retirer des membres", ChatFormatting.GRAY),
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Type", ChatFormatting.GRAY),
+                Icons.label(p.type().label(), p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                null, null));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("En vente", ChatFormatting.GRAY),
+                Icons.label(p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non",
+                        p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                null, null));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Membres / regions", ChatFormatting.GRAY),
+                Icons.label(p.members().size() + " / " + p.regionCount(), ChatFormatting.AQUA),
+                Icons.label("Gerer", ChatFormatting.YELLOW),
                 sp -> openMembersMenu(sp, parcelId)));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(EconomyManager.coinItem()),
-                Icons.label("Vendre", ChatFormatting.GOLD),
-                Icons.lore("Mairie (75%) ou aux joueurs", ChatFormatting.GRAY),
-                sp -> openSellMenu(sp, parcelId)));
         if (p.forSale()) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARMOR_STAND),
-                    Icons.label("Deplacer l'hologramme", ChatFormatting.AQUA),
-                    Icons.lore("Ajuster X / Y / Z", ChatFormatting.GRAY),
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Hologramme", ChatFormatting.GRAY),
+                    Icons.label("a vendre", ChatFormatting.GREEN),
+                    Icons.label("Deplacer", ChatFormatting.YELLOW),
                     sp -> openHoloMove(sp, parcelId, false)));
         }
-        // (Pas de teleportation cote joueur : reservee a l'admin.)
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GLOWSTONE_DUST),
-                Icons.label("Voir les delimitations", ChatFormatting.YELLOW),
-                Icons.lore("Affiche le contour 30 s", ChatFormatting.GRAY),
+
+        List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
+        footer.add(new OwoMenuServer.PanelAction(Icons.label("Vendre", ChatFormatting.GOLD),
+                sp -> openSellMenu(sp, parcelId)));
+        footer.add(new OwoMenuServer.PanelAction(Icons.label("Delimitations", ChatFormatting.YELLOW),
                 sp -> {
                     Parcel cur = getParcel(sp.server, parcelId);
                     if (cur != null) {
@@ -160,17 +163,15 @@ public final class ParcelMenus {
                     }
                     com.utopia.gui.Menus.close(sp);
                 }));
-        if (owned.size() > 1) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARROW),
-                    Icons.label("< Precedente", ChatFormatting.YELLOW), Component.empty(),
-                    sp -> openMyParcels(sp, (i - 1 + owned.size()) % owned.size())));
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARROW),
-                    Icons.label("Suivante >", ChatFormatting.YELLOW), Component.empty(),
-                    sp -> openMyParcels(sp, (i + 1) % owned.size())));
+        if (total > 1) {
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("< Prec.", ChatFormatting.YELLOW),
+                    sp -> openMyParcels(sp, (i - 1 + total) % total)));
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Suiv. >", ChatFormatting.YELLOW),
+                    sp -> openMyParcels(sp, (i + 1) % total)));
         }
 
         final int idx = i;
-        OwoMenuServer.openHub(player, title, stats, entries,
+        OwoMenuServer.openPanel(player, title, rows, footer,
                 sp -> openMyParcels(sp, idx), com.utopia.menu.MainMenu::open);
     }
 

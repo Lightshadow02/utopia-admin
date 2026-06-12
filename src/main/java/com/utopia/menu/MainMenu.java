@@ -7,7 +7,6 @@ import com.utopia.Config;
 import com.utopia.daily.DailyMenus;
 import com.utopia.data.ParcelData;
 import com.utopia.economy.EconomyManager;
-import com.utopia.economy.EconomyMenus;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
 import com.utopia.gui.UtopiaGui;
@@ -52,8 +51,7 @@ public final class MainMenu {
                 sp -> ParcelMenus.openMyParcels(sp, 0)));
         entries.add(entry(Items.EMERALD, "Boutique", ChatFormatting.GREEN, "Acheter une parcelle",
                 ParcelMenus::openShop));
-        entries.add(entry(EconomyManager.coinItem(), "Banque", ChatFormatting.GOLD, "Solde, payer, retirer",
-                EconomyMenus::openPlayerMenu));
+        // Banque retiree du /menu : elle s'ouvre desormais par clic droit sur la carte bancaire.
         entries.add(entry(Items.CHEST, "Recompense", ChatFormatting.GOLD, "Ta recompense du jour",
                 DailyMenus::openPlayerMenu));
         entries.add(entry(Items.ENDER_PEARL, "Se teleporter", ChatFormatting.LIGHT_PURPLE, "Vers un joueur (/tpa)",

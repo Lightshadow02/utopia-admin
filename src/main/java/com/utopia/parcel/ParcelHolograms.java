@@ -105,7 +105,8 @@ public final class ParcelHolograms {
             double px = player.getX();
             double pz = player.getZ();
             for (Parcel parcel : data.all()) {
-                if (!parcel.dimension().equals(dim)) {
+                // Uniquement les parcelles EN VENTE : une fois achetee, plus d'affichage auto.
+                if (!parcel.forSale() || !parcel.dimension().equals(dim)) {
                     continue;
                 }
                 if (isNear(parcel, px, pz)) {

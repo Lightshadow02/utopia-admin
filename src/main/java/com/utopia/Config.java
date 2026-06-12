@@ -50,6 +50,7 @@ public final class Config {
     // Economie / banque
     // ----------------------------------------------------------------------------------------
     public static final ModConfigSpec.ConfigValue<String> ECO_COIN_ITEM;
+    public static final ModConfigSpec.ConfigValue<String> ECO_CARD_ITEM;
     public static final ModConfigSpec.ConfigValue<String> ECO_CURRENCY_NAME;
     public static final ModConfigSpec.IntValue ECO_STARTING_BALANCE;
 
@@ -177,6 +178,9 @@ public final class Config {
                         "Item utilise comme \"piece\" physique lors d'un retrait (/withdraw).",
                         "Si l'item n'existe pas au lancement, repli automatique sur minecraft:gold_nugget renomme.")
                 .define("coinItem", "utopiamods:utopiece");
+        ECO_CARD_ITEM = BUILDER
+                .comment("Item \"carte bancaire\" : un clic droit en le tenant ouvre le menu de banque.")
+                .define("cardItem", "utopiamods:carte_credit");
         ECO_CURRENCY_NAME = BUILDER
                 .comment("Nom de la monnaie affiche dans les messages (ex: \"pieces\").")
                 .define("currencyName", "pieces");

@@ -85,6 +85,21 @@ public final class EconomyManager {
         return Items.GOLD_NUGGET;
     }
 
+    /** Item "carte bancaire" (configurable) : clic droit -&gt; ouvre le menu de banque. */
+    public static Item bankCardItem() {
+        ResourceLocation id = ResourceLocation.tryParse(Config.ECO_CARD_ITEM.get());
+        if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
+            return BuiltInRegistries.ITEM.get(id);
+        }
+        return null;
+    }
+
+    /** La pile est-elle la carte bancaire configuree ? */
+    public static boolean isBankCard(ItemStack stack) {
+        Item card = bankCardItem();
+        return card != null && !stack.isEmpty() && stack.is(card);
+    }
+
     /** Frappe une pile de {@code count} pieces (marquees), nommees et avec une description. */
     public static ItemStack mintCoins(int count) {
         ItemStack stack = new ItemStack(coinItem(), Math.max(1, count));
@@ -95,7 +110,7 @@ public final class EconomyManager {
                 Component.literal("Utopiece").withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
                 Component.literal("Monnaie du serveur").withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
-                Component.literal("Clic droit ou /deposit pour deposer").withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)))));
+                Component.literal("/deposit ou la banque (carte) pour deposer").withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)))));
         return stack;
     }
 

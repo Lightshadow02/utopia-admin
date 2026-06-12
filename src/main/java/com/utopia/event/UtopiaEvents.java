@@ -220,20 +220,15 @@ public final class UtopiaEvents {
 
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        // Deposer des pieces en banque par clic droit en les tenant.
+        // Clic droit avec la carte bancaire en main -> ouvre le menu de banque.
+        // (Le depot automatique des pieces au clic droit a ete retire : on passe par la carte ou /deposit.)
         if (event.getLevel().isClientSide() || !(event.getEntity() instanceof ServerPlayer sp)) {
             return;
         }
-        ItemStack held = event.getItemStack();
-        if (!EconomyManager.isCoin(held)) {
-            return;
+        if (EconomyManager.isBankCard(event.getItemStack())) {
+            com.utopia.economy.EconomyMenus.openPlayerMenu(sp);
+            event.setCanceled(true);
         }
-        int amount = held.getCount();
-        EconomyManager.add(sp.server, sp.getUUID(), amount);
-        held.setCount(0);
-        sp.sendSystemMessage(Messages.success("Depose " + EconomyManager.format(amount)
-                + ". Solde : " + EconomyManager.format(EconomyManager.getBalance(sp.server, sp.getUUID())) + "."));
-        event.setCanceled(true);
     }
 
     @SubscribeEvent
