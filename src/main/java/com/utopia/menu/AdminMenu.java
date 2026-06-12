@@ -8,8 +8,10 @@ import com.utopia.daily.DailyMenus;
 import com.utopia.data.RoomData;
 import com.utopia.economy.EconomyMenus;
 import com.utopia.gui.Icons;
+import com.utopia.gui.Menus;
 import com.utopia.net.OwoMenuServer;
 import com.utopia.parcel.ParcelMenus;
+import com.utopia.room.RoomManager;
 import com.utopia.room.RoomMenus;
 import com.utopia.util.Messages;
 
@@ -50,14 +52,43 @@ public final class AdminMenu {
                 DailyMenus::openAdminMenu));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WHITE_BED),
                 Icons.label("Auberge / chambres", ChatFormatting.LIGHT_PURPLE),
-                Icons.lore("Gerer les chambres d'auberge", ChatFormatting.GRAY),
-                RoomMenus::openAuberge));
+                Icons.lore("Chambres + configuration (outil, bloc d'acces)", ChatFormatting.GRAY),
+                AdminMenu::openAubergeAdmin));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
                 Icons.label("Aubergistes", ChatFormatting.AQUA),
                 Icons.lore("Designer qui peut ouvrir /auberge", ChatFormatting.GRAY),
                 AdminMenu::openAubergistePicker));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
+    }
+
+    /** Sous-menu auberge (op) : gerer les chambres + outils de configuration (outil chambre, bloc d'acces). */
+    public static void openAubergeAdmin(ServerPlayer admin) {
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WHITE_BED),
+                Icons.label("Gerer les chambres", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Liste et gestion des chambres", ChatFormatting.GRAY),
+                RoomMenus::openAuberge));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(RoomManager.wandItem()),
+                Icons.label("Recevoir l'outil chambre", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Trace une chambre, puis /room create <id>", ChatFormatting.GRAY),
+                sp -> {
+                    sp.getInventory().add(new ItemStack(RoomManager.wandItem()));
+                    sp.sendSystemMessage(Messages.success("Outil chambre recu."));
+                    Menus.close(sp);
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LODESTONE),
+                Icons.label("Definir le bloc d'acces", ChatFormatting.AQUA),
+                Icons.lore("Active le mode, puis CASSE le bloc voulu (clic droit dessus = auberge)", ChatFormatting.GRAY),
+                sp -> {
+                    RoomManager.startAubergeBlockSelect(sp.getUUID());
+                    sp.sendSystemMessage(Messages.info("Mode actif : casse le bloc qui servira d'acces a l'auberge."));
+                    Menus.close(sp);
+                }));
+
+        Component title = Component.literal("Auberge - configuration")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        OwoMenuServer.openHub(admin, title, List.of(), entries, AdminMenu::openAubergeAdmin, AdminMenu::open);
     }
 
     /** Selecteur des joueurs en ligne : bascule le statut d'aubergiste. */

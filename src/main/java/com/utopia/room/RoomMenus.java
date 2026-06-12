@@ -51,28 +51,9 @@ public final class RoomMenus {
                             + " - " + EconomyManager.format(r.pricePerDay()) + "/j x " + r.days(), ChatFormatting.GRAY),
                     sp -> openRoom(sp, rid)));
         }
-        // Outils reserves aux op.
-        if (op) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(RoomManager.wandItem()),
-                    Icons.label("Recevoir l'outil chambre", ChatFormatting.LIGHT_PURPLE),
-                    Icons.lore("Trace, puis /room create <id>", ChatFormatting.GRAY),
-                    sp -> {
-                        sp.getInventory().add(new ItemStack(RoomManager.wandItem()));
-                        sp.sendSystemMessage(Messages.success("Outil chambre recu."));
-                        com.utopia.gui.Menus.close(sp);
-                    }));
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LODESTONE),
-                    Icons.label("Definir le bloc d'acces", ChatFormatting.AQUA),
-                    Icons.lore("Active le mode puis CASSE le bloc voulu (clic droit dessus = ce menu)", ChatFormatting.GRAY),
-                    sp -> {
-                        RoomManager.startAubergeBlockSelect(sp.getUUID());
-                        sp.sendSystemMessage(Messages.info("Mode actif : casse le bloc qui servira d'acces a l'auberge."));
-                        com.utopia.gui.Menus.close(sp);
-                    }));
-        }
-
+        // La configuration (outil chambre, bloc d'acces) est dans /admin -> Auberge, pas ici.
         OwoMenuServer.openHub(admin, title, stats, entries,
-                RoomMenus::openAuberge, op ? com.utopia.menu.AdminMenu::open : null);
+                RoomMenus::openAuberge, op ? com.utopia.menu.AdminMenu::openAubergeAdmin : null);
     }
 
     /** Gestion d'une chambre (ecran riche). */
