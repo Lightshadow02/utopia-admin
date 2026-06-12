@@ -80,7 +80,7 @@ public final class EconomyMenus {
         Component title = Icons.label("Solde : " + name, ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 stat("Joueur : ", name, ChatFormatting.AQUA),
-                stat("Solde : ", EconomyManager.format(balance) + " Utopieces", ChatFormatting.GOLD));
+                stat("Solde : ", balance + " Utopieces", ChatFormatting.GOLD));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.EMERALD),
@@ -129,7 +129,7 @@ public final class EconomyMenus {
 
         Component title = Icons.label("Banque", ChatFormatting.GOLD);
         List<Component> stats = List.of(
-                stat("Solde en banque : ", EconomyManager.format(balance) + " Utopieces", ChatFormatting.GOLD),
+                stat("Solde en banque : ", balance + " Utopieces", ChatFormatting.GOLD),
                 stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();

@@ -65,12 +65,22 @@ public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
         panel.gap(6);
         panel.horizontalAlignment(HorizontalAlignment.CENTER);
 
-        // En-tete.
+        // En-tete : fleches de navigation optionnelles de part et d'autre du titre.
         FlowLayout header = Containers.horizontalFlow(Sizing.fixed(ROW_W), Sizing.content());
         header.surface(OwoStyle.HEADER);
-        header.padding(Insets.of(6));
+        header.padding(Insets.of(4));
+        header.gap(6);
         header.horizontalAlignment(HorizontalAlignment.CENTER);
+        header.verticalAlignment(VerticalAlignment.CENTER);
+        if (data.prevId() >= 0) {
+            header.child(textButton(Component.literal("< Prec.").withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),
+                    () -> click(data.prevId())));
+        }
         header.child(Components.label(data.title()).shadow(true));
+        if (data.nextId() >= 0) {
+            header.child(textButton(Component.literal("Suiv. >").withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),
+                    () -> click(data.nextId())));
+        }
         panel.child(header);
 
         // Lignes (label | valeur | bouton).

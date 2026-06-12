@@ -122,22 +122,33 @@ public final class OwoMenuServer {
     public static void openPanel(ServerPlayer player, Component title, List<PanelRow> rows,
                                  List<PanelAction> footer, Consumer<ServerPlayer> onRefresh,
                                  Consumer<ServerPlayer> onBack) {
-        openPanel(player, title, rows, footer, false, onRefresh, onBack);
+        openPanel(player, title, rows, footer, false, null, null, onRefresh, onBack);
     }
 
     /** Variante : {@code inlineFooter} = boutons d'action sur la meme rangee que Retour/Rafraichir/Fermer. */
     public static void openPanel(ServerPlayer player, Component title, List<PanelRow> rows,
                                  List<PanelAction> footer, boolean inlineFooter,
                                  Consumer<ServerPlayer> onRefresh, Consumer<ServerPlayer> onBack) {
+        openPanel(player, title, rows, footer, inlineFooter, null, null, onRefresh, onBack);
+    }
+
+    /**
+     * Variante complete : {@code onPrev}/{@code onNext} (optionnels) ajoutent des fleches de navigation
+     * de part et d'autre du titre dans l'en-tete (ex: &lt; Prec. | Parcelle 01 (1/2) | Suiv. &gt;).
+     */
+    public static void openPanel(ServerPlayer player, Component title, List<PanelRow> rows,
+                                 List<PanelAction> footer, boolean inlineFooter,
+                                 Consumer<ServerPlayer> onPrev, Consumer<ServerPlayer> onNext,
+                                 Consumer<ServerPlayer> onRefresh, Consumer<ServerPlayer> onBack) {
         int id = COUNTER.incrementAndGet();
         UtopiaGui gui = new UtopiaGui(6, title); // 54 slots d'actions
 
         List<OpenPanelPayload.Row> netRows = new ArrayList<>(rows.size());
-        int nextId = 0;
+        int idCounter = 0;
         for (PanelRow r : rows) {
             int buttonId = -1;
             if (r.action() != null) {
-                buttonId = nextId++;
+                buttonId = idCounter++;
                 gui.button(buttonId, ItemStack.EMPTY, r.action());
             }
             netRows.add(new OpenPanelPayload.Row(r.label(), r.value(), buttonId,
@@ -145,26 +156,34 @@ public final class OwoMenuServer {
         }
         List<OpenPanelPayload.Action> netFooter = new ArrayList<>(footer.size());
         for (PanelAction a : footer) {
-            int aid = nextId++;
+            int aid = idCounter++;
             gui.button(aid, ItemStack.EMPTY, a.action());
             netFooter.add(new OpenPanelPayload.Action(aid, a.label()));
         }
         int refreshId = -1;
         if (onRefresh != null) {
-            refreshId = nextId++;
+            refreshId = idCounter++;
             gui.button(refreshId, ItemStack.EMPTY, onRefresh);
         }
         int backId = -1;
         if (onBack != null) {
-            backId = nextId++;
+            backId = idCounter++;
             gui.button(backId, ItemStack.EMPTY, onBack);
+        }
+        int prevId = -1;
+        if (onPrev != null) {
+            prevId = idCounter++;
+            gui.button(prevId, ItemStack.EMPTY, onPrev);
+        }
+        int navNextId = -1;
+        if (onNext != null) {
+            navNextId = idCounter++;
+            gui.button(navNextId, ItemStack.EMPTY, onNext);
         }
 
         SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
-        final int refreshIdF = refreshId;
-        final int backIdF = backId;
-        PacketDistributor.sendToPlayer(player,
-                MenuS2CPayload.of(new OpenPanelPayload(id, title, netRows, netFooter, refreshIdF, backIdF, inlineFooter)));
+        PacketDistributor.sendToPlayer(player, MenuS2CPayload.of(new OpenPanelPayload(
+                id, title, netRows, netFooter, refreshId, backId, inlineFooter, prevId, navNextId)));
     }
 
     /** Ouvre un ecran de saisie de montant ; {@code onConfirm} recoit la valeur (deja bornee). */

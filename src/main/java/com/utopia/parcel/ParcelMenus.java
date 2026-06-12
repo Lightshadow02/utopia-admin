@@ -163,22 +163,13 @@ public final class ParcelMenus {
                     }
                     com.utopia.gui.Menus.close(sp);
                 }));
-        if (total > 1) {
-            footer.add(new OwoMenuServer.PanelAction(Icons.label("< Prec.", ChatFormatting.YELLOW),
-                    sp -> openMyParcels(sp, (i - 1 + total) % total)));
-            footer.add(new OwoMenuServer.PanelAction(Icons.label("Suiv. >", ChatFormatting.YELLOW),
-                    sp -> openMyParcels(sp, (i + 1) % total)));
-        }
+        // Navigation entre parcelles : fleches dans l'en-tete, de part et d'autre du titre.
+        Consumer<ServerPlayer> onPrev = total > 1 ? sp -> openMyParcels(sp, (i - 1 + total) % total) : null;
+        Consumer<ServerPlayer> onNext = total > 1 ? sp -> openMyParcels(sp, (i + 1) % total) : null;
 
         final int idx = i;
         OwoMenuServer.openPanel(player, title, rows, footer, true, // Vendre/Delimitations sur la rangee Retour/Fermer
-                sp -> openMyParcels(sp, idx), com.utopia.menu.MainMenu::open);
-    }
-
-    /** Ligne de stat "label: valeur" (label gris, valeur coloree). */
-    private static Component stat(String label, String value, ChatFormatting valueColor) {
-        return Component.literal(label).withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
-                .append(Component.literal(value).withStyle(s -> s.withColor(valueColor).withItalic(false)));
+                onPrev, onNext, sp -> openMyParcels(sp, idx), com.utopia.menu.MainMenu::open);
     }
 
     public static void openParcelMenuFor(ServerPlayer player, String parcelId) {
