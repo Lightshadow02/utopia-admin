@@ -24,8 +24,22 @@ public final class RoomManager {
 
     /** Coins selectionnes par joueur : [0] = coin 1 (clic gauche), [1] = coin 2 (clic droit). */
     private static final Map<UUID, BlockPos[]> CORNERS = new ConcurrentHashMap<>();
+    /** Admins en mode "definir le bloc d'acces auberge" : le prochain bloc casse devient le bloc d'acces. */
+    private static final java.util.Set<UUID> AUBERGE_SELECT = ConcurrentHashMap.newKeySet();
 
     private RoomManager() {
+    }
+
+    public static void startAubergeBlockSelect(UUID id) {
+        AUBERGE_SELECT.add(id);
+    }
+
+    public static boolean isSelectingAubergeBlock(UUID id) {
+        return AUBERGE_SELECT.contains(id);
+    }
+
+    public static void clearAubergeBlockSelect(UUID id) {
+        AUBERGE_SELECT.remove(id);
     }
 
     public static Item wandItem() {

@@ -78,7 +78,21 @@ public final class UtopiaEvents {
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayer sp && event.getLevel() instanceof ServerLevel level) {
-            if (!ParcelManager.isActionAllowed(sp, level, event.getPos(), Parcel.Flag.BUILD)) {
+            ResourceLocation dim = level.dimension().location();
+            BlockPos pos = event.getPos();
+            // Mode "definir le bloc d'acces auberge" : ce bloc devient l'acces (casse annulee).
+            if (RoomManager.isSelectingAubergeBlock(sp.getUUID())) {
+                RoomData.get(level.getServer()).addAubergeBlock(dim, pos);
+                RoomManager.clearAubergeBlockSelect(sp.getUUID());
+                event.setCanceled(true);
+                sp.sendSystemMessage(Messages.success("Bloc d'acces a l'auberge defini ! Clic droit dessus pour ouvrir le gestionnaire de chambres."));
+                return;
+            }
+            // Si on casse un bloc d'acces enregistre, on le retire de la liste.
+            if (RoomData.get(level.getServer()).isAubergeBlock(dim, pos)) {
+                RoomData.get(level.getServer()).removeAubergeBlock(dim, pos);
+            }
+            if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
                 event.setCanceled(true);
                 sp.sendSystemMessage(Messages.error("Vous n'avez pas le droit de modifier cette parcelle."));
             }
@@ -135,6 +149,17 @@ public final class UtopiaEvents {
             return;
         }
         BlockPos pos = event.getPos();
+        // Bloc d'acces auberge : clic droit -> gestionnaire de chambres (op ou aubergiste designe).
+        RoomData roomData = RoomData.get(level.getServer());
+        if (roomData.isAubergeBlock(level.dimension().location(), pos)) {
+            if (sp.hasPermissions(2) || roomData.isAubergiste(sp.getUUID())) {
+                com.utopia.room.RoomMenus.openAuberge(sp);
+            } else {
+                sp.sendSystemMessage(Messages.warn("Acces reserve aux aubergistes."));
+            }
+            event.setCanceled(true);
+            return;
+        }
         // Outil de trace : ajouter un point (clic droit au sol).
         if (ParcelManager.isWand(event.getItemStack()) && ParcelManager.isOp(sp)) {
             int n = ParcelManager.addPoint(sp, pos);

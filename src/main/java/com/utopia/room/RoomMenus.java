@@ -51,7 +51,7 @@ public final class RoomMenus {
                             + " - " + EconomyManager.format(r.pricePerDay()) + "/j x " + r.days(), ChatFormatting.GRAY),
                     sp -> openRoom(sp, rid)));
         }
-        // Outil de creation : reserve aux op (la creation de chambre passe par /room create).
+        // Outils reserves aux op.
         if (op) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(RoomManager.wandItem()),
                     Icons.label("Recevoir l'outil chambre", ChatFormatting.LIGHT_PURPLE),
@@ -59,6 +59,14 @@ public final class RoomMenus {
                     sp -> {
                         sp.getInventory().add(new ItemStack(RoomManager.wandItem()));
                         sp.sendSystemMessage(Messages.success("Outil chambre recu."));
+                        com.utopia.gui.Menus.close(sp);
+                    }));
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LODESTONE),
+                    Icons.label("Definir le bloc d'acces", ChatFormatting.AQUA),
+                    Icons.lore("Active le mode puis CASSE le bloc voulu (clic droit dessus = ce menu)", ChatFormatting.GRAY),
+                    sp -> {
+                        RoomManager.startAubergeBlockSelect(sp.getUUID());
+                        sp.sendSystemMessage(Messages.info("Mode actif : casse le bloc qui servira d'acces a l'auberge."));
                         com.utopia.gui.Menus.close(sp);
                     }));
         }
@@ -75,40 +83,22 @@ public final class RoomMenus {
             admin.sendSystemMessage(Messages.error("Chambre introuvable."));
             return;
         }
-        Component title = Icons.label("Chambre : " + r.name(), ChatFormatting.GOLD);
-        List<Component> stats = List.of(
-                stat("Occupant : ", r.isAssigned() ? r.occupantName() : "libre",
-                        r.isAssigned() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                stat("Prix : ", EconomyManager.format(r.pricePerDay()) + "/jour", ChatFormatting.GOLD),
-                stat("Duree : ", r.days() + " jours (cout " + EconomyManager.format(r.totalCost()) + ")", ChatFormatting.AQUA),
-                stat("Etat : ", r.frozen() ? "GELEE (acces coupe)" : "active",
-                        r.frozen() ? ChatFormatting.RED : ChatFormatting.GREEN));
-
+        Component title = Icons.label("Chambre " + r.id(), ChatFormatting.GOLD);
         boolean frozen = r.frozen();
         long curPrice = r.pricePerDay();
         int curDays = r.days();
         boolean assigned = r.isAssigned();
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
-                Icons.label("Attribuer a un joueur", ChatFormatting.YELLOW),
-                Icons.lore("Tu avances le cout ; le joueur rembourse", ChatFormatting.GRAY),
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Occupant", ChatFormatting.GRAY),
+                Icons.label(assigned ? r.occupantName() : "libre", assigned ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label("Attribuer", ChatFormatting.YELLOW),
                 sp -> openAssignPicker(sp, roomId)));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(frozen ? Items.GREEN_DYE : Items.BLUE_ICE),
-                Icons.label(frozen ? "Degeler" : "Geler (freeze)", frozen ? ChatFormatting.GREEN : ChatFormatting.AQUA),
-                Icons.lore(frozen ? "Rend l'acces au joueur" : "Coupe l'acces du joueur", ChatFormatting.GRAY),
-                sp -> {
-                    Room cur = get(sp.server, roomId);
-                    if (cur != null) {
-                        cur.setFrozen(!cur.frozen());
-                        RoomData.get(sp.server).setDirty();
-                        notifyFreeze(sp.server, cur);
-                    }
-                    openRoom(sp, roomId);
-                }));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SUNFLOWER),
-                Icons.label("Prix / jour", ChatFormatting.GOLD),
-                Icons.lore("Actuel : " + EconomyManager.format(curPrice), ChatFormatting.GRAY),
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Prix / jour", ChatFormatting.GRAY),
+                Icons.label(EconomyManager.format(curPrice), ChatFormatting.GOLD),
+                Icons.label("Modifier", ChatFormatting.YELLOW),
                 sp -> Menus.promptAmount(sp, Icons.label("Prix par jour", ChatFormatting.GOLD), List.of(),
                         Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, curPrice), 0, 100_000_000L,
                         v -> {
@@ -119,9 +109,10 @@ public final class RoomMenus {
                             }
                             openRoom(sp, roomId);
                         })));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CLOCK),
-                Icons.label("Duree (jours)", ChatFormatting.YELLOW),
-                Icons.lore("Actuel : " + curDays + " jours", ChatFormatting.GRAY),
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Duree (jours)", ChatFormatting.GRAY),
+                Icons.label(curDays + " j (cout " + EconomyManager.format(r.totalCost()) + ")", ChatFormatting.AQUA),
+                Icons.label("Modifier", ChatFormatting.YELLOW),
                 sp -> Menus.promptAmount(sp, Icons.label("Nombre de jours", ChatFormatting.YELLOW), List.of(),
                         Icons.label("Definir", ChatFormatting.GREEN), Math.max(1, curDays), 0, 100000L,
                         v -> {
@@ -132,10 +123,23 @@ public final class RoomMenus {
                             }
                             openRoom(sp, roomId);
                         })));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Etat", ChatFormatting.GRAY),
+                Icons.label(frozen ? "GELEE (acces coupe)" : "active", frozen ? ChatFormatting.RED : ChatFormatting.GREEN),
+                Icons.label(frozen ? "Degeler" : "Geler", frozen ? ChatFormatting.GREEN : ChatFormatting.AQUA),
+                sp -> {
+                    Room cur = get(sp.server, roomId);
+                    if (cur != null) {
+                        cur.setFrozen(!cur.frozen());
+                        RoomData.get(sp.server).setDirty();
+                        notifyFreeze(sp.server, cur);
+                    }
+                    openRoom(sp, roomId);
+                }));
+
+        List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
         if (assigned) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
-                    Icons.label("Liberer la chambre", ChatFormatting.RED),
-                    Icons.lore("Retire l'occupant", ChatFormatting.GRAY),
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Liberer", ChatFormatting.GOLD),
                     sp -> {
                         Room cur = get(sp.server, roomId);
                         if (cur != null) {
@@ -146,16 +150,14 @@ public final class RoomMenus {
                         openRoom(sp, roomId);
                     }));
         }
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LAVA_BUCKET),
-                Icons.label("Supprimer la chambre", ChatFormatting.RED),
-                Icons.lore("Definitif", ChatFormatting.GRAY),
+        footer.add(new OwoMenuServer.PanelAction(Icons.label("Supprimer", ChatFormatting.RED),
                 sp -> {
                     RoomData.get(sp.server).remove(roomId);
                     sp.sendSystemMessage(Messages.success("Chambre supprimee."));
                     openAuberge(sp);
                 }));
 
-        OwoMenuServer.openHub(admin, title, stats, entries,
+        OwoMenuServer.openPanel(admin, title, rows, footer,
                 sp -> openRoom(sp, roomId), RoomMenus::openAuberge);
     }
 
@@ -178,12 +180,6 @@ public final class RoomMenus {
 
         OwoMenuServer.openHub(admin, title, stats, entries,
                 sp -> openAssignPicker(sp, roomId), sp -> openRoom(sp, roomId));
-    }
-
-    /** Ligne de stat "label: valeur" (label gris, valeur coloree). */
-    private static Component stat(String label, String value, ChatFormatting valueColor) {
-        return Component.literal(label).withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
-                .append(Component.literal(value).withStyle(s -> s.withColor(valueColor).withItalic(false)));
     }
 
     private static void openAssignPrice(ServerPlayer admin, String roomId, UUID targetId, String targetName) {

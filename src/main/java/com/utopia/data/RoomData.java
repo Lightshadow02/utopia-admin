@@ -28,8 +28,31 @@ public final class RoomData extends SavedData {
 
     private final Map<String, Room> rooms = new LinkedHashMap<>();
     private final Set<UUID> aubergistes = new HashSet<>();
+    private final Set<String> aubergeBlocks = new HashSet<>(); // cles "dim;x;y;z"
 
     public RoomData() {
+    }
+
+    // -------- Blocs d'acces a l'auberge (clic droit -> ouvre le gestionnaire de chambres) --------
+
+    private static String blockKey(net.minecraft.resources.ResourceLocation dim, net.minecraft.core.BlockPos pos) {
+        return dim + ";" + pos.getX() + ";" + pos.getY() + ";" + pos.getZ();
+    }
+
+    public boolean isAubergeBlock(net.minecraft.resources.ResourceLocation dim, net.minecraft.core.BlockPos pos) {
+        return aubergeBlocks.contains(blockKey(dim, pos));
+    }
+
+    public void addAubergeBlock(net.minecraft.resources.ResourceLocation dim, net.minecraft.core.BlockPos pos) {
+        if (aubergeBlocks.add(blockKey(dim, pos))) {
+            setDirty();
+        }
+    }
+
+    public void removeAubergeBlock(net.minecraft.resources.ResourceLocation dim, net.minecraft.core.BlockPos pos) {
+        if (aubergeBlocks.remove(blockKey(dim, pos))) {
+            setDirty();
+        }
     }
 
     // -------- Aubergistes (joueurs autorises a ouvrir /auberge, designes par un op) --------
@@ -127,6 +150,10 @@ public final class RoomData extends SavedData {
                 // uuid corrompu
             }
         }
+        ListTag blocks = tag.getList("aubergeBlocks", Tag.TAG_STRING);
+        for (int i = 0; i < blocks.size(); i++) {
+            data.aubergeBlocks.add(blocks.getString(i));
+        }
         return data;
     }
 
@@ -160,6 +187,11 @@ public final class RoomData extends SavedData {
             aub.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
         }
         tag.put("aubergistes", aub);
+        ListTag blocks = new ListTag();
+        for (String key : aubergeBlocks) {
+            blocks.add(net.minecraft.nbt.StringTag.valueOf(key));
+        }
+        tag.put("aubergeBlocks", blocks);
         return tag;
     }
 }
