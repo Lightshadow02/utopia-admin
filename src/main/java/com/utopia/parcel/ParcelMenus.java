@@ -171,7 +171,7 @@ public final class ParcelMenus {
         }
 
         final int idx = i;
-        OwoMenuServer.openPanel(player, title, rows, footer,
+        OwoMenuServer.openPanel(player, title, rows, footer, true, // Vendre/Delimitations sur la rangee Retour/Fermer
                 sp -> openMyParcels(sp, idx), com.utopia.menu.MainMenu::open);
     }
 

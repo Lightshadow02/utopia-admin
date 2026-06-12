@@ -122,6 +122,13 @@ public final class OwoMenuServer {
     public static void openPanel(ServerPlayer player, Component title, List<PanelRow> rows,
                                  List<PanelAction> footer, Consumer<ServerPlayer> onRefresh,
                                  Consumer<ServerPlayer> onBack) {
+        openPanel(player, title, rows, footer, false, onRefresh, onBack);
+    }
+
+    /** Variante : {@code inlineFooter} = boutons d'action sur la meme rangee que Retour/Rafraichir/Fermer. */
+    public static void openPanel(ServerPlayer player, Component title, List<PanelRow> rows,
+                                 List<PanelAction> footer, boolean inlineFooter,
+                                 Consumer<ServerPlayer> onRefresh, Consumer<ServerPlayer> onBack) {
         int id = COUNTER.incrementAndGet();
         UtopiaGui gui = new UtopiaGui(6, title); // 54 slots d'actions
 
@@ -154,8 +161,10 @@ public final class OwoMenuServer {
         }
 
         SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
+        final int refreshIdF = refreshId;
+        final int backIdF = backId;
         PacketDistributor.sendToPlayer(player,
-                MenuS2CPayload.of(new OpenPanelPayload(id, title, netRows, netFooter, refreshId, backId)));
+                MenuS2CPayload.of(new OpenPanelPayload(id, title, netRows, netFooter, refreshIdF, backIdF, inlineFooter)));
     }
 
     /** Ouvre un ecran de saisie de montant ; {@code onConfirm} recoit la valeur (deja bornee). */

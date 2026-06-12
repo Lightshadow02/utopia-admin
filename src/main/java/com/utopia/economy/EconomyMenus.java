@@ -133,7 +133,7 @@ public final class EconomyMenus {
                 stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.HOPPER),
+        entries.add(new OwoMenuServer.HubEntry(ItemStack.EMPTY,
                 Icons.label("Deposer mes pieces", ChatFormatting.AQUA),
                 Icons.lore("Met toutes les pieces en banque", ChatFormatting.GRAY),
                 sp -> {
@@ -147,11 +147,11 @@ public final class EconomyMenus {
                     }
                     openPlayerMenu(sp);
                 }));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(EconomyManager.coinItem()),
+        entries.add(new OwoMenuServer.HubEntry(ItemStack.EMPTY,
                 Icons.label("Retirer en pieces", ChatFormatting.GREEN),
                 Icons.lore("Sortir des pieces dans l'inventaire", ChatFormatting.GRAY),
                 EconomyMenus::openWithdrawMenu));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
+        entries.add(new OwoMenuServer.HubEntry(ItemStack.EMPTY,
                 Icons.label("Payer un joueur", ChatFormatting.YELLOW),
                 Icons.lore("Envoyer de l'argent a un joueur en ligne", ChatFormatting.GRAY),
                 EconomyMenus::openPayPicker));

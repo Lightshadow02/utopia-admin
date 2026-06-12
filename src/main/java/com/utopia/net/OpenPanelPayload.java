@@ -20,7 +20,7 @@ import net.minecraft.resources.ResourceLocation;
  * <p>Les clics (boutons de ligne, actions, retour) repassent par {@code menu_c2s} avec l'id porte.
  */
 public record OpenPanelPayload(int sessionId, Component title, List<Row> rows, List<Action> footer,
-                               int refreshId, int backId) implements CustomPacketPayload {
+                               int refreshId, int backId, boolean inlineFooter) implements CustomPacketPayload {
 
     /** Une ligne : libelle + valeur, et un bouton optionnel ({@code buttonId < 0} = ligne info seule). */
     public record Row(Component label, Component value, int buttonId, Component buttonLabel) {
@@ -53,6 +53,7 @@ public record OpenPanelPayload(int sessionId, Component title, List<Row> rows, L
         }
         buf.writeVarInt(p.refreshId);
         buf.writeVarInt(p.backId);
+        buf.writeBoolean(p.inlineFooter);
     }
 
     private static OpenPanelPayload decode(RegistryFriendlyByteBuf buf) {
@@ -76,7 +77,8 @@ public record OpenPanelPayload(int sessionId, Component title, List<Row> rows, L
         }
         int refreshId = buf.readVarInt();
         int backId = buf.readVarInt();
-        return new OpenPanelPayload(sessionId, title, rows, footer, refreshId, backId);
+        boolean inlineFooter = buf.readBoolean();
+        return new OpenPanelPayload(sessionId, title, rows, footer, refreshId, backId, inlineFooter);
     }
 
     @Override

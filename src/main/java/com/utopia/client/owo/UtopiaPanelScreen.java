@@ -92,8 +92,8 @@ public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
             panel.child(rows);
         }
 
-        // Pied de page : actions.
-        if (!data.footer().isEmpty()) {
+        // Pied de page : actions, sur leur propre rangee SAUF si inlineFooter (alors tout sur la nav).
+        if (!data.inlineFooter() && !data.footer().isEmpty()) {
             FlowLayout footer = Containers.horizontalFlow(Sizing.fixed(ROW_W), Sizing.content());
             footer.gap(5);
             footer.horizontalAlignment(HorizontalAlignment.CENTER);
@@ -103,13 +103,18 @@ public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
             panel.child(footer);
         }
 
-        // Retour + rafraichir.
-        FlowLayout nav = Containers.horizontalFlow(Sizing.fixed(ROW_W), Sizing.content());
+        // Rangee du bas : Retour, [actions si inlineFooter], Rafraichir, Fermer.
+        FlowLayout nav = Containers.horizontalFlow(Sizing.content(), Sizing.content());
         nav.gap(5);
         nav.horizontalAlignment(HorizontalAlignment.CENTER);
         if (data.backId() >= 0) {
             nav.child(textButton(Component.literal("< Retour").withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)),
                     () -> click(data.backId())));
+        }
+        if (data.inlineFooter()) {
+            for (OpenPanelPayload.Action a : data.footer()) {
+                nav.child(textButton(a.label(), () -> click(a.id())));
+            }
         }
         if (data.refreshId() >= 0) {
             nav.child(textButton(Component.literal("Rafraichir").withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),

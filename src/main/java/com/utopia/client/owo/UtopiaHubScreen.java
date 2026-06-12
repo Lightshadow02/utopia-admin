@@ -148,18 +148,19 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
             return true;
         });
 
-        ItemComponent icon = Components.item(b.icon());
-        icon.setTooltipFromStack(false);
-        button.child(icon);
-
-        FlowLayout textCol = Containers.verticalFlow(Sizing.content(), Sizing.content());
-        textCol.gap(1);
-        textCol.verticalAlignment(VerticalAlignment.CENTER);
-        textCol.child(Components.label(b.label()).shadow(true));
-        if (!b.sublabel().getString().isEmpty()) {
-            textCol.child(Components.label(b.sublabel()));
+        // Icone : affichee seulement si non vide (les menus "texte seul" passent un stack vide).
+        if (!b.icon().isEmpty()) {
+            ItemComponent icon = Components.item(b.icon());
+            icon.setTooltipFromStack(false);
+            button.child(icon);
         }
-        button.child(textCol);
+
+        button.child(Components.label(b.label()).shadow(true));
+
+        // La description n'est plus affichee en ligne : elle devient une bulle d'info au survol.
+        if (!b.sublabel().getString().isEmpty()) {
+            button.tooltip(b.sublabel());
+        }
         return button;
     }
 
