@@ -53,6 +53,7 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
     private static final Color SCROLLBAR = OwoStyle.SCROLLBAR;
 
     private final OpenMenuPayload data;
+    private final HoverTooltips tooltips = new HoverTooltips();
     private boolean closeSent = false;
 
     public UtopiaOwoMenuScreen(OpenMenuPayload data) {
@@ -70,7 +71,14 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
     }
 
     @Override
+    public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        tooltips.update();
+        super.render(graphics, mouseX, mouseY, delta);
+    }
+
+    @Override
     protected void build(FlowLayout root) {
+        tooltips.clear();
         root.surface(Surface.VANILLA_TRANSLUCENT);
         root.horizontalAlignment(HorizontalAlignment.CENTER);
         root.verticalAlignment(VerticalAlignment.CENTER);
@@ -203,10 +211,11 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
         return stack.isEmpty() || stack.is(Items.GRAY_STAINED_GLASS_PANE);
     }
 
-    /** Bouton "flat + bordure" avec survol, ou carte d'info (lore en ligne). */
+    /** Bouton "flat + bordure" avec survol, ou carte d'info. Le nom reste affiche, la lore passe en bulle. */
     private FlowLayout chip(ItemStack stack, int slot, boolean isClickable, int buttonWidth) {
         ItemComponent icon = Components.item(stack);
-        icon.setTooltipFromStack(true);
+        icon.setTooltipFromStack(false);
+        List<Component> lore = loreOf(stack);
 
         if (isClickable) {
             FlowLayout chip = Containers.horizontalFlow(
@@ -225,28 +234,26 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
             });
             chip.child(icon);
             chip.child(Components.label(stack.getHoverName()));
+            tooltips.register(chip, lore); // description en bulle au survol
             return chip;
         }
 
-        // Carte d'info : icone + (nom + lignes de lore empilees).
+        // Carte d'info : icone + nom ; la lore (description) devient une bulle au survol.
         FlowLayout chip = Containers.horizontalFlow(Sizing.content(), Sizing.content());
         chip.padding(Insets.of(5));
         chip.gap(6);
         chip.verticalAlignment(VerticalAlignment.CENTER);
         chip.surface(INFO);
-
-        FlowLayout textCol = Containers.verticalFlow(Sizing.content(), Sizing.content());
-        textCol.gap(2);
-        textCol.child(Components.label(stack.getHoverName()));
-        ItemLore lore = stack.get(DataComponents.LORE);
-        if (lore != null) {
-            for (Component line : lore.lines()) {
-                textCol.child(Components.label(line));
-            }
-        }
         chip.child(icon);
-        chip.child(textCol);
+        chip.child(Components.label(stack.getHoverName()));
+        tooltips.register(chip, lore);
         return chip;
+    }
+
+    /** Lignes de lore d'une pile (la description), ou liste vide. */
+    private static List<Component> loreOf(ItemStack stack) {
+        ItemLore lore = stack.get(DataComponents.LORE);
+        return lore != null ? lore.lines() : List.of();
     }
 
     private void click(int slot, int button) {

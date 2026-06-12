@@ -39,6 +39,7 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
     private static final int COLS = 2;
 
     private final OpenHubPayload data;
+    private final HoverTooltips tooltips = new HoverTooltips();
     private boolean closeSent = false;
 
     public UtopiaHubScreen(OpenHubPayload data) {
@@ -51,12 +52,19 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
     }
 
     @Override
+    public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        tooltips.update();
+        super.render(graphics, mouseX, mouseY, delta);
+    }
+
+    @Override
     protected OwoUIAdapter<FlowLayout> createAdapter() {
         return OwoUIAdapter.create(this, Containers::verticalFlow);
     }
 
     @Override
     protected void build(FlowLayout root) {
+        tooltips.clear();
         root.surface(Surface.VANILLA_TRANSLUCENT);
         root.horizontalAlignment(HorizontalAlignment.CENTER);
         root.verticalAlignment(VerticalAlignment.CENTER);
@@ -157,10 +165,8 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
 
         button.child(Components.label(b.label()).shadow(true));
 
-        // La description n'est plus affichee en ligne : elle devient une bulle d'info au survol.
-        if (!b.sublabel().getString().isEmpty()) {
-            button.tooltip(b.sublabel());
-        }
+        // La description devient une bulle d'info, affichee apres un court survol.
+        tooltips.register(button, b.sublabel());
         return button;
     }
 
