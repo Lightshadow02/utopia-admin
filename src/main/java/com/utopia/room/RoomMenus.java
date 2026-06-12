@@ -131,12 +131,15 @@ public final class RoomMenus {
                         openRoom(sp, roomId);
                     }));
         }
-        footer.add(new OwoMenuServer.PanelAction(Icons.label("Supprimer", ChatFormatting.RED),
-                sp -> {
-                    RoomData.get(sp.server).remove(roomId);
-                    sp.sendSystemMessage(Messages.success("Chambre supprimee."));
-                    openAuberge(sp);
-                }));
+        // Supprimer : reserve aux op (un aubergiste ne peut pas supprimer une chambre).
+        if (admin.hasPermissions(2)) {
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Supprimer", ChatFormatting.RED),
+                    sp -> {
+                        RoomData.get(sp.server).remove(roomId);
+                        sp.sendSystemMessage(Messages.success("Chambre supprimee."));
+                        openAuberge(sp);
+                    }));
+        }
 
         OwoMenuServer.openPanel(admin, title, rows, footer,
                 sp -> openRoom(sp, roomId), RoomMenus::openAuberge);
