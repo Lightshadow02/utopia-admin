@@ -1,0 +1,202 @@
+package com.utopia.market;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.utopia.data.MarketData;
+import com.utopia.economy.EconomyManager;
+import com.utopia.gui.Icons;
+import com.utopia.gui.Menus;
+import com.utopia.net.OwoMenuServer;
+import com.utopia.util.Messages;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+
+/** Menus du marche public : reservation / gestion de son stand, achat sur un stand, recuperation (admin). */
+public final class MarketMenus {
+
+    private MarketMenus() {
+    }
+
+    /** Clic droit sur un stand : reserve (si libre), gere (le sien) ou achete (celui d'un autre). */
+    public static void openStall(ServerPlayer player, MarketData.Stall stall) {
+        if (stall.isFree()) {
+            MarketManager.ClaimResult r = MarketManager.claim(player, stall);
+            switch (r) {
+                case ALREADY_OWNS -> player.sendSystemMessage(Messages.warn("Tu as deja un emplacement de vente actif."));
+                case TAKEN, NO_FREE -> player.sendSystemMessage(Messages.warn("Cet emplacement n'est plus libre."));
+                default -> {
+                    player.sendSystemMessage(Messages.success("Emplacement reserve ! Tiens un objet en main et clique 'Ajouter'."));
+                    openManage(player, stall);
+                }
+            }
+            return;
+        }
+        if (stall.owner.equals(player.getUUID())) {
+            openManage(player, stall);
+        } else {
+            openBuy(player, stall);
+        }
+    }
+
+    // -------- Gestion de son stand --------
+
+    private static void openManage(ServerPlayer player, MarketData.Stall stall) {
+        if (stall.owner == null || !stall.owner.equals(player.getUUID())) {
+            openStall(player, stall);
+            return;
+        }
+        Component title = Icons.label("Mon emplacement (" + stall.offers.size() + "/"
+                + MarketManager.MAX_OFFERS_PER_STALL + ")", ChatFormatting.GOLD);
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (int i = 0; i < stall.offers.size(); i++) {
+            final int idx = i;
+            MarketData.Offer o = stall.offers.get(i);
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(o.stack.getCount() + "x " + o.stack.getHoverName().getString(), ChatFormatting.AQUA),
+                    Icons.label(EconomyManager.format(o.price) + " - " + remaining(o), ChatFormatting.GOLD),
+                    Icons.label("Retirer", ChatFormatting.RED),
+                    sp -> {
+                        MarketManager.cancelOffer(sp, stall, idx);
+                        openManage(sp, stall);
+                    }));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune offre", ChatFormatting.GRAY),
+                    Icons.label("tiens un objet en main", ChatFormatting.DARK_GRAY), null, null));
+        }
+
+        List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
+        footer.add(new OwoMenuServer.PanelAction(Icons.label("Ajouter (objet en main)", ChatFormatting.GREEN),
+                sp -> promptAddOffer(sp, stall)));
+        footer.add(new OwoMenuServer.PanelAction(Icons.label("Liberer", ChatFormatting.RED),
+                sp -> {
+                    MarketManager.release(sp, stall);
+                    sp.sendSystemMessage(Messages.success("Emplacement libere (objets invendus recuperes)."));
+                    Menus.close(sp);
+                }));
+
+        OwoMenuServer.openPanel(player, title, rows, footer, sp -> openManage(sp, stall), null);
+    }
+
+    private static void promptAddOffer(ServerPlayer player, MarketData.Stall stall) {
+        if (stall.offers.size() >= MarketManager.MAX_OFFERS_PER_STALL) {
+            player.sendSystemMessage(Messages.warn("Emplacement plein (10 offres maximum)."));
+            openManage(player, stall);
+            return;
+        }
+        ItemStack held = player.getMainHandItem();
+        if (held.isEmpty()) {
+            player.sendSystemMessage(Messages.warn("Tiens l'objet a vendre dans ta main, puis reessaie."));
+            openManage(player, stall);
+            return;
+        }
+        String desc = held.getCount() + "x " + held.getHoverName().getString();
+        Menus.promptAmount(player, Icons.label("Prix de l'offre (Utopieces)", ChatFormatting.GOLD),
+                List.of(Icons.lore("Objet : " + desc, ChatFormatting.GRAY),
+                        Icons.lore("Le vendeur touche 75%, la mairie 25%.", ChatFormatting.DARK_GRAY)),
+                Icons.label("Mettre en vente", ChatFormatting.GREEN), 1, 0, 1_000_000_000L,
+                price -> {
+                    MarketManager.OfferResult r = MarketManager.addOfferFromHand(player, stall, price);
+                    switch (r) {
+                        case FULL -> player.sendSystemMessage(Messages.warn("Emplacement plein."));
+                        case EMPTY_HAND -> player.sendSystemMessage(Messages.warn("Plus rien en main."));
+                        case NOT_OWNER -> player.sendSystemMessage(Messages.error("Ce n'est pas ton emplacement."));
+                        default -> player.sendSystemMessage(Messages.success("Offre creee : " + desc
+                                + " pour " + EconomyManager.format(price) + "."));
+                    }
+                    openManage(player, stall);
+                });
+    }
+
+    // -------- Achat sur le stand d'un autre --------
+
+    private static void openBuy(ServerPlayer player, MarketData.Stall stall) {
+        if (stall.owner == null) {
+            player.sendSystemMessage(Messages.warn("Cet emplacement est vide."));
+            return;
+        }
+        Component title = Icons.label("Stand de " + stall.ownerName, ChatFormatting.GOLD);
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (int i = 0; i < stall.offers.size(); i++) {
+            final int idx = i;
+            MarketData.Offer o = stall.offers.get(i);
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(o.stack.getCount() + "x " + o.stack.getHoverName().getString(), ChatFormatting.AQUA),
+                    Icons.label(EconomyManager.format(o.price) + " - " + remaining(o), ChatFormatting.GOLD),
+                    Icons.label("Acheter", ChatFormatting.GREEN),
+                    sp -> {
+                        MarketManager.BuyResult r = MarketManager.buy(sp, stall, idx);
+                        switch (r) {
+                            case POOR -> sp.sendSystemMessage(Messages.error("Solde insuffisant."));
+                            case GONE -> sp.sendSystemMessage(Messages.warn("Cette offre n'est plus disponible."));
+                            case OWN -> sp.sendSystemMessage(Messages.warn("C'est ton propre stand."));
+                            default -> sp.sendSystemMessage(Messages.success("Achat effectue !"));
+                        }
+                        if (stall.owner == null || stall.offers.isEmpty()) {
+                            Menus.close(sp);
+                        } else {
+                            openBuy(sp, stall);
+                        }
+                    }));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune offre", ChatFormatting.GRAY),
+                    Icons.label("", ChatFormatting.WHITE), null, null));
+        }
+        OwoMenuServer.openPanel(player, title, rows, List.of(), sp -> openBuy(sp, stall), null);
+    }
+
+    // -------- Recuperation (admin / maire) --------
+
+    public static void openRecoveryAdmin(ServerPlayer admin) {
+        MarketData data = MarketData.get(admin.server);
+        List<MarketData.RecoveryEntry> rec = new ArrayList<>(data.recovery());
+
+        Component title = Component.literal("Recuperation - Mairie")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (MarketData.RecoveryEntry e : rec) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(e.ownerName(), ChatFormatting.WHITE),
+                    Icons.label(e.stack().getCount() + "x " + e.stack().getHoverName().getString(), ChatFormatting.AQUA),
+                    Icons.label("Rendre", ChatFormatting.GREEN),
+                    sp -> {
+                        returnRecovery(sp, e);
+                        openRecoveryAdmin(sp);
+                    }));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun objet en attente", ChatFormatting.GRAY),
+                    Icons.label("", ChatFormatting.WHITE), null, null));
+        }
+        OwoMenuServer.openPanel(admin, title, rows, List.of(),
+                MarketMenus::openRecoveryAdmin, com.utopia.menu.AdminMenu::open);
+    }
+
+    private static void returnRecovery(ServerPlayer admin, MarketData.RecoveryEntry entry) {
+        ServerPlayer owner = admin.server.getPlayerList().getPlayer(entry.owner());
+        if (owner == null) {
+            admin.sendSystemMessage(Messages.warn(entry.ownerName() + " est hors ligne (restitution quand il revient)."));
+            return;
+        }
+        ItemHandlerHelper.giveItemToPlayer(owner, entry.stack().copy());
+        MarketData.get(admin.server).removeRecovery(entry);
+        owner.sendSystemMessage(Messages.info("Objets expires du marche rendus : "
+                + entry.stack().getCount() + "x " + entry.stack().getHoverName().getString() + "."));
+        admin.sendSystemMessage(Messages.success("Rendu a " + entry.ownerName() + "."));
+    }
+
+    // -------- util --------
+
+    /** Temps restant d'une offre, format lisible. */
+    private static String remaining(MarketData.Offer o) {
+        long ms = o.expiryMillis - System.currentTimeMillis();
+        return Messages.formatDuration(Math.max(0, ms) / 1000);
+    }
+}

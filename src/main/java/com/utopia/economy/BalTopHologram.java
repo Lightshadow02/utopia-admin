@@ -108,6 +108,9 @@ public final class BalTopHologram {
     }
 
     private static String nameOf(MinecraftServer server, UUID id) {
+        if (id.equals(com.utopia.data.MarketData.MAIRIE_UUID)) {
+            return com.utopia.data.MarketData.MAIRIE_NAME;
+        }
         ServerPlayer online = server.getPlayerList().getPlayer(id);
         if (online != null) {
             return online.getGameProfile().getName();

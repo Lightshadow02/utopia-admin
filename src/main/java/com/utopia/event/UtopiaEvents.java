@@ -92,6 +92,18 @@ public final class UtopiaEvents {
             if (RoomData.get(level.getServer()).isAubergeBlock(dim, pos)) {
                 RoomData.get(level.getServer()).removeAubergeBlock(dim, pos);
             }
+            // Mode "definir un stand de marche" : ce bloc devient un emplacement de vente.
+            if (com.utopia.market.MarketManager.isSelectingStall(sp.getUUID())) {
+                com.utopia.data.MarketData.get(level.getServer()).addStall(dim, pos);
+                com.utopia.market.MarketManager.clearStallSelect(sp.getUUID());
+                event.setCanceled(true);
+                sp.sendSystemMessage(Messages.success("Stand de marche cree ! Les joueurs feront clic droit dessus pour vendre/acheter."));
+                return;
+            }
+            // Casser un stand enregistre : on le retire (offres invendues -> recuperation mairie).
+            if (com.utopia.data.MarketData.get(level.getServer()).isStall(dim, pos)) {
+                com.utopia.market.MarketManager.removeStall(level.getServer(), dim, pos);
+            }
             if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
                 event.setCanceled(true);
                 sp.sendSystemMessage(Messages.error("Vous n'avez pas le droit de modifier cette parcelle."));
@@ -149,6 +161,14 @@ public final class UtopiaEvents {
             return;
         }
         BlockPos pos = event.getPos();
+        // Stand de marche : clic droit -> reserver / gerer / acheter.
+        com.utopia.data.MarketData.Stall stall =
+                com.utopia.data.MarketData.get(level.getServer()).stallAt(level.dimension().location(), pos);
+        if (stall != null) {
+            com.utopia.market.MarketMenus.openStall(sp, stall);
+            event.setCanceled(true);
+            return;
+        }
         // Bloc d'acces auberge : clic droit -> gestionnaire de chambres (op ou aubergiste designe).
         RoomData roomData = RoomData.get(level.getServer());
         if (roomData.isAubergeBlock(level.dimension().location(), pos)) {
@@ -287,6 +307,7 @@ public final class UtopiaEvents {
         if (t % 40 == 0) {
             ParcelHolograms.syncHolograms(server);
             com.utopia.economy.BalTopHologram.sync(server);
+            com.utopia.market.MarketManager.tickExpiry(server);
             if (Config.PARCEL_EXTINGUISH_FIRE.get()) {
                 ParcelManager.sweepFire(server);
             }

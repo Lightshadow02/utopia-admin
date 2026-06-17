@@ -103,7 +103,9 @@ public final class EconomyCommands {
         for (var e : list) {
             final int r = rank++;
             ServerPlayer online = server.getPlayerList().getPlayer(e.getKey());
-            String name = online != null ? online.getGameProfile().getName()
+            String name = e.getKey().equals(com.utopia.data.MarketData.MAIRIE_UUID)
+                    ? com.utopia.data.MarketData.MAIRIE_NAME
+                    : online != null ? online.getGameProfile().getName()
                     : server.getProfileCache().get(e.getKey()).map(com.mojang.authlib.GameProfile::getName)
                             .orElse(e.getKey().toString().substring(0, 8));
             ctx.getSource().sendSuccess(() -> Messages.info(" #" + r + " " + name + " : " + EconomyManager.format(e.getValue())), false);

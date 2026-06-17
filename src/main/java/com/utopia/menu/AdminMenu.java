@@ -9,6 +9,8 @@ import com.utopia.data.RoomData;
 import com.utopia.economy.EconomyMenus;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
+import com.utopia.market.MarketManager;
+import com.utopia.market.MarketMenus;
 import com.utopia.net.OwoMenuServer;
 import com.utopia.parcel.ParcelMenus;
 import com.utopia.room.RoomManager;
@@ -58,6 +60,18 @@ public final class AdminMenu {
                 Icons.label("Aubergistes", ChatFormatting.AQUA),
                 Icons.lore("Designer qui peut ouvrir /auberge", ChatFormatting.GRAY),
                 AdminMenu::openAubergistePicker));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.EMERALD_BLOCK),
+                Icons.label("Marche : definir un stand", ChatFormatting.GREEN),
+                Icons.lore("Active le mode, puis CASSE le bloc qui sera le stand", ChatFormatting.GRAY),
+                sp -> {
+                    MarketManager.startStallSelect(sp.getUUID());
+                    sp.sendSystemMessage(Messages.info("Mode actif : casse le bloc qui servira de stand de marche."));
+                    Menus.close(sp);
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST_MINECART),
+                Icons.label("Recuperation marche", ChatFormatting.GOLD),
+                Icons.lore("Objets expires en attente de restitution", ChatFormatting.GRAY),
+                MarketMenus::openRecoveryAdmin));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
     }
