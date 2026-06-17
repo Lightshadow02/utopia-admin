@@ -531,18 +531,26 @@ public final class DailyMenus {
                                         Consumer<List<String>> onSave, Consumer<ServerPlayer> reopen) {
         UtopiaGui gui = new UtopiaGui(6, title);
 
-        // Rangee 0 : recompense actuelle (lecture seule).
+        // Rangee 0 : recompense actuelle. Clic sur un item = le RETIRER (sauvegarde immediate).
+        List<String> specsList = new ArrayList<>(currentSpecs);
         int slot = 0;
-        for (String spec : currentSpecs) {
-            if (slot > 8) {
-                break;
+        for (int idx = 0; idx < specsList.size() && slot <= 8; idx++) {
+            ItemStack st = DailyManager.specToStack(specsList.get(idx));
+            if (st.isEmpty()) {
+                continue;
             }
-            ItemStack st = DailyManager.specToStack(spec);
-            if (!st.isEmpty()) {
-                gui.set(slot++, Icons.icon(st.getItem(), st.getCount(),
-                        st.getHoverName().copy().withStyle(s -> s.withItalic(false)),
-                        List.of(Icons.lore("Actuellement defini (lecture seule)", ChatFormatting.DARK_GRAY))));
-            }
+            final int removeIndex = idx;
+            gui.button(slot++, Icons.icon(st.getItem(), st.getCount(),
+                    st.getHoverName().copy().withStyle(s -> s.withItalic(false)),
+                    List.of(Icons.lore("Clic pour RETIRER cet item", ChatFormatting.RED))),
+                    sp -> {
+                        List<String> reduced = new ArrayList<>(specsList);
+                        reduced.remove(removeIndex);
+                        onSave.accept(reduced);
+                        returnEditorItems(sp, gui);
+                        gui.markFinalized();
+                        openItemsEditor(sp, title, reduced, onSave, reopen);
+                    });
         }
         for (int i = slot; i <= 8; i++) {
             gui.set(i, Icons.filler());
@@ -554,13 +562,16 @@ public final class DailyMenus {
         }
 
         gui.set(45, Icons.icon(Items.PAPER, Icons.label("Mode d'emploi", ChatFormatting.AQUA), List.of(
-                Icons.lore("Placez les items a donner, puis Sauvegarder.", ChatFormatting.GRAY),
-                Icons.lore("La zone definit la TOTALITE de la recompense.", ChatFormatting.GRAY),
+                Icons.lore("Rangee du haut : clic sur un item pour le RETIRER.", ChatFormatting.GRAY),
+                Icons.lore("Zone du bas : placez des items a AJOUTER, puis Sauvegarder.", ChatFormatting.GRAY),
                 Icons.lore("Vos items vous sont rendus a la fermeture.", ChatFormatting.GREEN))));
 
-        gui.button(48, Icons.icon(Items.LIME_DYE, Icons.label("SAUVEGARDER", ChatFormatting.GREEN), List.of()),
+        gui.button(48, Icons.icon(Items.LIME_DYE, Icons.label("SAUVEGARDER", ChatFormatting.GREEN),
+                List.of(Icons.lore("Ajoute les items de la zone du bas a la recompense", ChatFormatting.GRAY))),
                 sp -> {
-                    onSave.accept(readEditable(gui));
+                    List<String> combined = new ArrayList<>(specsList);
+                    combined.addAll(readEditable(gui));
+                    onSave.accept(combined);
                     returnEditorItems(sp, gui);
                     gui.markFinalized();
                     reopen.accept(sp);
