@@ -2,6 +2,7 @@ package com.utopia.market;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.utopia.data.MarketData;
 import com.utopia.economy.EconomyManager;
@@ -155,7 +156,12 @@ public final class MarketMenus {
     // -------- Recuperation (admin / maire) --------
 
     public static void openRecoveryAdmin(ServerPlayer admin) {
-        MarketData data = MarketData.get(admin.server);
+        openRecovery(admin, com.utopia.menu.AdminMenu::open);
+    }
+
+    /** Liste de la recuperation ; {@code onBack} = ou revient le bouton Retour (admin ou maire). */
+    public static void openRecovery(ServerPlayer player, Consumer<ServerPlayer> onBack) {
+        MarketData data = MarketData.get(player.server);
         List<MarketData.RecoveryEntry> rec = new ArrayList<>(data.recovery());
 
         Component title = Component.literal("Recuperation - Mairie")
@@ -168,15 +174,63 @@ public final class MarketMenus {
                     Icons.label("Rendre", ChatFormatting.GREEN),
                     sp -> {
                         returnRecovery(sp, e);
-                        openRecoveryAdmin(sp);
+                        openRecovery(sp, onBack);
                     }));
         }
         if (rows.isEmpty()) {
             rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun objet en attente", ChatFormatting.GRAY),
                     Icons.label("", ChatFormatting.WHITE), null, null));
         }
-        OwoMenuServer.openPanel(admin, title, rows, List.of(),
-                MarketMenus::openRecoveryAdmin, com.utopia.menu.AdminMenu::open);
+        OwoMenuServer.openPanel(player, title, rows, List.of(),
+                sp -> openRecovery(sp, onBack), onBack);
+    }
+
+    // -------- Menu du compte de la mairie (/maire) --------
+
+    public static void openMaire(ServerPlayer player) {
+        long balance = EconomyManager.getBalance(player.server, MarketData.MAIRIE_UUID);
+        Component title = Component.literal("MAIRIE - Compte")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        List<Component> stats = List.of(
+                Component.literal("Solde de la mairie : ")
+                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                        .append(Component.literal(balance + " Utopieces")
+                                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))),
+                Component.literal("Alimente par la taxe du marche (25%).")
+                        .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.GOLD_INGOT),
+                Icons.label("Retirer vers mon solde", ChatFormatting.GREEN),
+                Icons.lore("Transfere des Utopieces de la mairie vers ton compte", ChatFormatting.GRAY),
+                sp -> {
+                    long max = EconomyManager.getBalance(sp.server, MarketData.MAIRIE_UUID);
+                    if (max <= 0) {
+                        sp.sendSystemMessage(Messages.warn("Le compte de la mairie est vide."));
+                        openMaire(sp);
+                        return;
+                    }
+                    Menus.promptAmount(sp, Icons.label("Montant a retirer de la mairie", ChatFormatting.GOLD),
+                            List.of(Icons.lore("Disponible : " + max + " Utopieces", ChatFormatting.GRAY)),
+                            Icons.label("Retirer", ChatFormatting.GREEN), Math.min(100, max), 1, max,
+                            v -> {
+                                long cur = EconomyManager.getBalance(sp.server, MarketData.MAIRIE_UUID);
+                                long amount = Math.min(v, cur);
+                                if (amount > 0) {
+                                    EconomyManager.remove(sp.server, MarketData.MAIRIE_UUID, amount);
+                                    EconomyManager.add(sp.server, sp.getUUID(), amount);
+                                    sp.sendSystemMessage(Messages.success("Retire " + EconomyManager.format(amount)
+                                            + " de la mairie vers ton solde."));
+                                }
+                                openMaire(sp);
+                            });
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.CHEST_MINECART),
+                Icons.label("Objets expires (recuperation)", ChatFormatting.GOLD),
+                Icons.lore("Rendre aux joueurs les objets expires du marche", ChatFormatting.GRAY),
+                sp -> openRecovery(sp, MarketMenus::openMaire)));
+
+        OwoMenuServer.openHub(player, title, stats, entries, MarketMenus::openMaire, null);
     }
 
     private static void returnRecovery(ServerPlayer admin, MarketData.RecoveryEntry entry) {

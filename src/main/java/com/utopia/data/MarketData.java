@@ -3,9 +3,11 @@ package com.utopia.data;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
@@ -80,8 +82,33 @@ public final class MarketData extends SavedData {
 
     private final Map<String, Stall> stalls = new LinkedHashMap<>(); // cle "dim;x;y;z"
     private final List<RecoveryEntry> recovery = new ArrayList<>();
+    private final Set<UUID> maires = new HashSet<>(); // joueurs autorises a /maire (designes par un op)
 
     public MarketData() {
+    }
+
+    // -------- Maire (joueur ayant acces au compte de la mairie via /maire) --------
+
+    public boolean isMaire(UUID id) {
+        return maires.contains(id);
+    }
+
+    public Collection<UUID> maires() {
+        return maires;
+    }
+
+    /** Ajoute/retire le statut de maire ; renvoie le nouvel etat. */
+    public boolean toggleMaire(UUID id) {
+        boolean now;
+        if (maires.contains(id)) {
+            maires.remove(id);
+            now = false;
+        } else {
+            maires.add(id);
+            now = true;
+        }
+        setDirty();
+        return now;
     }
 
     public static MarketData get(MinecraftServer server) {
@@ -203,6 +230,14 @@ public final class MarketData extends SavedData {
             }
             data.recovery.add(new RecoveryEntry(owner, rt.getString("ownerName"), stack, rt.getLong("expiry")));
         }
+        ListTag maireList = tag.getList("maires", Tag.TAG_STRING);
+        for (int i = 0; i < maireList.size(); i++) {
+            try {
+                data.maires.add(UUID.fromString(maireList.getString(i)));
+            } catch (IllegalArgumentException ignored) {
+                // uuid corrompu
+            }
+        }
         return data;
     }
 
@@ -241,6 +276,11 @@ public final class MarketData extends SavedData {
             rec.add(rt);
         }
         tag.put("recovery", rec);
+        ListTag maireList = new ListTag();
+        for (UUID id : maires) {
+            maireList.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+        }
+        tag.put("maires", maireList);
         return tag;
     }
 }

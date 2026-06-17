@@ -70,6 +70,7 @@ public final class UtopiaEvents {
         RoomCommands.register(dispatcher);
         com.utopia.command.MenuCommand.register(dispatcher);
         com.utopia.command.AdminCommand.register(dispatcher);
+        com.utopia.command.MaireCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -308,6 +309,7 @@ public final class UtopiaEvents {
             ParcelHolograms.syncHolograms(server);
             com.utopia.economy.BalTopHologram.sync(server);
             com.utopia.market.MarketManager.tickExpiry(server);
+            com.utopia.market.MarketHolograms.sync(server);
             if (Config.PARCEL_EXTINGUISH_FIRE.get()) {
                 ParcelManager.sweepFire(server);
             }

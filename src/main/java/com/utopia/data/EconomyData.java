@@ -48,6 +48,8 @@ public final class EconomyData extends SavedData {
     /** Les {@code limit} plus gros soldes, du plus riche au moins riche. */
     public java.util.List<Map.Entry<UUID, Long>> top(int limit) {
         java.util.List<Map.Entry<UUID, Long>> list = new java.util.ArrayList<>(balances.entrySet());
+        // Le compte de la mairie n'apparait pas dans le classement.
+        list.removeIf(e -> e.getKey().equals(MarketData.MAIRIE_UUID));
         list.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
         return list.size() > limit ? list.subList(0, limit) : list;
     }

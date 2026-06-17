@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.utopia.daily.DailyMenus;
+import com.utopia.data.MarketData;
 import com.utopia.data.RoomData;
 import com.utopia.economy.EconomyMenus;
 import com.utopia.gui.Icons;
@@ -72,8 +73,53 @@ public final class AdminMenu {
                 Icons.label("Recuperation marche", ChatFormatting.GOLD),
                 Icons.lore("Objets expires en attente de restitution", ChatFormatting.GRAY),
                 MarketMenus::openRecoveryAdmin));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLDEN_HELMET),
+                Icons.label("Maire", ChatFormatting.GOLD),
+                Icons.lore("Designer qui accede a /maire (compte de la mairie)", ChatFormatting.GRAY),
+                AdminMenu::openMairePicker));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
+    }
+
+    /** Selecteur des joueurs en ligne : bascule le statut de maire (acces a /maire). */
+    public static void openMairePicker(ServerPlayer player) {
+        MinecraftServer server = player.server;
+        MarketData data = MarketData.get(server);
+
+        Component title = Component.literal("Maire")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        List<Component> stats = List.of(Component.literal(data.maires().size() + " maire(s) designe(s)")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (ServerPlayer target : server.getPlayerList().getPlayers()) {
+            UUID tid = target.getUUID();
+            String tname = target.getGameProfile().getName();
+            boolean isMaire = data.isMaire(tid);
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(tname, ChatFormatting.WHITE), List.of()),
+                    Icons.label(tname, isMaire ? ChatFormatting.GOLD : ChatFormatting.WHITE),
+                    Icons.lore(isMaire ? "Maire : OUI (clic pour retirer)" : "Maire : non (clic pour nommer)",
+                            isMaire ? ChatFormatting.GOLD : ChatFormatting.GRAY),
+                    sp -> toggleMaire(sp, tid, tname)));
+        }
+
+        OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openMairePicker, AdminMenu::open);
+    }
+
+    private static void toggleMaire(ServerPlayer admin, UUID targetId, String targetName) {
+        MinecraftServer server = admin.server;
+        boolean now = MarketData.get(server).toggleMaire(targetId);
+        ServerPlayer target = server.getPlayerList().getPlayer(targetId);
+        if (target != null) {
+            server.getCommands().sendCommands(target); // rafraichit l'arbre (/maire apparait/disparait)
+            target.sendSystemMessage(now
+                    ? Messages.success("Vous etes nomme MAIRE : la commande /maire est disponible.")
+                    : Messages.warn("Vous n'etes plus maire."));
+        }
+        admin.sendSystemMessage(now ? Messages.success(targetName + " est nomme maire.")
+                : Messages.info(targetName + " n'est plus maire."));
+        openMairePicker(admin);
     }
 
     /** Sous-menu auberge (op) : gerer les chambres + outils de configuration (outil chambre, bloc d'acces). */
