@@ -221,15 +221,11 @@ public final class MarketHolograms {
             MarketData.Offer o = stall.offers.get(offerIndex);
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             double baseY = sp.getY();
-            // Objet flottant en haut, puis 2 lignes (nom / prix) pour un affichage compact.
-            l.items.add(new ItemSpot(j, cx, baseY + 1.35, cz, o.stack.copyWithCount(1)));
-            Component nameLine = Component.literal(o.stack.getCount() + "x ").withStyle(ChatFormatting.WHITE)
-                    .append(o.stack.getHoverName().copy().withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
-            Component priceLine = Component.literal(EconomyManager.format(o.price))
+            // Objet flottant en haut, puis uniquement le prix unitaire (l'objet montre deja ce que c'est).
+            l.items.add(new ItemSpot(j, cx, baseY + 1.30, cz, o.stack.copyWithCount(1)));
+            Component priceLine = Component.literal(EconomyManager.format(o.price) + " /u")
                     .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
-            int base = j * 2 + 1;
-            l.texts.add(new TextLine(base, cx, baseY + 1.00, cz, nameLine));
-            l.texts.add(new TextLine(base + 1, cx, baseY + 0.73, cz, priceLine));
+            l.texts.add(new TextLine(j + 1, cx, baseY + 0.85, cz, priceLine));
         }
         l.sig = sig.toString();
         return l;

@@ -187,9 +187,13 @@ public final class MarketManager {
 
     // -------- Achat --------
 
-    public enum BuyResult { OK, GONE, OWN, POOR }
+    public enum BuyResult { OK, GONE, OWN, POOR, INVALID }
 
-    public static BuyResult buy(ServerPlayer buyer, MarketData.Stall stall, int index) {
+    /**
+     * Achat de {@code qty} objets d'une offre au PRIX UNITAIRE ({@code offer.price} = prix par objet).
+     * L'offre est decrementee de {@code qty} (retiree si tout est achete).
+     */
+    public static BuyResult buy(ServerPlayer buyer, MarketData.Stall stall, int index, int qty) {
         MinecraftServer server = buyer.server;
         if (stall.owner == null || index < 0 || index >= stall.offers.size()) {
             return BuyResult.GONE;
@@ -198,25 +202,35 @@ public final class MarketManager {
             return BuyResult.OWN;
         }
         MarketData.Offer offer = stall.offers.get(index);
-        long price = offer.price;
-        if (EconomyManager.getBalance(server, buyer.getUUID()) < price) {
+        int available = offer.stack.getCount();
+        if (qty < 1 || qty > available) {
+            return BuyResult.INVALID;
+        }
+        long total = offer.price * (long) qty;
+        if (EconomyManager.getBalance(server, buyer.getUUID()) < total) {
             return BuyResult.POOR;
         }
-        // Retrait de l'offre AVANT toute remise (atomique sur le thread serveur : pas de double-achat).
+        // Prelevement AVANT toute remise (atomique sur le thread serveur : pas de double-achat).
         UUID seller = stall.owner;
-        stall.offers.remove(index);
+        ItemStack bought = offer.stack.copy();
+        bought.setCount(qty);
+        if (qty >= available) {
+            stall.offers.remove(index);
+        } else {
+            offer.stack.shrink(qty);
+        }
 
-        EconomyManager.remove(server, buyer.getUUID(), price);
-        long sShare = sellerShare(price);
-        long mShare = mairieShare(price);
+        EconomyManager.remove(server, buyer.getUUID(), total);
+        long sShare = sellerShare(total);
+        long mShare = mairieShare(total);
         EconomyManager.add(server, seller, sShare);
         EconomyManager.add(server, MarketData.MAIRIE_UUID, mShare);
-        ItemHandlerHelper.giveItemToPlayer(buyer, offer.stack.copy());
+        ItemHandlerHelper.giveItemToPlayer(buyer, bought);
 
         ServerPlayer sellerOnline = server.getPlayerList().getPlayer(seller);
         if (sellerOnline != null) {
             sellerOnline.sendSystemMessage(Messages.success("Vente : "
-                    + offer.stack.getCount() + "x " + offer.stack.getHoverName().getString()
+                    + qty + "x " + bought.getHoverName().getString()
                     + " a " + buyer.getGameProfile().getName() + " (+" + EconomyManager.format(sShare)
                     + ", taxe " + EconomyManager.format(mShare) + ")."));
         }

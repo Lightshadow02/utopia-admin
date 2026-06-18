@@ -108,11 +108,11 @@ Exemple : `/parcel trust Steve build containers create`.
 | Action | Effet |
 |---|---|
 | **Clic droit** sur un stand **libre** | Le **réserve** (devient ton stand). |
-| **Clic droit** sur **ton** stand | 🖱️ Gérer : **Ajouter (objet en main)** + prix, **Retirer** une offre, **Libérer** le stand. |
-| **Clic droit** sur le stand **d'un autre** | 🖱️ **Acheter** une offre. |
+| **Clic droit** sur **ton** stand | 🖱️ Gérer : **Ajouter (objet en main)** + **prix unitaire**, **Retirer** une offre, **Libérer** le stand. |
+| **Clic droit** sur le stand **d'un autre** | 🖱️ **Acheter** : choisis la **quantité** (prix **à l'unité**). |
 | **Shift + clic droit** mains vides (op) | 🖱️ **Configuration du stand** : définir les emplacements d'affichage. |
 
-> Jusqu'à **10 offres** par stand (types d'objets différents possibles). Chaque offre expire après **48 h** (objets non vendus → récupération de la mairie). À l'achat : **75 % vendeur / 25 % mairie**. Les objets en vente s'affichent en **hologramme** au-dessus du stand (ou sur des **emplacements définis** par un op ; défilement si plus d'offres que d'emplacements).
+> Jusqu'à **10 offres** par stand (types d'objets différents possibles). Le prix se fixe **à l'unité** : ex. 64 planches à 5 pièces l'unité → l'acheteur prend la quantité voulue, l'offre se décrémente. Chaque offre expire après **48 h** (objets non vendus → récupération de la mairie). À l'achat : **75 % vendeur / 25 % mairie** (sur le total payé). Les objets en vente s'affichent en **hologramme** (objet flottant + **prix unitaire**) au-dessus du stand ou sur des **emplacements définis** par un op (défilement si plus d'offres que d'emplacements).
 
 ---
 

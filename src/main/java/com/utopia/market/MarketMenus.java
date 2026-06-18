@@ -60,7 +60,7 @@ public final class MarketMenus {
             MarketData.Offer o = stall.offers.get(i);
             rows.add(new OwoMenuServer.PanelRow(
                     Icons.label(o.stack.getCount() + "x " + o.stack.getHoverName().getString(), ChatFormatting.AQUA),
-                    Icons.label(EconomyManager.format(o.price) + " - " + remaining(o), ChatFormatting.GOLD),
+                    Icons.label(EconomyManager.format(o.price) + " /u (" + remaining(o) + ")", ChatFormatting.GOLD),
                     Icons.label("Retirer", ChatFormatting.RED),
                     sp -> {
                         MarketManager.cancelOffer(sp, stall, idx);
@@ -98,8 +98,9 @@ public final class MarketMenus {
             return;
         }
         String desc = held.getCount() + "x " + held.getHoverName().getString();
-        Menus.promptAmount(player, Icons.label("Prix de l'offre (Utopieces)", ChatFormatting.GOLD),
+        Menus.promptAmount(player, Icons.label("Prix UNITAIRE (par objet)", ChatFormatting.GOLD),
                 List.of(Icons.lore("Objet : " + desc, ChatFormatting.GRAY),
+                        Icons.lore("Prix pour 1 objet (l'acheteur choisit la quantite).", ChatFormatting.DARK_GRAY),
                         Icons.lore("Le vendeur touche 75%, la mairie 25%.", ChatFormatting.DARK_GRAY)),
                 Icons.label("Mettre en vente", ChatFormatting.GREEN), 1, 0, 1_000_000_000L,
                 price -> {
@@ -109,7 +110,7 @@ public final class MarketMenus {
                         case EMPTY_HAND -> player.sendSystemMessage(Messages.warn("Plus rien en main."));
                         case NOT_OWNER -> player.sendSystemMessage(Messages.error("Ce n'est pas ton emplacement."));
                         default -> player.sendSystemMessage(Messages.success("Offre creee : " + desc
-                                + " pour " + EconomyManager.format(price) + "."));
+                                + " a " + EconomyManager.format(price) + " l'unite."));
                     }
                     openManage(player, stall);
                 });
@@ -129,28 +130,48 @@ public final class MarketMenus {
             MarketData.Offer o = stall.offers.get(i);
             rows.add(new OwoMenuServer.PanelRow(
                     Icons.label(o.stack.getCount() + "x " + o.stack.getHoverName().getString(), ChatFormatting.AQUA),
-                    Icons.label(EconomyManager.format(o.price) + " - " + remaining(o), ChatFormatting.GOLD),
+                    Icons.label(EconomyManager.format(o.price) + " /unite", ChatFormatting.GOLD),
                     Icons.label("Acheter", ChatFormatting.GREEN),
-                    sp -> {
-                        MarketManager.BuyResult r = MarketManager.buy(sp, stall, idx);
-                        switch (r) {
-                            case POOR -> sp.sendSystemMessage(Messages.error("Solde insuffisant."));
-                            case GONE -> sp.sendSystemMessage(Messages.warn("Cette offre n'est plus disponible."));
-                            case OWN -> sp.sendSystemMessage(Messages.warn("C'est ton propre stand."));
-                            default -> sp.sendSystemMessage(Messages.success("Achat effectue !"));
-                        }
-                        if (stall.owner == null || stall.offers.isEmpty()) {
-                            Menus.close(sp);
-                        } else {
-                            openBuy(sp, stall);
-                        }
-                    }));
+                    sp -> promptBuyQty(sp, stall, idx)));
         }
         if (rows.isEmpty()) {
             rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune offre", ChatFormatting.GRAY),
                     Icons.label("", ChatFormatting.WHITE), null, null));
         }
         OwoMenuServer.openPanel(player, title, rows, List.of(), sp -> openBuy(sp, stall), null);
+    }
+
+    /** Demande la quantite a acheter (1..disponible) puis effectue l'achat au prix unitaire. */
+    private static void promptBuyQty(ServerPlayer player, MarketData.Stall stall, int idx) {
+        if (stall.owner == null || idx < 0 || idx >= stall.offers.size()) {
+            player.sendSystemMessage(Messages.warn("Cette offre n'est plus disponible."));
+            Menus.close(player);
+            return;
+        }
+        MarketData.Offer o = stall.offers.get(idx);
+        int available = o.stack.getCount();
+        long unit = o.price;
+        String name = o.stack.getHoverName().getString();
+        Menus.promptAmount(player, Icons.label("Quantite a acheter (" + name + ")", ChatFormatting.GOLD),
+                List.of(Icons.lore("Prix unitaire : " + EconomyManager.format(unit), ChatFormatting.GRAY),
+                        Icons.lore("Disponible : " + available, ChatFormatting.GRAY)),
+                Icons.label("Acheter", ChatFormatting.GREEN), available, 1, available,
+                qty -> {
+                    MarketManager.BuyResult r = MarketManager.buy(player, stall, idx, (int) qty);
+                    switch (r) {
+                        case POOR -> player.sendSystemMessage(Messages.error("Solde insuffisant."));
+                        case GONE -> player.sendSystemMessage(Messages.warn("Cette offre n'est plus disponible."));
+                        case OWN -> player.sendSystemMessage(Messages.warn("C'est ton propre stand."));
+                        case INVALID -> player.sendSystemMessage(Messages.warn("Quantite invalide."));
+                        default -> player.sendSystemMessage(Messages.success("Achat effectue : " + qty + "x " + name
+                                + " pour " + EconomyManager.format(unit * qty) + "."));
+                    }
+                    if (stall.owner == null || stall.offers.isEmpty()) {
+                        Menus.close(player);
+                    } else {
+                        openBuy(player, stall);
+                    }
+                });
     }
 
     // -------- Recuperation (admin / maire) --------
