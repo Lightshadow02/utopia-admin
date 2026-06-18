@@ -10,6 +10,11 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 
 ## 👤 Commandes joueur
 
+### 🧰 Menu principal
+| Commande | Effet |
+|---|---|
+| `/menu` | 🖱️ Ouvre le **hub principal** du joueur (accès aux menus disponibles). |
+
 ### 🧭 Téléportation entre joueurs
 | Commande | Effet |
 |---|---|
@@ -76,7 +81,47 @@ Exemple : `/parcel trust Steve build containers create`.
 
 ---
 
+## 🧑‍💼 Rôles désignés (aubergiste, maire)
+
+> Ces commandes sont utilisables par les **op** **OU** par un joueur **désigné par un op** (via `/admin`). Un joueur non désigné ne les voit pas.
+
+### 🛏️ Auberge (aubergiste)
+| Commande | Effet |
+|---|---|
+| `/auberge` | 🖱️ Ouvre le **gestionnaire des chambres** (liste, attribuer, prix, durée, geler/libérer). Op + **aubergistes désignés**. |
+
+> On peut aussi ouvrir ce gestionnaire en faisant **clic droit sur le bloc d'accès** de l'auberge (si un op en a défini un). Un aubergiste **ne peut pas supprimer** une chambre (réservé aux op). La désignation des aubergistes se fait dans `/admin → Aubergistes`.
+
+### 🏛️ Mairie (maire)
+| Commande | Effet |
+|---|---|
+| `/maire` | 🖱️ **Compte de la mairie** : **retirer** vers son solde, **déposer** depuis son solde, voir/**rendre les objets expirés** du marché. Op + **maire désigné**. |
+
+> La Mairie est créditée de la **taxe du marché (25 %)**. Elle **n'apparaît pas** dans `/baltop`. Désignation du maire dans `/admin → Maire`.
+
+---
+
+## 🛒 Marché public
+
+> Le marché fonctionne surtout au **clic droit** sur les **stands physiques** (pas de commande joueur). Les stands sont créés par un op.
+
+| Action | Effet |
+|---|---|
+| **Clic droit** sur un stand **libre** | Le **réserve** (devient ton stand). |
+| **Clic droit** sur **ton** stand | 🖱️ Gérer : **Ajouter (objet en main)** + prix, **Retirer** une offre, **Libérer** le stand. |
+| **Clic droit** sur le stand **d'un autre** | 🖱️ **Acheter** une offre. |
+| **Shift + clic droit** mains vides (op) | 🖱️ **Configuration du stand** : définir les emplacements d'affichage. |
+
+> Jusqu'à **10 offres** par stand (types d'objets différents possibles). Chaque offre expire après **48 h** (objets non vendus → récupération de la mairie). À l'achat : **75 % vendeur / 25 % mairie**. Les objets en vente s'affichent en **hologramme** au-dessus du stand (ou sur des **emplacements définis** par un op ; défilement si plus d'offres que d'emplacements).
+
+---
+
 ## 🛡️ Commandes administrateur (op niveau 2)
+
+### 🧰 Hub d'administration
+| Commande | Effet |
+|---|---|
+| `/admin` | 🖱️ Ouvre le **hub admin** : Parcelles, Économie, Récompenses, Auberge/chambres, Aubergistes, Marché (définir un stand, récupération), **Maire**, **Inventaires**, **Warps**. |
 
 ### 🧹 Nettoyage des objets au sol (clear-lag)
 | Commande | Effet |
@@ -146,6 +191,49 @@ Une **parcelle Admin** est une zone serveur **protégée** pour les routes, bât
 | `/parcel trace clear` | Efface tout le tracé. |
 
 > Le tracé se vide aussi **automatiquement** après un `/parcel create` ou `/parcel addregion` réussi.
+
+### 🛏️ Chambres d'auberge — administration
+| Commande | Effet |
+|---|---|
+| `/room` ou `/room menu` | 🖱️ Gestionnaire des chambres (= `/auberge`). |
+| `/room wand` | Reçois l'**outil chambre** : clic **gauche** = coin 1, clic **droit** = coin 2 (le **Y** compte). |
+| `/room create <id>` | Crée une chambre depuis la sélection de l'outil. |
+| `/room assign <id> <joueur> <prix/jour> <jours>` | Attribue la chambre (avance le coût ; crédite le solde de l'occupant). |
+| `/room free <id>` | Libère la chambre. |
+| `/room freeze <id>` / `/room unfreeze <id>` | Gèle / dégèle la chambre. |
+| `/room setprice <id> <prix/jour>` | Change le prix par jour. |
+| `/room setdays <id> <jours>` | Change la durée (en jours). |
+| `/room delete <id>` | Supprime la chambre. |
+| `/room list` | Liste les chambres. |
+
+> **Configuration** (dans `/admin → Auberge / chambres`) : « Gérer les chambres », « Recevoir l'outil chambre », et « **Définir le bloc d'accès** » (active un mode : le prochain bloc **cassé** devient le bloc d'accès — clic droit dessus = ouvre le gestionnaire). Désignation des **aubergistes** : `/admin → Aubergistes`.
+
+### 🛒 Marché public — administration
+> Pas de commande dédiée : tout passe par `/admin` et les **clics** sur les stands.
+
+- `/admin → Marché : définir un stand` : active un mode, puis **casse le bloc** qui deviendra le stand.
+- **Casser** un stand existant le supprime (offres en cours → récupération).
+- **Shift + clic droit** mains vides sur un stand → **Définir les emplacements d'affichage** (casse un bloc par emplacement ; recasse pour retirer ; re-Shift-clic droit pour terminer) ou **Effacer les emplacements**.
+- `/admin → Récupération marché` : rendre aux joueurs les objets expirés.
+- `/admin → Maire` : désigner qui accède à `/maire`.
+
+### 🧰 Outils op divers
+| Commande | Effet |
+|---|---|
+| `/flyspeed <1-10>` | Règle la **vitesse de vol** (1 = normale, 10 = max). |
+| `/flyspeed reset` | Remet la vitesse de vol normale. |
+| `/flyspeed` | Affiche la vitesse de vol actuelle. |
+| `/inv 1` · `/inv 2` | Bascule entre **inventaire 1 et 2** (alias `/inventaire`). Sauvegarde l'inventaire courant et charge l'autre — pratique pour garder sa **survie** avant de passer en **créatif**. Aussi via `/admin → Inventaires`. |
+
+### 🧭 Warps admin
+| Commande | Effet |
+|---|---|
+| `/setwarp <nom>` | Crée / met à jour un warp à ta position. |
+| `/warp <nom>` | **Téléportation instantanée** vers un warp (auto-complétion des noms). |
+| `/delwarp <nom>` | Supprime un warp. |
+| `/warps` (ou `/warp` seul) | Liste les warps. |
+
+> Tous les warps sont **réservés aux op** et persistés (dimension + position + orientation). Aussi accessibles via `/admin → Warps` (liste cliquable, clic = TP).
 
 ---
 
