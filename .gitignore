@@ -47,3 +47,9 @@ repo/
 
 ### Config locale Claude Code ###
 .claude/
+
+### Musique privee (gardee en local, jamais sur GitHub) ###
+/Music/
+
+### META-INF parasite a la racine (l'access transformer dans src/ reste suivi) ###
+/META-INF/
