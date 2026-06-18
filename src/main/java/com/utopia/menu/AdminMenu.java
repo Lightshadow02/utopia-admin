@@ -77,8 +77,41 @@ public final class AdminMenu {
                 Icons.label("Maire", ChatFormatting.GOLD),
                 Icons.lore("Designer qui accede a /maire (compte de la mairie)", ChatFormatting.GRAY),
                 AdminMenu::openMairePicker));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_CHEST),
+                Icons.label("Inventaires", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Basculer entre l'inventaire 1 et 2 (garder sa survie avant le creatif)", ChatFormatting.GRAY),
+                AdminMenu::openInventorySwitch));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
+    }
+
+    /** Bascule entre les deux inventaires sauvegardes (Inventaire 1 / Inventaire 2). */
+    public static void openInventorySwitch(ServerPlayer player) {
+        int active = com.utopia.data.InventoryData.get(player.server).getActive(player.getUUID());
+
+        Component title = Component.literal("Inventaires")
+                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        List<Component> stats = List.of(
+                Component.literal("Actif : Inventaire " + active)
+                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
+                Component.literal("Basculer sauvegarde l'inventaire courant et charge l'autre.")
+                        .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (int slot = 1; slot <= 2; slot++) {
+            final int target = slot;
+            boolean isActive = active == slot;
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST),
+                    Icons.label("Inventaire " + slot, isActive ? ChatFormatting.GREEN : ChatFormatting.WHITE),
+                    Icons.lore(isActive ? "Actuellement actif" : "Cliquer pour basculer sur cet inventaire",
+                            isActive ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                    sp -> {
+                        com.utopia.inventory.InventoryManager.switchTo(sp, target);
+                        openInventorySwitch(sp);
+                    }));
+        }
+
+        OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openInventorySwitch, AdminMenu::open);
     }
 
     /** Selecteur des joueurs en ligne : bascule le statut de maire (acces a /maire). */
