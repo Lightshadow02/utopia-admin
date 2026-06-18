@@ -282,6 +282,7 @@ public final class ParcelManager {
         parcel.setOwner(buyer.getUUID(), buyer.getGameProfile().getName());
         parcel.setLastPaid(price);
         parcel.setForSale(false);
+        applyLicenseOnAcquire(buyer.server, parcel); // Commerce : demarre l'echeance de licence
         ParcelData.get(buyer.server).setDirty();
         return BuyResult.OK;
     }
@@ -318,6 +319,89 @@ public final class ParcelManager {
         parcel.setOwner(null, null);
         parcel.setPrice(parcel.lastPaid());
         parcel.setForSale(true);
+        parcel.setLicenseFrozen(false);
+        parcel.setLicenseExpiry(0L);
+    }
+
+    // -------- Licence commerciale (loyer des parcelles Commerce) --------
+
+    private static final long DAY_MS = 86_400_000L;
+
+    public enum RenewResult { OK, NOT_COMMERCE, DISABLED, MISSING_ITEM }
+
+    /** A l'acquisition d'une parcelle Commerce : fixe l'echeance de licence si le systeme est actif. */
+    public static void applyLicenseOnAcquire(MinecraftServer server, Parcel parcel) {
+        int days = MarketData.get(server).commercialLicenseDays();
+        parcel.setLicenseExpiry(parcel.type() == Parcel.Type.COMMERCE && days > 0
+                ? System.currentTimeMillis() + (long) days * DAY_MS : 0L);
+        parcel.setLicenseFrozen(false);
+    }
+
+    /** A appeler periodiquement : gele les parcelles Commerce dont la licence a expire et avertit le maire. */
+    public static void checkCommercialLicenses(MinecraftServer server) {
+        int days = MarketData.get(server).commercialLicenseDays();
+        if (days <= 0) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        long interval = (long) days * DAY_MS;
+        ParcelData data = ParcelData.get(server);
+        boolean dirty = false;
+        for (Parcel p : data.all()) {
+            if (p.type() != Parcel.Type.COMMERCE || p.owner() == null || p.isAdmin() || p.licenseFrozen()) {
+                continue;
+            }
+            if (p.licenseExpiry() == 0L) {
+                p.setLicenseExpiry(now + interval); // periode de grace pour les parcelles existantes
+                dirty = true;
+            } else if (now > p.licenseExpiry()) {
+                p.setLicenseFrozen(true);
+                dirty = true;
+                notifyLicenseExpired(server, p);
+            }
+        }
+        if (dirty) {
+            data.setDirty();
+        }
+    }
+
+    private static void notifyLicenseExpired(MinecraftServer server, Parcel parcel) {
+        for (UUID id : MarketData.get(server).maires()) {
+            ServerPlayer maire = server.getPlayerList().getPlayer(id);
+            if (maire != null) {
+                maire.sendSystemMessage(Messages.warn("Licence commerciale EXPIREE : parcelle " + parcel.name()
+                        + " de " + parcel.ownerName() + " -> GELEE (aucune interaction)."));
+            }
+        }
+        if (parcel.owner() != null) {
+            ServerPlayer owner = server.getPlayerList().getPlayer(parcel.owner());
+            if (owner != null) {
+                owner.sendSystemMessage(Messages.error("Ta parcelle commerciale " + parcel.name()
+                        + " est GELEE : licence expiree. Renouvelle-la via /parcel (Renouveler la licence)."));
+            }
+        }
+    }
+
+    /** Renouvelle la licence : consomme une Licence commerciale, repousse l'echeance et degele. */
+    public static RenewResult renewLicense(ServerPlayer owner, Parcel parcel) {
+        if (parcel.type() != Parcel.Type.COMMERCE) {
+            return RenewResult.NOT_COMMERCE;
+        }
+        int days = MarketData.get(owner.server).commercialLicenseDays();
+        if (days <= 0) {
+            return RenewResult.DISABLED;
+        }
+        Item license = requiredBuyItem(parcel);
+        if (license != null) {
+            if (countItem(owner, license) <= 0) {
+                return RenewResult.MISSING_ITEM;
+            }
+            consumeOne(owner, license);
+        }
+        parcel.setLicenseExpiry(System.currentTimeMillis() + (long) days * DAY_MS);
+        parcel.setLicenseFrozen(false);
+        ParcelData.get(owner.server).setDirty();
+        return RenewResult.OK;
     }
 
     // -------- Protection feu --------
@@ -393,6 +477,9 @@ public final class ParcelManager {
         Parcel parcel = data.parcelAt(dim, x, y, z);
         if (parcel == null) {
             return true; // zone libre
+        }
+        if (parcel.licenseFrozen()) {
+            return false; // licence commerciale expiree : gel total (les op sont deja passes via canBypass)
         }
         return parcel.allows(player.getUUID(), flag);
     }

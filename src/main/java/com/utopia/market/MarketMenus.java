@@ -101,7 +101,7 @@ public final class MarketMenus {
         Menus.promptAmount(player, Icons.label("Prix UNITAIRE (par objet)", ChatFormatting.GOLD),
                 List.of(Icons.lore("Objet : " + desc, ChatFormatting.GRAY),
                         Icons.lore("Prix pour 1 objet (l'acheteur choisit la quantite).", ChatFormatting.DARK_GRAY),
-                        Icons.lore("Le vendeur touche 75%, la mairie 25%.", ChatFormatting.DARK_GRAY)),
+                        Icons.lore("Vendeur 75%, mairie 15%, detruit 10%.", ChatFormatting.DARK_GRAY)),
                 Icons.label("Mettre en vente", ChatFormatting.GREEN), 1, 0, 1_000_000_000L,
                 price -> {
                     MarketManager.OfferResult r = MarketManager.addOfferFromHand(player, stall, price);
@@ -217,7 +217,7 @@ public final class MarketMenus {
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
                         .append(Component.literal(balance + " Utopieces")
                                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))),
-                Component.literal("Alimente par la taxe du marche (25%).")
+                Component.literal("Alimente par la taxe du marche (15%).")
                         .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();

@@ -2,6 +2,7 @@ package com.utopia.command;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -29,7 +30,11 @@ public final class MarcheCommand {
                         .executes(MarcheCommand::show)
                         .then(Commands.argument("preset", StringArgumentType.word())
                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(MarketData.HEADER_COLOR_PRESETS, b))
-                                .executes(MarcheCommand::setColor))));
+                                .executes(MarcheCommand::setColor)))
+                .then(Commands.literal("loyer")
+                        .executes(MarcheCommand::showLoyer)
+                        .then(Commands.argument("jours", IntegerArgumentType.integer(0))
+                                .executes(MarcheCommand::setLoyer))));
     }
 
     /** Op (niveau 2) ou maire designe. */
@@ -59,5 +64,23 @@ public final class MarcheCommand {
         ctx.getSource().sendSystemMessage(Messages.warn("Preset inconnu. Choix : "
                 + String.join(", ", MarketData.HEADER_COLOR_PRESETS)));
         return 0;
+    }
+
+    private static int showLoyer(CommandContext<CommandSourceStack> ctx) {
+        int days = MarketData.get(ctx.getSource().getServer()).commercialLicenseDays();
+        ctx.getSource().sendSystemMessage(days <= 0
+                ? Messages.info("Licence commerciale : desactivee. /marche loyer <jours> pour activer.")
+                : Messages.info("Licence commerciale a renouveler tous les " + days + " jour(s)."));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int setLoyer(CommandContext<CommandSourceStack> ctx) {
+        int days = IntegerArgumentType.getInteger(ctx, "jours");
+        MarketData.get(ctx.getSource().getServer()).setCommercialLicenseDays(days);
+        ctx.getSource().sendSystemMessage(days <= 0
+                ? Messages.success("Licence commerciale DESACTIVEE (plus de renouvellement requis).")
+                : Messages.success("Licence commerciale : renouvellement tous les " + days + " jour(s). "
+                        + "Les parcelles Commerce existantes demarrent une nouvelle periode."));
+        return Command.SINGLE_SUCCESS;
     }
 }

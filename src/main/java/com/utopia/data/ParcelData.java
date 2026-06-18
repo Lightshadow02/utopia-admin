@@ -148,6 +148,8 @@ public final class ParcelData extends SavedData {
             parcel.setType(Parcel.Type.fromName(pt.getString("type")));
             parcel.setPublicFlags(Parcel.Flag.fromMask(pt.getInt("publicFlags")));
             parcel.setHoloOffset(pt.getDouble("holoDx"), pt.getDouble("holoDy"), pt.getDouble("holoDz"));
+            parcel.setLicenseExpiry(pt.getLong("licenseExpiry"));
+            parcel.setLicenseFrozen(pt.getBoolean("licenseFrozen"));
             if (pt.contains("owner")) {
                 try {
                     parcel.setOwner(UUID.fromString(pt.getString("owner")), pt.getString("ownerName"));
@@ -201,6 +203,8 @@ public final class ParcelData extends SavedData {
             pt.putDouble("holoDx", p.holoDx());
             pt.putDouble("holoDy", p.holoDy());
             pt.putDouble("holoDz", p.holoDz());
+            pt.putLong("licenseExpiry", p.licenseExpiry());
+            pt.putBoolean("licenseFrozen", p.licenseFrozen());
             if (p.owner() != null) {
                 pt.putString("owner", p.owner().toString());
                 pt.putString("ownerName", p.ownerName() == null ? "" : p.ownerName());

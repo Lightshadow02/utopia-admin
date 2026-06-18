@@ -86,6 +86,7 @@ public final class MarketData extends SavedData {
     private final List<RecoveryEntry> recovery = new ArrayList<>();
     private final Set<UUID> maires = new HashSet<>(); // joueurs autorises a /maire (designes par un op)
     private String headerColor = "white"; // couleur de l'en-tete "Stand de X" des hologrammes
+    private int commercialLicenseDays = 0; // periode de renouvellement des licences commerciales (jours ; 0 = desactive)
 
     /** 12 couleurs proposees pour l'en-tete des stands ({@code /marche couleur}). */
     public static final List<String> HEADER_COLOR_PRESETS = List.of(
@@ -137,6 +138,18 @@ public final class MarketData extends SavedData {
         headerColor = color;
         setDirty();
         return true;
+    }
+
+    // -------- Licence commerciale (loyer des parcelles Commerce) --------
+
+    /** Periode de renouvellement des licences commerciales, en jours (0 = desactive). */
+    public int commercialLicenseDays() {
+        return commercialLicenseDays;
+    }
+
+    public void setCommercialLicenseDays(int days) {
+        commercialLicenseDays = Math.max(0, days);
+        setDirty();
     }
 
     private static String key(ResourceLocation dim, BlockPos pos) {
@@ -274,6 +287,7 @@ public final class MarketData extends SavedData {
         if (tag.contains("headerColor") && HEADER_COLOR_PRESETS.contains(tag.getString("headerColor"))) {
             data.headerColor = tag.getString("headerColor");
         }
+        data.commercialLicenseDays = Math.max(0, tag.getInt("commercialLicenseDays"));
         return data;
     }
 
@@ -323,6 +337,7 @@ public final class MarketData extends SavedData {
         }
         tag.put("maires", maireList);
         tag.putString("headerColor", headerColor);
+        tag.putInt("commercialLicenseDays", commercialLicenseDays);
         return tag;
     }
 }

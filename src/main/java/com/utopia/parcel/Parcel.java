@@ -142,6 +142,8 @@ public final class Parcel {
     private double holoDx;
     private double holoDy;
     private double holoDz;
+    private long licenseExpiry;     // Commerce : echeance de renouvellement (ms), 0 = aucune
+    private boolean licenseFrozen;  // Commerce : gelee car licence expiree
     private final Map<UUID, EnumSet<Flag>> members = new HashMap<>();
     /** Droits accordes a TOUT LE MONDE (sert surtout aux parcelles Admin : ex. interagir mais pas detruire). */
     private final EnumSet<Flag> publicFlags = EnumSet.noneOf(Flag.class);
@@ -267,6 +269,26 @@ public final class Parcel {
         this.holoDx = dx;
         this.holoDy = dy;
         this.holoDz = dz;
+    }
+
+    // -------- Licence commerciale (loyer) --------
+
+    /** Echeance de renouvellement de la licence commerciale (heure murale, ms) ; 0 = aucune. */
+    public long licenseExpiry() {
+        return licenseExpiry;
+    }
+
+    public void setLicenseExpiry(long licenseExpiry) {
+        this.licenseExpiry = licenseExpiry;
+    }
+
+    /** Parcelle gelee pour licence expiree : plus aucune interaction possible (sauf op). */
+    public boolean licenseFrozen() {
+        return licenseFrozen;
+    }
+
+    public void setLicenseFrozen(boolean licenseFrozen) {
+        this.licenseFrozen = licenseFrozen;
     }
 
     /** Centre X/Z de l'empreinte (premiere region), ou nul si aucune region. */

@@ -97,6 +97,9 @@ Exemple : `/parcel trust Steve build containers create`.
 |---|---|
 | `/maire` | 🖱️ **Compte de la mairie** : **retirer** vers son solde, **déposer** depuis son solde, voir/**rendre les objets expirés** du marché. Op + **maire désigné**. |
 | `/marche couleur <preset>` | Change la **couleur de l'en-tête « Stand de … »** des hologrammes (12 presets, défaut blanc). Op + maire. |
+| `/marche loyer <jours>` | **Licence commerciale** : période de renouvellement des parcelles **Commerce** (en jours ; `0` = désactivé). Op + maire. |
+
+> 🏪 **Licence commerciale (loyer)** : si le maire active `/marche loyer <jours>`, chaque parcelle **Commerce** doit renouveler sa licence tous les X jours. Le propriétaire renouvelle via `/parcel` → ligne **« Licence » → Renouveler** (consomme une **Licence commerciale**). Si l'échéance passe : le **maire est averti** et la parcelle est **gelée totalement** (plus aucun joueur ne peut interagir) jusqu'au renouvellement.
 
 > La Mairie est créditée de la **taxe du marché (25 %)**. Elle **n'apparaît pas** dans `/baltop`. Désignation du maire dans `/admin → Maire`.
 > 🕒 **Modération des ventes** : le maire (ou un op) peut **Shift + clic droit** (mains vides) sur n'importe quel stand → **« Expirer les offres »** (met fin aux ventes ; les objets partent en récupération du propriétaire).
@@ -114,7 +117,7 @@ Exemple : `/parcel trust Steve build containers create`.
 | **Clic droit** sur le stand **d'un autre** | 🖱️ **Acheter** : choisis la **quantité** (prix **à l'unité**). |
 | **Shift + clic droit** mains vides (op **ou maire**) | 🖱️ **Configuration du stand** : **expirer les offres** (op + maire) ; définir les emplacements d'affichage (op). |
 
-> Jusqu'à **10 offres** par stand (types d'objets différents possibles). Le prix se fixe **à l'unité** : ex. 64 planches à 5 pièces l'unité → l'acheteur prend la quantité voulue, l'offre se décrémente. Chaque offre expire après **48 h** (objets non vendus → récupération de la mairie). À l'achat : **75 % vendeur / 25 % mairie** (sur le total payé). Les objets en vente s'affichent en **hologramme** (objet flottant + **prix unitaire**) au-dessus du stand ou sur des **emplacements définis** par un op (défilement si plus d'offres que d'emplacements).
+> Jusqu'à **10 offres** par stand (types d'objets différents possibles). Le prix se fixe **à l'unité** : ex. 64 planches à 5 Utopieces l'unité → l'acheteur prend la quantité voulue, l'offre se décrémente. Chaque offre expire après **48 h** (objets non vendus → récupération de la mairie). À l'achat : **75 % vendeur / 15 % mairie / 10 % détruit** (les 10 % disparaissent de l'économie, déflation). Les objets en vente s'affichent en **hologramme** (objet flottant + **prix unitaire**) au-dessus du stand ou sur des **emplacements définis** par un op.
 
 ---
 

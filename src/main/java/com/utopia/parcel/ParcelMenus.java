@@ -144,6 +144,40 @@ public final class ParcelMenus {
                 Icons.label(p.members().size() + " / " + p.regionCount(), ChatFormatting.AQUA),
                 Icons.label("Gerer", ChatFormatting.YELLOW),
                 sp -> openMembersMenu(sp, parcelId)));
+        // Licence commerciale (loyer) : visible si la parcelle est Commerce et le systeme actif.
+        if (p.type() == Parcel.Type.COMMERCE && com.utopia.data.MarketData.get(server).commercialLicenseDays() > 0) {
+            String status;
+            ChatFormatting col;
+            if (p.licenseFrozen()) {
+                status = "EXPIREE (gelee)";
+                col = ChatFormatting.RED;
+            } else if (p.licenseExpiry() > 0) {
+                long left = Math.max(0, p.licenseExpiry() - System.currentTimeMillis());
+                status = "valide (" + Messages.formatDuration(left / 1000) + ")";
+                col = ChatFormatting.GREEN;
+            } else {
+                status = "a renouveler";
+                col = ChatFormatting.YELLOW;
+            }
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Licence", ChatFormatting.GRAY),
+                    Icons.label(status, col),
+                    Icons.label("Renouveler", ChatFormatting.GREEN),
+                    sp -> {
+                        Parcel cur = getParcel(sp.server, parcelId);
+                        if (cur != null) {
+                            ParcelManager.RenewResult r = ParcelManager.renewLicense(sp, cur);
+                            switch (r) {
+                                case MISSING_ITEM -> sp.sendSystemMessage(Messages.error(
+                                        "Il te faut une Licence commerciale dans ton inventaire pour renouveler."));
+                                case DISABLED -> sp.sendSystemMessage(Messages.warn("Le systeme de licence est desactive."));
+                                case NOT_COMMERCE -> sp.sendSystemMessage(Messages.warn("Cette parcelle n'est pas commerciale."));
+                                default -> sp.sendSystemMessage(Messages.success("Licence renouvelee : parcelle reactivee."));
+                            }
+                        }
+                        openMyParcels(sp, i);
+                    }));
+        }
         if (p.forSale()) {
             rows.add(new OwoMenuServer.PanelRow(
                     Icons.label("Hologramme", ChatFormatting.GRAY),

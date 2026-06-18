@@ -87,9 +87,14 @@ public final class MarketManager {
         return price * 3L / 4L;
     }
 
-    /** Part de la mairie (le reste). */
+    /** Part de la mairie (15 %, arrondi inferieur). */
     public static long mairieShare(long price) {
-        return price - sellerShare(price);
+        return price * 15L / 100L;
+    }
+
+    /** Part detruite (le reste, ~10 %) : ces pieces disparaissent de l'economie. */
+    public static long burnedShare(long price) {
+        return price - sellerShare(price) - mairieShare(price);
     }
 
     // -------- Reservation --------
@@ -241,6 +246,7 @@ public final class MarketManager {
         EconomyManager.remove(server, buyer.getUUID(), total);
         long sShare = sellerShare(total);
         long mShare = mairieShare(total);
+        // Le reste (~10 %) n'est credite a personne : ces pieces sont detruites (deflation).
         EconomyManager.add(server, seller, sShare);
         EconomyManager.add(server, MarketData.MAIRIE_UUID, mShare);
         ItemHandlerHelper.giveItemToPlayer(buyer, bought);
@@ -250,7 +256,8 @@ public final class MarketManager {
             sellerOnline.sendSystemMessage(Messages.success("Vente : "
                     + qty + "x " + bought.getHoverName().getString()
                     + " a " + buyer.getGameProfile().getName() + " (+" + EconomyManager.format(sShare)
-                    + ", taxe " + EconomyManager.format(mShare) + ")."));
+                    + " ; mairie " + EconomyManager.format(mShare)
+                    + ", detruit " + EconomyManager.format(burnedShare(total)) + ")."));
         }
 
         if (stall.offers.isEmpty()) {

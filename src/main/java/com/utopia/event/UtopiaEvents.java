@@ -347,5 +347,9 @@ public final class UtopiaEvents {
                 ParcelManager.sweepFire(server);
             }
         }
+        // Verification des licences commerciales (echelle de jours : un controle toutes les ~10 s suffit).
+        if (t % 200 == 0) {
+            ParcelManager.checkCommercialLicenses(server);
+        }
     }
 }
