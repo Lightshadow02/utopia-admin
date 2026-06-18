@@ -73,6 +73,7 @@ public final class UtopiaEvents {
         com.utopia.command.MaireCommand.register(dispatcher);
         com.utopia.command.FlySpeedCommand.register(dispatcher);
         com.utopia.command.InventoryCommand.register(dispatcher);
+        com.utopia.command.WarpCommands.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 

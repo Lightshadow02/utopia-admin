@@ -81,8 +81,41 @@ public final class AdminMenu {
                 Icons.label("Inventaires", ChatFormatting.LIGHT_PURPLE),
                 Icons.lore("Basculer entre l'inventaire 1 et 2 (garder sa survie avant le creatif)", ChatFormatting.GRAY),
                 AdminMenu::openInventorySwitch));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPASS),
+                Icons.label("Warps", ChatFormatting.AQUA),
+                Icons.lore("Points de teleportation admin (/setwarp pour en creer)", ChatFormatting.GRAY),
+                AdminMenu::openWarps));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
+    }
+
+    /** Liste des warps admin : clic = teleportation. Creation via /setwarp <nom>. */
+    public static void openWarps(ServerPlayer player) {
+        com.utopia.data.WarpData data = com.utopia.data.WarpData.get(player.server);
+        List<String> names = data.names();
+
+        Component title = Component.literal("Warps admin")
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        List<Component> stats = List.of(Component.literal(names.isEmpty()
+                ? "Aucun warp - /setwarp <nom> pour en creer"
+                : names.size() + " warp(s) - /setwarp, /delwarp")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (String name : names) {
+            com.utopia.data.WarpData.Warp warp = data.get(name);
+            String coords = String.format("%.0f, %.0f, %.0f", warp.x(), warp.y(), warp.z());
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPASS),
+                    Icons.label(name, ChatFormatting.WHITE),
+                    Icons.lore(coords, ChatFormatting.GRAY),
+                    sp -> {
+                        com.utopia.command.WarpCommands.teleport(sp, warp);
+                        sp.sendSystemMessage(Messages.success("Teleporte au warp " + name + "."));
+                        Menus.close(sp);
+                    }));
+        }
+
+        OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openWarps, AdminMenu::open);
     }
 
     /** Bascule entre les deux inventaires sauvegardes (Inventaire 1 / Inventaire 2). */
