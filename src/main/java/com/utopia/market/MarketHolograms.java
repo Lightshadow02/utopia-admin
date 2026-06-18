@@ -190,7 +190,7 @@ public final class MarketHolograms {
         }
 
         sig.append("OWN|").append(stall.ownerName);
-        double headerY = stall.y + (hasSpots ? 1.5 : 2.25);
+        double headerY = stall.y + (hasSpots ? 1.5 : 1.95);
         l.texts.add(new TextLine(0, sbx, headerY, sbz, ownerHeader(stall)));
 
         int n = stall.offers.size();
@@ -222,14 +222,14 @@ public final class MarketHolograms {
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             double baseY = sp.getY();
             // Objet flottant en haut, puis 2 lignes (nom / prix) pour un affichage compact.
-            l.items.add(new ItemSpot(j, cx, baseY + 1.65, cz, o.stack.copyWithCount(1)));
+            l.items.add(new ItemSpot(j, cx, baseY + 1.35, cz, o.stack.copyWithCount(1)));
             Component nameLine = Component.literal(o.stack.getCount() + "x ").withStyle(ChatFormatting.WHITE)
                     .append(o.stack.getHoverName().copy().withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
             Component priceLine = Component.literal(EconomyManager.format(o.price))
                     .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
             int base = j * 2 + 1;
-            l.texts.add(new TextLine(base, cx, baseY + 1.30, cz, nameLine));
-            l.texts.add(new TextLine(base + 1, cx, baseY + 1.03, cz, priceLine));
+            l.texts.add(new TextLine(base, cx, baseY + 1.00, cz, nameLine));
+            l.texts.add(new TextLine(base + 1, cx, baseY + 0.73, cz, priceLine));
         }
         l.sig = sig.toString();
         return l;
