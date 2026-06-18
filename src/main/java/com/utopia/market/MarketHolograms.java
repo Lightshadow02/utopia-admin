@@ -9,7 +9,6 @@ import java.util.Set;
 
 import com.utopia.data.MarketData;
 import com.utopia.economy.EconomyManager;
-import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -209,7 +208,6 @@ public final class MarketHolograms {
         int page = pageCount <= 1 ? 0 : (tick / PAGE_TICKS) % pageCount;
         sig.append("|p").append(page).append('/').append(pageCount);
 
-        long now = System.currentTimeMillis();
         for (int j = 0; j < slots; j++) {
             BlockPos sp = spots.get(j);
             double cx = sp.getX() + 0.5;
@@ -223,19 +221,15 @@ public final class MarketHolograms {
             MarketData.Offer o = stall.offers.get(offerIndex);
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             double baseY = sp.getY();
-            // Objet flottant en haut, puis 3 lignes (nom / prix / temps) pour un affichage moins large.
-            l.items.add(new ItemSpot(j, cx, baseY + 1.75, cz, o.stack.copyWithCount(1)));
+            // Objet flottant en haut, puis 2 lignes (nom / prix) pour un affichage compact.
+            l.items.add(new ItemSpot(j, cx, baseY + 1.65, cz, o.stack.copyWithCount(1)));
             Component nameLine = Component.literal(o.stack.getCount() + "x ").withStyle(ChatFormatting.WHITE)
                     .append(o.stack.getHoverName().copy().withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
             Component priceLine = Component.literal(EconomyManager.format(o.price))
                     .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
-            String time = Messages.formatDuration(Math.max(0, o.expiryMillis - now) / 1000);
-            Component timeLine = Component.literal(time)
-                    .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false));
-            int base = j * 3 + 1;
-            l.texts.add(new TextLine(base, cx, baseY + 1.40, cz, nameLine));
-            l.texts.add(new TextLine(base + 1, cx, baseY + 1.13, cz, priceLine));
-            l.texts.add(new TextLine(base + 2, cx, baseY + 0.86, cz, timeLine));
+            int base = j * 2 + 1;
+            l.texts.add(new TextLine(base, cx, baseY + 1.30, cz, nameLine));
+            l.texts.add(new TextLine(base + 1, cx, baseY + 1.03, cz, priceLine));
         }
         l.sig = sig.toString();
         return l;
