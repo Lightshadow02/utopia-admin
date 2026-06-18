@@ -33,6 +33,8 @@ public final class UtopiaMod {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         // Enregistre le type de menu custom (conteneur vanilla pour l'editeur a slots).
         com.utopia.gui.UtopiaMenuType.register(modEventBus);
+        // Enregistre les musiques personnalisees (jour / nuit / grotte).
+        com.utopia.sound.UtopiaSounds.register(modEventBus);
         // Enregistre les paquets reseau (menus owo-ui).
         modEventBus.addListener(com.utopia.net.UtopiaNet::onRegister);
         // Cote client uniquement : enregistre l'ecran custom du menu.

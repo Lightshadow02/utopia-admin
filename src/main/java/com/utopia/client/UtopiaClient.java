@@ -24,6 +24,9 @@ public final class UtopiaClient {
         modBus.addListener(UtopiaClient::onRegisterScreens);
         // RegisterClientCommandsEvent est sur le bus de jeu (pas le bus mod).
         NeoForge.EVENT_BUS.addListener(UtopiaClient::onRegisterClientCommands);
+        // Lecteur de musique personnalise (jour / nuit / grotte) sur le bus de jeu.
+        NeoForge.EVENT_BUS.addListener(ClientMusicManager::onClientTick);
+        NeoForge.EVENT_BUS.addListener(ClientMusicManager::onSelectMusic);
     }
 
     private static void onRegisterScreens(RegisterMenuScreensEvent event) {

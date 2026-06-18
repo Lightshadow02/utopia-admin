@@ -50,6 +50,8 @@ repo/
 
 ### Musique privee (gardee en local, jamais sur GitHub) ###
 /Music/
+# Fichiers audio embarques dans le jar au build, mais jamais committes (prives)
+/src/main/resources/assets/utopia_admin/sounds/music/
 
 ### META-INF parasite a la racine (l'access transformer dans src/ reste suivi) ###
 /META-INF/

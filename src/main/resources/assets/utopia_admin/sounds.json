@@ -1,0 +1,42 @@
+{
+  "music.jour.chemin_forestier1": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/chemin_forestier1", "stream": true } ]
+  },
+  "music.jour.route_surf_1": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/route_surf_1", "stream": true } ]
+  },
+  "music.jour.route_surf_2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/route_surf_2", "stream": true } ]
+  },
+  "music.jour.temple_du_crepuscule2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/temple_du_crepuscule2", "stream": true } ]
+  },
+  "music.nuit.nuit_1": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/nuit/nuit_1", "stream": true } ]
+  },
+  "music.nuit.nuit_2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/nuit/nuit_2", "stream": true } ]
+  },
+  "music.nuit.clairiere_secrete2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/nuit/clairiere_secrete2", "stream": true } ]
+  },
+  "music.nuit.sanctuaire_etoile2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/nuit/sanctuaire_etoile2", "stream": true } ]
+  },
+  "music.grotte.grotte_cristalline": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/grotte/grotte_cristalline", "stream": true } ]
+  },
+  "music.grotte.grotte_cristalline2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/grotte/grotte_cristalline2", "stream": true } ]
+  }
+}
