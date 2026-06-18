@@ -90,6 +90,14 @@ public final class ElectionMenus {
                 Icons.label("Tester l'affichage", ChatFormatting.AQUA),
                 Icons.lore("Apercu hologramme / resultats fictifs / feux / ceremonie", ChatFormatting.GRAY),
                 ElectionMenus::openTest));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                Icons.label("Retirer l'hologramme", ChatFormatting.RED),
+                Icons.lore("Supprime tout hologramme d'election affiche (test ou resultats)", ChatFormatting.GRAY),
+                sp -> {
+                    ElectionManager.removeHolograms(sp.server, false);
+                    sp.sendSystemMessage(Messages.success("Hologramme(s) d'election retire(s)."));
+                    openAdminMenu(sp);
+                }));
 
         OwoMenuServer.openHub(player, title, stats, entries, ElectionMenus::openAdminMenu,
                 com.utopia.menu.AdminMenu::open);
@@ -204,6 +212,7 @@ public final class ElectionMenus {
     }
 
     private static void captureHologram(ServerPlayer player) {
+        ElectionManager.removeHolograms(player.server, false); // efface tout ancien hologramme (evite l'empilement)
         ElectionData.get(player.server).setHologram(
                 player.level().dimension().location().toString(),
                 player.getX(), player.getY(), player.getZ());
