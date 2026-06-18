@@ -15,6 +15,13 @@ Liste **complète et à jour** de toutes les commandes du mod, classées par **j
 |---|---|
 | `/menu` | 🖱️ Ouvre le **hub principal** du joueur (accès aux menus disponibles). |
 
+### 🗳️ Vote / élections
+| Commande | Effet |
+|---|---|
+| `/vote` | 🖱️ Ouvre le menu de **vote** de l'élection en cours. Sans élection ouverte : *« Aucune élection en cours. »* |
+
+> **1 vote par joueur**, **modifiable** tant que l'élection est ouverte, **définitif** à la clôture. Confirmation à chaque vote. À la clôture : **cérémonie** (hologramme des résultats + annonce chat + feux d'artifice).
+
 ### 🧭 Téléportation entre joueurs
 | Commande | Effet |
 |---|---|
@@ -126,7 +133,17 @@ Exemple : `/parcel trust Steve build containers create`.
 ### 🧰 Hub d'administration
 | Commande | Effet |
 |---|---|
-| `/admin` | 🖱️ Ouvre le **hub admin** : Parcelles, Économie, Récompenses, Auberge/chambres, Aubergistes, Marché (définir un stand, récupération), **Maire**, **Inventaires**, **Warps**. |
+| `/admin` | 🖱️ Ouvre le **hub admin** : Parcelles, Économie, Récompenses, Auberge/chambres, Aubergistes, Marché (définir un stand, récupération), **Maire**, **Inventaires**, **Warps**, **Élections**. |
+
+#### 🗳️ Élections (`/admin → Élections`)
+- **Créer une élection** : nom + durée (min **1 min**, défaut **24 h**), puis ajout/retrait des **candidats** (libre avant le lancement).
+- **Lancer** : verrouille les candidats, ouvre le vote, **annonce broadcast**. Irréversible.
+- **Forcer la clôture** (cérémonie immédiate) ou **Annuler** (sans résultat).
+- **État du vote** (admin) : temps restant, votants, scores.
+- **Configurer l'hologramme** : capture **ta position** comme emplacement des résultats (aperçu spawné aussitôt).
+- **Tester l'affichage** (admins) : aperçu hologramme vide / résultats fictifs / feux d'artifice / cérémonie complète / supprimer le preview.
+
+> À la clôture : **hologramme des résultats** (barre de progression + % par candidat, gagnant mis en valeur en or), **annonce chat** et **salve de feux d'artifice** autour de l'hologramme.
 
 ### 🧹 Nettoyage des objets au sol (clear-lag)
 | Commande | Effet |

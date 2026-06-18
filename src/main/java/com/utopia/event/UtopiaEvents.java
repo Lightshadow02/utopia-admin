@@ -76,6 +76,7 @@ public final class UtopiaEvents {
         com.utopia.command.WarpCommands.register(dispatcher);
         com.utopia.command.StaffCommand.register(dispatcher);
         com.utopia.command.MarcheCommand.register(dispatcher);
+        com.utopia.command.VoteCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -351,5 +352,7 @@ public final class UtopiaEvents {
         if (t % 200 == 0) {
             ParcelManager.checkCommercialLicenses(server);
         }
+        // Elections : cloture automatique + feux d'artifice de la ceremonie.
+        com.utopia.election.ElectionManager.tick(server);
     }
 }

@@ -85,6 +85,10 @@ public final class AdminMenu {
                 Icons.label("Warps", ChatFormatting.AQUA),
                 Icons.lore("Points de teleportation admin (/setwarp pour en creer)", ChatFormatting.GRAY),
                 AdminMenu::openWarps));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                Icons.label("Elections", ChatFormatting.GOLD),
+                Icons.lore("Creer/lancer une election, hologramme des resultats, tests", ChatFormatting.GRAY),
+                com.utopia.election.ElectionMenus::openAdminMenu));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
     }

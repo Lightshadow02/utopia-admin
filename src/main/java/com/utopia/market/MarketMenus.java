@@ -275,6 +275,23 @@ public final class MarketMenus {
                 Icons.label("Objets expires (recuperation)", ChatFormatting.GOLD),
                 Icons.lore("Rendre aux joueurs les objets expires du marche", ChatFormatting.GRAY),
                 sp -> openRecovery(sp, MarketMenus::openMaire)));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.PAPER),
+                Icons.label("Licence commerciale (loyer)", ChatFormatting.AQUA),
+                Icons.lore("Periode de renouvellement des parcelles Commerce (jours ; 0 = desactive)", ChatFormatting.GRAY),
+                sp -> {
+                    int cur = MarketData.get(sp.server).commercialLicenseDays();
+                    Menus.promptAmount(sp, Icons.label("Periode de licence (jours, 0 = desactive)", ChatFormatting.GOLD),
+                            List.of(Icons.lore("Actuel : " + (cur <= 0 ? "desactive" : cur + " jour(s)"), ChatFormatting.GRAY),
+                                    Icons.lore("A renouveler via /parcel (consomme une Licence commerciale).", ChatFormatting.DARK_GRAY)),
+                            Icons.label("Valider", ChatFormatting.GREEN), Math.max(0, cur), 0, 3650,
+                            v -> {
+                                MarketData.get(sp.server).setCommercialLicenseDays((int) v);
+                                sp.sendSystemMessage(v <= 0
+                                        ? Messages.success("Licence commerciale desactivee.")
+                                        : Messages.success("Licence commerciale : renouvellement tous les " + v + " jour(s)."));
+                                openMaire(sp);
+                            });
+                }));
 
         OwoMenuServer.openHub(player, title, stats, entries, MarketMenus::openMaire, null);
     }
