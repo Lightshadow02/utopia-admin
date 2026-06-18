@@ -190,7 +190,7 @@ public final class MarketHolograms {
         }
 
         sig.append("OWN|").append(stall.ownerName);
-        double headerY = stall.y + (hasSpots ? 1.5 : 1.95);
+        double headerY = stall.y + (hasSpots ? 1.5 : 2.25);
         l.texts.add(new TextLine(0, sbx, headerY, sbz, ownerHeader(stall)));
 
         int n = stall.offers.size();
@@ -221,11 +221,11 @@ public final class MarketHolograms {
             MarketData.Offer o = stall.offers.get(offerIndex);
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             double baseY = sp.getY();
-            // Objet flottant en haut, puis uniquement le prix unitaire (l'objet montre deja ce que c'est).
-            l.items.add(new ItemSpot(j, cx, baseY + 1.30, cz, o.stack.copyWithCount(1)));
+            // Prix unitaire au-dessus, objet flottant en dessous (l'objet montre deja ce que c'est).
             Component priceLine = Component.literal(EconomyManager.format(o.price) + " /u")
                     .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
-            l.texts.add(new TextLine(j + 1, cx, baseY + 0.85, cz, priceLine));
+            l.texts.add(new TextLine(j + 1, cx, baseY + 1.55, cz, priceLine));
+            l.items.add(new ItemSpot(j, cx, baseY + 1.25, cz, o.stack.copyWithCount(1)));
         }
         l.sig = sig.toString();
         return l;
