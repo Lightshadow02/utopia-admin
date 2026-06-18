@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+
+import com.mojang.math.Transformation;
 import com.utopia.data.MarketData;
 import com.utopia.economy.EconomyManager;
 
@@ -14,8 +18,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.FloatTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -41,6 +43,7 @@ public final class MarketHolograms {
     private static final String HOLO_SIG = "utopiaMarketSig";
 
     private static final float ITEM_SCALE = 0.5f;     // objet reduit
+    private static final float SPIN_DEG_PER_TICK = 3.0f; // ~6 s par tour
     private static final int PAGE_TICKS = 100;          // ~5 s par page d'offres
 
     private MarketHolograms() {
@@ -135,40 +138,44 @@ public final class MarketHolograms {
             stand.setPos(t.x, t.y, t.z);
             level.addFreshEntity(stand);
         }
+        int tick = level.getServer().getTickCount();
         for (ItemSpot spot : layout.items) {
             Display.ItemDisplay disp = new Display.ItemDisplay(EntityType.ITEM_DISPLAY, level);
             disp.setPos(spot.x, spot.y, spot.z);
             CompoundTag tag = disp.saveWithoutId(new CompoundTag());
             tag.put("item", spot.stack.save(level.registryAccess()));
             tag.putString("item_display", "fixed");
-            tag.putString("billboard", "center"); // l'objet fait toujours face au joueur
-            tag.put("transformation", scaleTransform(ITEM_SCALE));
+            tag.putString("billboard", "fixed"); // orientation libre : permet la rotation animee
             disp.load(tag);
             disp.getPersistentData().putString(HOLO_STALL, key);
             disp.getPersistentData().putString(HOLO_KIND, "item");
             disp.getPersistentData().putInt(HOLO_LINE, spot.idx);
             disp.getPersistentData().putString(HOLO_SIG, layout.sig);
             disp.setPos(spot.x, spot.y, spot.z);
+            applySpin(disp, tick); // echelle + rotation initiale
             level.addFreshEntity(disp);
         }
     }
 
-    /** Tag de transformation Display : mise a l'echelle uniforme (rotation identite). */
-    private static CompoundTag scaleTransform(float scale) {
-        CompoundTag tr = new CompoundTag();
-        tr.put("translation", floats(0f, 0f, 0f));
-        tr.put("left_rotation", floats(0f, 0f, 0f, 1f));
-        tr.put("scale", floats(scale, scale, scale));
-        tr.put("right_rotation", floats(0f, 0f, 0f, 1f));
-        return tr;
+    /** Anime la rotation des objets flottants (appelee souvent depuis le tick serveur). */
+    public static void spin(MinecraftServer server) {
+        int tick = server.getTickCount();
+        for (ServerLevel level : server.getAllLevels()) {
+            for (Entity e : level.getAllEntities()) {
+                if (e instanceof Display.ItemDisplay disp
+                        && "item".equals(e.getPersistentData().getString(HOLO_KIND))) {
+                    applySpin(disp, tick);
+                }
+            }
+        }
     }
 
-    private static ListTag floats(float... values) {
-        ListTag list = new ListTag();
-        for (float v : values) {
-            list.add(FloatTag.valueOf(v));
-        }
-        return list;
+    /** Applique l'echelle + une rotation autour de l'axe Y derivee du tick (rotation continue). */
+    private static void applySpin(Display.ItemDisplay disp, int tick) {
+        float ang = (float) Math.toRadians((tick * SPIN_DEG_PER_TICK) % 360.0);
+        disp.setTransformation(new Transformation(null,
+                new Quaternionf().rotationY(ang),
+                new Vector3f(ITEM_SCALE, ITEM_SCALE, ITEM_SCALE), null));
     }
 
     /** Calcule la disposition (objets + textes + signature) selon les emplacements et la page courante. */
@@ -190,7 +197,7 @@ public final class MarketHolograms {
         }
 
         sig.append("OWN|").append(stall.ownerName);
-        double headerY = stall.y + (hasSpots ? 1.5 : 2.25);
+        double headerY = stall.y + (hasSpots ? 1.5 : 1.95);
         l.texts.add(new TextLine(0, sbx, headerY, sbz, ownerHeader(stall)));
 
         int n = stall.offers.size();
@@ -221,11 +228,11 @@ public final class MarketHolograms {
             MarketData.Offer o = stall.offers.get(offerIndex);
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             double baseY = sp.getY();
-            // Prix unitaire au-dessus, objet flottant en dessous (l'objet montre deja ce que c'est).
+            // Prix unitaire au-dessus, objet flottant juste en dessous (colle, peu d'espace).
             Component priceLine = Component.literal(EconomyManager.format(o.price) + " /u")
                     .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
-            l.texts.add(new TextLine(j + 1, cx, baseY + 1.55, cz, priceLine));
-            l.items.add(new ItemSpot(j, cx, baseY + 1.25, cz, o.stack.copyWithCount(1)));
+            l.texts.add(new TextLine(j + 1, cx, baseY + 1.30, cz, priceLine));
+            l.items.add(new ItemSpot(j, cx, baseY + 1.15, cz, o.stack.copyWithCount(1)));
         }
         l.sig = sig.toString();
         return l;

@@ -335,6 +335,10 @@ public final class UtopiaEvents {
             com.utopia.economy.BalTopHologram.sync(server);
             com.utopia.market.MarketManager.tickExpiry(server);
             com.utopia.market.MarketHolograms.sync(server);
+        }
+        // Rotation des objets flottants du marche (frequent pour une animation fluide).
+        if (t % 2 == 0) {
+            com.utopia.market.MarketHolograms.spin(server);
             if (Config.PARCEL_EXTINGUISH_FIRE.get()) {
                 ParcelManager.sweepFire(server);
             }
