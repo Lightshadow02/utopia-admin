@@ -225,6 +225,15 @@ Une **parcelle Admin** est une zone serveur **protégée** pour les routes, bât
 | `/flyspeed` | Affiche la vitesse de vol actuelle. |
 | `/inv 1` · `/inv 2` | Bascule entre **inventaire 1 et 2** (alias `/inventaire`). Sauvegarde l'inventaire courant et charge l'autre — pratique pour garder sa **survie** avant de passer en **créatif**. Aussi via `/admin → Inventaires`. |
 
+### 🧑‍✈️ Staff (mode staff + op/gamemode)
+| Commande | Effet |
+|---|---|
+| `/staff` | Bascule le **mode staff** (réservé à la liste staff **ou** aux op). En **survie** : sauvegarde l'inventaire survie, passe en **créatif** et **op**. En **créatif** : sauvegarde l'inventaire créatif, passe en **survie** et **retire l'op**. |
+| `/staff add <joueur>` | Ajoute un joueur à la liste staff (**op uniquement**). |
+| `/staff take <joueur>` | Retire un joueur de la liste staff (**op uniquement**). |
+
+> 🔁 Fusionné avec `/inv` : le slot **1 = inventaire survie**, le slot **2 = inventaire créatif**. Un membre du staff bascule survie↔créatif sans jamais mélanger ni perdre ses objets, et l'op serveur suit automatiquement.
+
 ### 🧭 Warps admin
 | Commande | Effet |
 |---|---|

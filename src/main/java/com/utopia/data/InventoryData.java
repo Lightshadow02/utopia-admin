@@ -31,12 +31,34 @@ public final class InventoryData extends SavedData {
     }
 
     private final Map<UUID, Slots> players = new HashMap<>();
+    private final java.util.Set<UUID> staff = new java.util.HashSet<>(); // joueurs autorises a /staff
 
     public InventoryData() {
     }
 
     public static InventoryData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, ID);
+    }
+
+    // -------- Liste staff (acces a /staff) --------
+
+    public boolean isStaff(UUID id) {
+        return staff.contains(id);
+    }
+
+    public java.util.Collection<UUID> staff() {
+        return staff;
+    }
+
+    /** Ajoute (true) ou retire (false) un joueur de la liste staff. Renvoie l'etat final. */
+    public boolean setStaff(UUID id, boolean member) {
+        if (member) {
+            staff.add(id);
+        } else {
+            staff.remove(id);
+        }
+        setDirty();
+        return member;
     }
 
     private Slots slots(UUID id) {
@@ -91,6 +113,14 @@ public final class InventoryData extends SavedData {
             }
             data.players.put(id, s);
         }
+        ListTag staffList = tag.getList("staff", Tag.TAG_STRING);
+        for (int i = 0; i < staffList.size(); i++) {
+            try {
+                data.staff.add(UUID.fromString(staffList.getString(i)));
+            } catch (IllegalArgumentException ignored) {
+                // uuid corrompu
+            }
+        }
         return data;
     }
 
@@ -111,6 +141,11 @@ public final class InventoryData extends SavedData {
             list.add(p);
         }
         tag.put("players", list);
+        ListTag staffList = new ListTag();
+        for (UUID id : staff) {
+            staffList.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+        }
+        tag.put("staff", staffList);
         return tag;
     }
 }
