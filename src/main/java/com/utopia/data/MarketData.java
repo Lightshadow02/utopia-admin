@@ -59,6 +59,8 @@ public final class MarketData extends SavedData {
         public UUID owner;          // null = libre
         public String ownerName;
         public final List<Offer> offers = new ArrayList<>();
+        /** Emplacements ou afficher les objets en vente (definis par un op) ; vide = au-dessus du bloc. */
+        public final List<BlockPos> displaySpots = new ArrayList<>();
 
         public Stall(String dim, int x, int y, int z) {
             this.dim = dim;
@@ -127,6 +129,11 @@ public final class MarketData extends SavedData {
 
     public Stall stallAt(ResourceLocation dim, BlockPos pos) {
         return stalls.get(key(dim, pos));
+    }
+
+    /** Stand identifie par sa cle "dim;x;y;z" (utilisee par le mode de definition des emplacements). */
+    public Stall stallByKey(String key) {
+        return stalls.get(key);
     }
 
     public boolean isStall(ResourceLocation dim, BlockPos pos) {
@@ -213,6 +220,10 @@ public final class MarketData extends SavedData {
                     stall.offers.add(new Offer(stack, ot.getLong("price"), ot.getLong("expiry")));
                 }
             }
+            long[] spots = st.getLongArray("spots");
+            for (long packed : spots) {
+                stall.displaySpots.add(BlockPos.of(packed));
+            }
             data.stalls.put(key(dim, pos), stall);
         }
         ListTag rec = tag.getList("recovery", Tag.TAG_COMPOUND);
@@ -263,6 +274,11 @@ public final class MarketData extends SavedData {
                 offers.add(ot);
             }
             st.put("offers", offers);
+            long[] spots = new long[s.displaySpots.size()];
+            for (int i = 0; i < spots.length; i++) {
+                spots[i] = s.displaySpots.get(i).asLong();
+            }
+            st.putLongArray("spots", spots);
             stallList.add(st);
         }
         tag.put("stalls", stallList);

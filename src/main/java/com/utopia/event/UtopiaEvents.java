@@ -101,6 +101,23 @@ public final class UtopiaEvents {
                 sp.sendSystemMessage(Messages.success("Stand de marche cree ! Les joueurs feront clic droit dessus pour vendre/acheter."));
                 return;
             }
+            // Mode "definir les emplacements d'affichage" : ce bloc devient (ou cesse d'etre) un emplacement.
+            if (com.utopia.market.MarketManager.isSelectingSpot(sp.getUUID())) {
+                event.setCanceled(true);
+                com.utopia.data.MarketData md = com.utopia.data.MarketData.get(level.getServer());
+                com.utopia.data.MarketData.Stall target = md.stallByKey(
+                        com.utopia.market.MarketManager.spotSelectStall(sp.getUUID()));
+                if (target == null) {
+                    com.utopia.market.MarketManager.clearSpotSelect(sp.getUUID());
+                    sp.sendSystemMessage(Messages.warn("Stand introuvable : mode d'emplacement annule."));
+                    return;
+                }
+                boolean added = com.utopia.market.MarketManager.toggleDisplaySpot(level.getServer(), target, pos);
+                sp.sendSystemMessage(added
+                        ? Messages.success("Emplacement ajoute (" + target.displaySpots.size() + " au total).")
+                        : Messages.info("Emplacement retire (" + target.displaySpots.size() + " au total)."));
+                return;
+            }
             // Casser un stand enregistre : on le retire (offres invendues -> recuperation mairie).
             if (com.utopia.data.MarketData.get(level.getServer()).isStall(dim, pos)) {
                 com.utopia.market.MarketManager.removeStall(level.getServer(), dim, pos);
@@ -166,7 +183,12 @@ public final class UtopiaEvents {
         com.utopia.data.MarketData.Stall stall =
                 com.utopia.data.MarketData.get(level.getServer()).stallAt(level.dimension().location(), pos);
         if (stall != null) {
-            com.utopia.market.MarketMenus.openStall(sp, stall);
+            // Op accroupi mains vides : menu de configuration du stand (emplacements d'affichage).
+            if (sp.isShiftKeyDown() && sp.hasPermissions(2) && sp.getMainHandItem().isEmpty()) {
+                com.utopia.market.MarketMenus.openStallAdmin(sp, stall);
+            } else {
+                com.utopia.market.MarketMenus.openStall(sp, stall);
+            }
             event.setCanceled(true);
             return;
         }

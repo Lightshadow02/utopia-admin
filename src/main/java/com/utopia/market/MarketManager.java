@@ -1,5 +1,6 @@
 package com.utopia.market;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,6 +9,7 @@ import com.utopia.data.MarketData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.util.Messages;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +31,9 @@ public final class MarketManager {
     /** Admins en mode "definir un stand" : le prochain bloc casse devient un emplacement de vente. */
     private static final Set<UUID> STALL_SELECT = ConcurrentHashMap.newKeySet();
 
+    /** Admins en mode "definir les emplacements d'affichage" d'un stand donne (cle "dim;x;y;z"). */
+    private static final Map<UUID, String> SPOT_SELECT = new ConcurrentHashMap<>();
+
     private MarketManager() {
     }
 
@@ -42,6 +47,39 @@ public final class MarketManager {
 
     public static void clearStallSelect(UUID id) {
         STALL_SELECT.remove(id);
+    }
+
+    // -------- Emplacements d'affichage (spots) --------
+
+    public static void startSpotSelect(UUID id, String stallKey) {
+        SPOT_SELECT.put(id, stallKey);
+    }
+
+    public static boolean isSelectingSpot(UUID id) {
+        return SPOT_SELECT.containsKey(id);
+    }
+
+    /** La cle du stand pour lequel ce joueur definit des emplacements, ou null. */
+    public static String spotSelectStall(UUID id) {
+        return SPOT_SELECT.get(id);
+    }
+
+    public static void clearSpotSelect(UUID id) {
+        SPOT_SELECT.remove(id);
+    }
+
+    /** Ajoute ou retire (bascule) un emplacement d'affichage sur ce stand ; renvoie true si ajoute. */
+    public static boolean toggleDisplaySpot(MinecraftServer server, MarketData.Stall stall, BlockPos pos) {
+        BlockPos p = pos.immutable();
+        boolean added;
+        if (stall.displaySpots.removeIf(s -> s.equals(p))) {
+            added = false;
+        } else {
+            stall.displaySpots.add(p);
+            added = true;
+        }
+        MarketData.get(server).setDirty();
+        return added;
     }
 
     /** Part du vendeur (75 %, arrondi inferieur). */

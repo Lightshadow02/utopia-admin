@@ -225,12 +225,94 @@ public final class MarketMenus {
                                 openMaire(sp);
                             });
                 }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.EMERALD),
+                Icons.label("Deposer sur le compte", ChatFormatting.GREEN),
+                Icons.lore("Transfere des Utopieces de ton solde vers la mairie", ChatFormatting.GRAY),
+                sp -> {
+                    long mine = EconomyManager.getBalance(sp.server, sp.getUUID());
+                    if (mine <= 0) {
+                        sp.sendSystemMessage(Messages.warn("Ton solde est vide."));
+                        openMaire(sp);
+                        return;
+                    }
+                    Menus.promptAmount(sp, Icons.label("Montant a deposer a la mairie", ChatFormatting.GOLD),
+                            List.of(Icons.lore("Ton solde : " + mine + " Utopieces", ChatFormatting.GRAY)),
+                            Icons.label("Deposer", ChatFormatting.GREEN), Math.min(100, mine), 1, mine,
+                            v -> {
+                                long cur = EconomyManager.getBalance(sp.server, sp.getUUID());
+                                long amount = Math.min(v, cur);
+                                if (amount > 0) {
+                                    EconomyManager.remove(sp.server, sp.getUUID(), amount);
+                                    EconomyManager.add(sp.server, MarketData.MAIRIE_UUID, amount);
+                                    sp.sendSystemMessage(Messages.success("Depose " + EconomyManager.format(amount)
+                                            + " de ton solde vers la mairie."));
+                                }
+                                openMaire(sp);
+                            });
+                }));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.CHEST_MINECART),
                 Icons.label("Objets expires (recuperation)", ChatFormatting.GOLD),
                 Icons.lore("Rendre aux joueurs les objets expires du marche", ChatFormatting.GRAY),
                 sp -> openRecovery(sp, MarketMenus::openMaire)));
 
         OwoMenuServer.openHub(player, title, stats, entries, MarketMenus::openMaire, null);
+    }
+
+    // -------- Menu admin d'un stand (op : Shift + clic droit sur le bloc) --------
+
+    /** Cle "dim;x;y;z" d'un stand (identique a celle de MarketData). */
+    private static String stallKey(MarketData.Stall stall) {
+        return stall.dim + ";" + stall.x + ";" + stall.y + ";" + stall.z;
+    }
+
+    /** Menu reserve aux op : gestion des emplacements d'affichage et suppression du stand. */
+    public static void openStallAdmin(ServerPlayer player, MarketData.Stall stall) {
+        Component title = Component.literal("Stand - configuration")
+                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        List<Component> stats = List.of(
+                Component.literal((stall.isFree() ? "Libre" : "Occupe par " + stall.ownerName)
+                        + " - " + stall.offers.size() + " offre(s)")
+                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
+                Component.literal(stall.displaySpots.size() + " emplacement(s) d'affichage")
+                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        String key = stallKey(stall);
+        boolean selecting = MarketManager.isSelectingSpot(player.getUUID())
+                && key.equals(MarketManager.spotSelectStall(player.getUUID()));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        if (selecting) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.LIME_DYE),
+                    Icons.label("Terminer le placement", ChatFormatting.GREEN),
+                    Icons.lore("Arrete le mode de definition des emplacements", ChatFormatting.GRAY),
+                    sp -> {
+                        MarketManager.clearSpotSelect(sp.getUUID());
+                        sp.sendSystemMessage(Messages.success("Placement termine : "
+                                + stall.displaySpots.size() + " emplacement(s)."));
+                        openStallAdmin(sp, stall);
+                    }));
+        } else {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.ITEM_FRAME),
+                    Icons.label("Definir les emplacements", ChatFormatting.AQUA),
+                    Icons.lore("Active le mode, puis CASSE un bloc par emplacement (recasse pour retirer)", ChatFormatting.GRAY),
+                    sp -> {
+                        MarketManager.startSpotSelect(sp.getUUID(), key);
+                        sp.sendSystemMessage(Messages.info("Mode actif : casse un bloc pour chaque emplacement d'affichage. "
+                                + "Recasse un emplacement pour le retirer. Re-Shift-clic droit sur le stand pour terminer."));
+                        Menus.close(sp);
+                    }));
+        }
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.BARRIER),
+                Icons.label("Effacer les emplacements", ChatFormatting.RED),
+                Icons.lore("Repasse l'affichage au-dessus du bloc", ChatFormatting.GRAY),
+                sp -> {
+                    stall.displaySpots.clear();
+                    MarketData.get(sp.server).setDirty();
+                    sp.sendSystemMessage(Messages.success("Emplacements d'affichage effaces."));
+                    openStallAdmin(sp, stall);
+                }));
+
+        OwoMenuServer.openHub(player, title, stats, entries, sp -> openStallAdmin(sp, stall), null);
     }
 
     private static void returnRecovery(ServerPlayer admin, MarketData.RecoveryEntry entry) {
