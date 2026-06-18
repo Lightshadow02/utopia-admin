@@ -43,10 +43,15 @@ public final class ClientMusicManager {
     private ClientMusicManager() {
     }
 
-    /** Supprime la musique vanilla quand on est en jeu (on gere la notre a la place). */
+    /**
+     * Supprime la musique vanilla quand on est en jeu (on gere la notre a la place).
+     * IMPORTANT : il faut mettre la musique a {@code null} (et NON annuler l'event) : c'est la valeur
+     * null qui force le MusicManager a stopper la musique en cours et a ne rien jouer. Annuler ne fait
+     * qu'empecher les autres listeners et laisse jouer la musique vanilla.
+     */
     public static void onSelectMusic(SelectMusicEvent event) {
         if (Minecraft.getInstance().level != null) {
-            event.setCanceled(true);
+            event.setMusic(null);
         }
     }
 
