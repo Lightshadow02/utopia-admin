@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.utopia.Config;
+import com.utopia.data.MarketData;
 import com.utopia.data.ParcelData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.util.Messages;
@@ -273,6 +274,9 @@ public final class ParcelManager {
                 seller.sendSystemMessage(Messages.success(buyer.getGameProfile().getName()
                         + " a achete votre parcelle " + parcel.name() + " pour " + EconomyManager.format(price) + "."));
             }
+        } else {
+            // Parcelle de la mairie/serveur : le paiement va au compte de la mairie.
+            EconomyManager.add(buyer.server, MarketData.MAIRIE_UUID, price);
         }
         parcel.members().clear();
         parcel.setOwner(buyer.getUUID(), buyer.getGameProfile().getName());
@@ -296,6 +300,8 @@ public final class ParcelManager {
         }
         long refund = Math.round(parcel.lastPaid() * SERVER_BUYBACK_RATE);
         EconomyManager.add(owner.server, owner.getUUID(), refund);
+        // La mairie rachete la parcelle : le remboursement est preleve sur le compte de la mairie.
+        EconomyManager.add(owner.server, MarketData.MAIRIE_UUID, -refund);
         relistToServer(parcel);
         ParcelData.get(owner.server).setDirty();
         return refund;
