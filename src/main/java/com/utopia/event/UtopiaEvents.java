@@ -75,6 +75,7 @@ public final class UtopiaEvents {
         com.utopia.command.InventoryCommand.register(dispatcher);
         com.utopia.command.WarpCommands.register(dispatcher);
         com.utopia.command.StaffCommand.register(dispatcher);
+        com.utopia.command.MarcheCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -187,8 +188,10 @@ public final class UtopiaEvents {
         com.utopia.data.MarketData.Stall stall =
                 com.utopia.data.MarketData.get(level.getServer()).stallAt(level.dimension().location(), pos);
         if (stall != null) {
-            // Op accroupi mains vides : menu de configuration du stand (emplacements d'affichage).
-            if (sp.isShiftKeyDown() && sp.hasPermissions(2) && sp.getMainHandItem().isEmpty()) {
+            // Op OU maire accroupi mains vides : menu de configuration du stand (emplacements / expiration).
+            boolean staffMarket = sp.hasPermissions(2)
+                    || com.utopia.data.MarketData.get(level.getServer()).isMaire(sp.getUUID());
+            if (sp.isShiftKeyDown() && staffMarket && sp.getMainHandItem().isEmpty()) {
                 com.utopia.market.MarketMenus.openStallAdmin(sp, stall);
             } else {
                 com.utopia.market.MarketMenus.openStall(sp, stall);

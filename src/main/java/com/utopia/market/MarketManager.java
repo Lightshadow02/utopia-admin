@@ -139,6 +139,24 @@ public final class MarketManager {
         data.removeStall(dim, pos);
     }
 
+    /**
+     * Force l'expiration de toutes les offres d'un stand (action maire/op) : les objets invendus partent
+     * en recuperation pour le proprietaire et l'emplacement est libere. Renvoie le nombre d'offres expirees.
+     */
+    public static int forceExpire(MinecraftServer server, MarketData.Stall stall) {
+        if (stall.owner == null || stall.offers.isEmpty()) {
+            return 0;
+        }
+        MarketData data = MarketData.get(server);
+        long now = System.currentTimeMillis();
+        int n = stall.offers.size();
+        for (MarketData.Offer o : stall.offers) {
+            data.addRecovery(new MarketData.RecoveryEntry(stall.owner, stall.ownerName, o.stack.copy(), now));
+        }
+        freeStall(server, stall);
+        return n;
+    }
+
     private static void freeStall(MinecraftServer server, MarketData.Stall stall) {
         stall.owner = null;
         stall.ownerName = null;

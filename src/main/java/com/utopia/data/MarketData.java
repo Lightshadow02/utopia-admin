@@ -85,6 +85,12 @@ public final class MarketData extends SavedData {
     private final Map<String, Stall> stalls = new LinkedHashMap<>(); // cle "dim;x;y;z"
     private final List<RecoveryEntry> recovery = new ArrayList<>();
     private final Set<UUID> maires = new HashSet<>(); // joueurs autorises a /maire (designes par un op)
+    private String headerColor = "white"; // couleur de l'en-tete "Stand de X" des hologrammes
+
+    /** 12 couleurs proposees pour l'en-tete des stands ({@code /marche couleur}). */
+    public static final List<String> HEADER_COLOR_PRESETS = List.of(
+            "white", "yellow", "gold", "red", "light_purple", "aqua",
+            "green", "blue", "dark_red", "dark_green", "dark_aqua", "dark_purple");
 
     public MarketData() {
     }
@@ -115,6 +121,22 @@ public final class MarketData extends SavedData {
 
     public static MarketData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, ID);
+    }
+
+    // -------- Couleur de l'en-tete des stands --------
+
+    public String headerColor() {
+        return headerColor;
+    }
+
+    /** Definit la couleur d'en-tete si elle fait partie des presets ; renvoie true si appliquee. */
+    public boolean setHeaderColor(String color) {
+        if (!HEADER_COLOR_PRESETS.contains(color)) {
+            return false;
+        }
+        headerColor = color;
+        setDirty();
+        return true;
     }
 
     private static String key(ResourceLocation dim, BlockPos pos) {
@@ -249,6 +271,9 @@ public final class MarketData extends SavedData {
                 // uuid corrompu
             }
         }
+        if (tag.contains("headerColor") && HEADER_COLOR_PRESETS.contains(tag.getString("headerColor"))) {
+            data.headerColor = tag.getString("headerColor");
+        }
         return data;
     }
 
@@ -297,6 +322,7 @@ public final class MarketData extends SavedData {
             maireList.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
         }
         tag.put("maires", maireList);
+        tag.putString("headerColor", headerColor);
         return tag;
     }
 }

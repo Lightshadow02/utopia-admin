@@ -12,7 +12,6 @@ import org.joml.Vector3f;
 
 import com.mojang.math.Transformation;
 import com.utopia.data.MarketData;
-import com.utopia.economy.EconomyManager;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -52,6 +51,7 @@ public final class MarketHolograms {
     public static void sync(MinecraftServer server) {
         int tick = server.getTickCount();
         MarketData data = MarketData.get(server);
+        ChatFormatting headerCol = resolveColor(data.headerColor());
         for (ServerLevel level : server.getAllLevels()) {
             String dimStr = level.dimension().location().toString();
 
@@ -70,7 +70,7 @@ public final class MarketHolograms {
                 }
                 String key = stallKeyOf(stall);
                 wanted.add(key);
-                Layout layout = layout(stall, tick);
+                Layout layout = layout(stall, tick, headerCol);
                 List<Entity> ents = existing.get(key);
                 if (needsRebuild(ents, layout)) {
                     if (ents != null) {
@@ -179,7 +179,7 @@ public final class MarketHolograms {
     }
 
     /** Calcule la disposition (objets + textes + signature) selon les emplacements et la page courante. */
-    private static Layout layout(MarketData.Stall stall, int tick) {
+    private static Layout layout(MarketData.Stall stall, int tick, ChatFormatting headerCol) {
         Layout l = new Layout();
         StringBuilder sig = new StringBuilder();
         double sbx = stall.x + 0.5;
@@ -198,7 +198,7 @@ public final class MarketHolograms {
 
         sig.append("OWN|").append(stall.ownerName);
         double headerY = stall.y + (hasSpots ? 1.5 : 1.95);
-        l.texts.add(new TextLine(0, sbx, headerY, sbz, ownerHeader(stall)));
+        l.texts.add(new TextLine(0, sbx, headerY, sbz, ownerHeader(stall, headerCol)));
 
         int n = stall.offers.size();
         if (n == 0) {
@@ -229,7 +229,7 @@ public final class MarketHolograms {
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             double baseY = sp.getY();
             // Prix unitaire au-dessus, objet flottant juste en dessous (colle, peu d'espace).
-            Component priceLine = Component.literal(EconomyManager.format(o.price) + " /u")
+            Component priceLine = Component.literal(o.price + " Utopieces /u")
                     .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
             l.texts.add(new TextLine(j + 1, cx, baseY + 1.30, cz, priceLine));
             l.items.add(new ItemSpot(j, cx, baseY + 1.15, cz, o.stack.copyWithCount(1)));
@@ -238,9 +238,15 @@ public final class MarketHolograms {
         return l;
     }
 
-    private static Component ownerHeader(MarketData.Stall stall) {
+    private static Component ownerHeader(MarketData.Stall stall, ChatFormatting headerCol) {
         return Component.literal("Stand de " + stall.ownerName)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+                .withStyle(s -> s.withColor(headerCol).withBold(true));
+    }
+
+    /** Resout une couleur de preset en ChatFormatting ; repli sur blanc si inconnue/non-couleur. */
+    private static ChatFormatting resolveColor(String name) {
+        ChatFormatting c = ChatFormatting.getByName(name);
+        return (c != null && c.isColor()) ? c : ChatFormatting.WHITE;
     }
 
     private static String stallKeyOf(MarketData.Stall stall) {

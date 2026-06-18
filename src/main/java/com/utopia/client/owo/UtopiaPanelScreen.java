@@ -31,8 +31,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
 
-    private static final int LABEL_W = 104;
-    private static final int VALUE_W = 122;
+    private static final int LABEL_W = 128;
+    private static final int VALUE_W = 124;
     private static final int BTN_W = 78;
     private static final int ROW_W = LABEL_W + VALUE_W + BTN_W + 12;
 
@@ -145,11 +145,12 @@ public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
         row.verticalAlignment(VerticalAlignment.CENTER);
 
         FlowLayout labelCell = Containers.horizontalFlow(Sizing.fixed(LABEL_W), Sizing.content());
-        labelCell.child(Components.label(r.label()));
+        // maxWidth : les noms d'items longs passent a la ligne au lieu de deborder sur la valeur.
+        labelCell.child(Components.label(r.label()).maxWidth(LABEL_W));
         row.child(labelCell);
 
         FlowLayout valueCell = Containers.horizontalFlow(Sizing.fixed(VALUE_W), Sizing.content());
-        valueCell.child(Components.label(r.value()).shadow(true));
+        valueCell.child(Components.label(r.value()).shadow(true).maxWidth(VALUE_W));
         row.child(valueCell);
 
         FlowLayout btnCell = Containers.horizontalFlow(Sizing.fixed(BTN_W), Sizing.content());
