@@ -16,6 +16,7 @@ import com.utopia.util.Messages;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -24,13 +25,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.FireworkExplosion;
 import net.minecraft.world.item.component.Fireworks;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 /**
  * Logique du systeme d'elections : creation/configuration, lancement, votes (un par joueur, modifiable),
@@ -46,6 +51,15 @@ public final class ElectionManager {
     private static final double FW_SPREAD = 10.0;
     private static final int FW_DELAY_TICKS = 8; // ~0,4 s
     private static final int[] FW_COLORS = { 0xFFD700, 0xFFFFFF, 0xFFFF00, 0x66FF33 };
+
+    // Canon a confettis (Supplementaries) : 10 a 15 tirs, >= 15 blocs au-dessus de l'hologramme, repartis.
+    private static final ResourceLocation CONFETTI_ID =
+            ResourceLocation.fromNamespaceAndPath("supplementaries", "confetti_popper");
+    private static final int CONFETTI_MIN = 10;
+    private static final int CONFETTI_MAX = 15;
+    private static final int CONFETTI_DELAY_TICKS = 7;
+    private static final double CONFETTI_HEIGHT = 15.0;
+    private static final double CONFETTI_SPREAD = 7.0;
 
     private static final String HOLO_TAG = "utopiaElectionHolo";
     private static final String HOLO_TEST = "utopiaElectionHoloTest";
@@ -65,6 +79,16 @@ public final class ElectionManager {
     private static int fwRemaining;
     private static int fwTimer;
     private static final Random RNG = new Random();
+
+    // Ordonnanceur de confettis (independant des feux pour durer un peu plus).
+    private static ServerLevel cfLevel;
+    private static double cfX;
+    private static double cfY;
+    private static double cfZ;
+    private static int cfRemaining;
+    private static int cfTimer;
+    private static Item confettiItem;
+    private static boolean confettiResolved;
 
     // Animation de depouillement en cours.
     private static boolean revealing;
@@ -451,6 +475,14 @@ public final class ElectionManager {
         fwZ = data.holoZ();
         fwRemaining = FW_COUNT;
         fwTimer = 0;
+
+        // Canon a confettis : 10 a 15 tirs, repartis dans le temps, bien au-dessus de l'hologramme.
+        cfLevel = level;
+        cfX = data.holoX();
+        cfY = data.holoY();
+        cfZ = data.holoZ();
+        cfRemaining = CONFETTI_MIN + RNG.nextInt(CONFETTI_MAX - CONFETTI_MIN + 1);
+        cfTimer = 10;
     }
 
     private static void tickFireworks() {
@@ -485,6 +517,60 @@ public final class ElectionManager {
         }
         rocket.set(DataComponents.FIREWORKS, new Fireworks(2, explosions));
         fwLevel.addFreshEntity(new FireworkRocketEntity(fwLevel, ox, oy, oz, rocket));
+    }
+
+    // ============================================================
+    //  Canon a confettis (Supplementaries, optionnel)
+    // ============================================================
+
+    private static void tickConfetti() {
+        if (cfRemaining <= 0 || cfLevel == null) {
+            return;
+        }
+        if (cfTimer > 0) {
+            cfTimer--;
+            return;
+        }
+        popConfetti();
+        cfRemaining--;
+        cfTimer = CONFETTI_DELAY_TICKS;
+        if (cfRemaining <= 0) {
+            cfLevel = null;
+        }
+    }
+
+    /** Fait "tirer" un canon a confettis en l'air via un FakePlayer regardant vers le haut. */
+    private static void popConfetti() {
+        Item popper = confettiItem();
+        if (popper == null) {
+            cfRemaining = 0; // mod Supplementaries absent : on n'insiste pas
+            cfLevel = null;
+            return;
+        }
+        double ox = cfX + (RNG.nextDouble() * 2 - 1) * CONFETTI_SPREAD;
+        double oz = cfZ + (RNG.nextDouble() * 2 - 1) * CONFETTI_SPREAD;
+        double oy = cfY + CONFETTI_HEIGHT + RNG.nextDouble() * 6.0;
+        try {
+            FakePlayer fake = FakePlayerFactory.getMinecraft(cfLevel);
+            fake.setPos(ox, oy, oz);
+            fake.setXRot(-90.0f); // regarde droit vers le haut -> confettis vers le ciel
+            fake.setYRot(0.0f);
+            ItemStack stack = new ItemStack(popper);
+            fake.setItemInHand(InteractionHand.MAIN_HAND, stack);
+            stack.use(cfLevel, fake, InteractionHand.MAIN_HAND);
+            fake.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        } catch (Exception e) {
+            cfRemaining = 0; // en cas de souci avec l'item tiers, on arrete proprement
+            cfLevel = null;
+        }
+    }
+
+    private static Item confettiItem() {
+        if (!confettiResolved) {
+            confettiItem = BuiltInRegistries.ITEM.getOptional(CONFETTI_ID).orElse(null);
+            confettiResolved = true;
+        }
+        return confettiItem;
     }
 
     // ============================================================
@@ -531,6 +617,7 @@ public final class ElectionManager {
 
     public static void tick(MinecraftServer server) {
         tickFireworks();
+        tickConfetti();
         tickReveal();
         Election el = ElectionData.get(server).current();
         if (el != null && el.status == Status.OPEN && System.currentTimeMillis() >= el.endMillis) {
