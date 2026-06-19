@@ -49,5 +49,8 @@ public final class UtopiaNet {
                 default -> { /* variante inconnue : ignore */ }
             }
         });
+
+        // Canal proxy Velocity/BungeeCord (bungeecord:main) : changement de serveur via l'API (KubeJS).
+        ProxyMessaging.register(registrar);
     }
 }
