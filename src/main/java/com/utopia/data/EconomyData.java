@@ -39,6 +39,18 @@ public final class EconomyData extends SavedData {
         return balances.containsKey(playerId);
     }
 
+    /** Supprime le compte (nettoyage des comptes fantomes crees par erreur). */
+    public void removeAccount(UUID playerId) {
+        if (balances.remove(playerId) != null) {
+            setDirty();
+        }
+    }
+
+    /** Copie des UUID ayant un compte. */
+    public java.util.Set<UUID> accounts() {
+        return new java.util.HashSet<>(balances.keySet());
+    }
+
     /** Definit le solde (borne a >= 0) et marque les donnees comme modifiees. */
     public void setBalance(UUID playerId, long amount) {
         balances.put(playerId, Math.max(0L, amount));

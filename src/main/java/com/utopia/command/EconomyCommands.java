@@ -8,6 +8,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.utopia.data.EconomyData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.economy.EconomyMenus;
 import com.utopia.util.Messages;
@@ -77,7 +78,41 @@ public final class EconomyCommands {
                 .then(Commands.literal("set")
                         .then(Commands.argument("target", GameProfileArgument.gameProfile())
                                 .then(Commands.argument("amount", IntegerArgumentType.integer(0))
-                                        .executes(ctx -> adminOp(ctx, Op.SET))))));
+                                        .executes(ctx -> adminOp(ctx, Op.SET)))))
+                .then(Commands.literal("purge")
+                        .executes(EconomyCommands::purge)));
+    }
+
+    /** Vrai si la cible est connue du serveur : en ligne, deja un compte, ou un fichier de donnees joueur. */
+    private static boolean knownTarget(MinecraftServer server, UUID id) {
+        return server.getPlayerList().getPlayer(id) != null
+                || EconomyData.get(server).hasAccount(id)
+                || playerDataExists(server, id);
+    }
+
+    /** Le joueur a-t-il deja rejoint le serveur (fichier playerdata/&lt;uuid&gt;.dat present) ? */
+    private static boolean playerDataExists(MinecraftServer server, UUID id) {
+        return server.getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR)
+                .resolve(id + ".dat").toFile().exists();
+    }
+
+    /** Supprime les comptes "fantomes" : ni en ligne, ni de fichier playerdata (crees par un pseudo errone). */
+    private static int purge(CommandContext<CommandSourceStack> ctx) {
+        MinecraftServer server = ctx.getSource().getServer();
+        EconomyData data = EconomyData.get(server);
+        int removed = 0;
+        for (UUID id : data.accounts()) {
+            if (id.equals(com.utopia.data.MarketData.MAIRIE_UUID)) {
+                continue;
+            }
+            if (server.getPlayerList().getPlayer(id) == null && !playerDataExists(server, id)) {
+                data.removeAccount(id);
+                removed++;
+            }
+        }
+        final int n = removed;
+        ctx.getSource().sendSuccess(() -> Messages.success(n + " compte(s) fantome(s) supprime(s) du classement."), true);
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
     private static GameProfile profile(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -229,6 +264,13 @@ public final class EconomyCommands {
         }
         int amount = IntegerArgumentType.getInteger(ctx, "amount");
         UUID id = gp.getId();
+        // Anti-compte-fantome : on refuse un pseudo qui n'a jamais rejoint le serveur (evite de creer
+        // un compte aleatoire via un nom errone). Les joueurs connus / deja en banque restent gerables.
+        if (!knownTarget(server, id)) {
+            ctx.getSource().sendFailure(Messages.error("Joueur inconnu : \"" + gp.getName()
+                    + "\" n'a jamais rejoint le serveur (aucun compte cree)."));
+            return 0;
+        }
         long before = EconomyManager.getBalance(server, id);
         String verb;
         switch (op) {
