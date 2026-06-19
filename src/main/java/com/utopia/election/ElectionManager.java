@@ -52,6 +52,9 @@ public final class ElectionManager {
     private static final double LINE_GAP = 0.30;
     private static final int BAR_LEN = 20;
 
+    /** Duree de l'animation de depouillement (les barres se remplissent) avant la revelation. */
+    private static final int REVEAL_TICKS = 400; // 20 s
+
     public static final String[] FAKE_CANDIDATES = { "Alice", "Bob", "Charlie" };
 
     // Ordonnanceur de feux d'artifice.
@@ -62,6 +65,16 @@ public final class ElectionManager {
     private static int fwRemaining;
     private static int fwTimer;
     private static final Random RNG = new Random();
+
+    // Animation de depouillement en cours.
+    private static boolean revealing;
+    private static int revealTicks;
+    private static MinecraftServer revealServer;
+    private static String revealName;
+    private static boolean revealTest;
+    private static List<Scored> revealFinal;
+    private static ArmorStand revealTitleStand;
+    private static List<ArmorStand> revealCandidateStands;
 
     private ElectionManager() {
     }
@@ -209,10 +222,90 @@ public final class ElectionManager {
     // ============================================================
 
     private static void ceremony(MinecraftServer server, Election el) {
-        List<Scored> scored = scores(el);
-        spawnHologram(server, el.name, scored, false);
-        announceChat(server, el.name, scored, false);
-        startFireworks(server);
+        startReveal(server, el.name, scores(el), false);
+    }
+
+    /**
+     * Lance l'animation de depouillement (~20 s) : les barres se remplissent progressivement, puis la
+     * revelation finale (gagnant en or) declenche l'annonce chat et les feux d'artifice. Si l'hologramme
+     * n'est pas configure, on passe directement a l'annonce chat + feux.
+     */
+    private static void startReveal(MinecraftServer server, String name, List<Scored> finalScored, boolean test) {
+        ElectionData data = ElectionData.get(server);
+        ServerLevel level = data.holoConfigured() ? resolveLevel(server, data.holoDim()) : null;
+        if (level == null) {
+            announceChat(server, name, finalScored, test);
+            startFireworks(server);
+            return;
+        }
+        removeHolograms(server, false); // repart d'un hologramme propre
+
+        double cx = data.holoX();
+        double cz = data.holoZ();
+        int total = finalScored.stream().mapToInt(Scored::votes).sum();
+        int nLines = (test ? 1 : 0) + 2 + finalScored.size();
+        double topY = data.holoY() + (nLines - 1) * LINE_GAP;
+        int idx = 0;
+        if (test) {
+            spawnLine(level, cx, topY - idx++ * LINE_GAP, cz,
+                    Component.literal("[TEST]").withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true)), true);
+        }
+        revealTitleStand = spawnLine(level, cx, topY - idx++ * LINE_GAP, cz, titleAnim(name, 0f), test);
+        spawnLine(level, cx, topY - idx++ * LINE_GAP, cz,
+                Component.literal(total + " votant(s)").withStyle(s -> s.withColor(ChatFormatting.GRAY)), test);
+        revealCandidateStands = new ArrayList<>();
+        for (Scored sc : finalScored) {
+            revealCandidateStands.add(spawnLine(level, cx, topY - idx++ * LINE_GAP, cz,
+                    candidateBar(sc.name(), 0, false), test));
+        }
+
+        revealServer = server;
+        revealName = name;
+        revealTest = test;
+        revealFinal = finalScored;
+        revealTicks = REVEAL_TICKS;
+        revealing = true;
+    }
+
+    private static Component titleAnim(String name, float progress) {
+        return Component.literal("Depouillement... " + Math.round(progress * 100) + "%")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+    }
+
+    private static void tickReveal() {
+        if (!revealing) {
+            return;
+        }
+        revealTicks--;
+        float progress = Math.min(1f, 1f - (float) revealTicks / REVEAL_TICKS);
+        if (revealTicks > 0) {
+            if (revealTicks % 4 == 0) { // ~5 maj/s : suffisant et leger
+                setName(revealTitleStand, titleAnim(revealName, progress));
+                for (int i = 0; i < revealCandidateStands.size(); i++) {
+                    Scored sc = revealFinal.get(i);
+                    setName(revealCandidateStands.get(i), candidateBar(sc.name(), Math.round(sc.percent() * progress), false));
+                }
+            }
+            return;
+        }
+        // Revelation finale.
+        revealing = false;
+        setName(revealTitleStand, Component.literal("RESULTATS : " + revealName)
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true)));
+        for (int i = 0; i < revealCandidateStands.size(); i++) {
+            Scored sc = revealFinal.get(i);
+            boolean winner = i == revealFinal.size() - 1 && sc.votes() > 0;
+            setName(revealCandidateStands.get(i), candidateBar(sc.name(), sc.percent(), winner));
+        }
+        announceChat(revealServer, revealName, revealFinal, revealTest);
+        startFireworks(revealServer);
+    }
+
+    private static void setName(ArmorStand stand, Component text) {
+        if (stand != null && !stand.isRemoved()) {
+            stand.setCustomName(text);
+            stand.setCustomNameVisible(true);
+        }
     }
 
     private static void announceChat(MinecraftServer server, String name, List<Scored> scored, boolean test) {
@@ -285,21 +378,25 @@ public final class ElectionManager {
     }
 
     private static Component candidateLine(Scored sc, boolean winner) {
-        int filled = Math.round(sc.percent() / 100f * BAR_LEN);
+        return candidateBar(sc.name(), sc.percent(), winner);
+    }
+
+    /** Une ligne candidat : nom + barre de progression + pourcentage (gagnant mis en valeur en or). */
+    private static Component candidateBar(String name, int pct, boolean winner) {
+        int filled = Math.round(pct / 100f * BAR_LEN);
         String full = "|".repeat(Math.max(0, filled));
         String empty = ".".repeat(Math.max(0, BAR_LEN - filled));
         ChatFormatting nameCol = winner ? ChatFormatting.GOLD : ChatFormatting.WHITE;
-        Component line = Component.literal((winner ? "* " : "") + sc.name() + " ")
+        return Component.literal((winner ? "* " : "") + name + " ")
                 .withStyle(s -> s.withColor(nameCol).withBold(winner))
                 .append(Component.literal("[").withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY)))
                 .append(Component.literal(full).withStyle(s -> s.withColor(winner ? ChatFormatting.GOLD : ChatFormatting.GREEN)))
                 .append(Component.literal(empty).withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY)))
-                .append(Component.literal("] " + sc.percent() + "%" + (winner ? " *" : ""))
+                .append(Component.literal("] " + pct + "%" + (winner ? " *" : ""))
                         .withStyle(s -> s.withColor(nameCol).withBold(winner)));
-        return line;
     }
 
-    private static void spawnLine(ServerLevel level, double x, double y, double z, Component text, boolean test) {
+    private static ArmorStand spawnLine(ServerLevel level, double x, double y, double z, Component text, boolean test) {
         ArmorStand stand = new ArmorStand(level, x, y, z);
         CompoundTag tag = stand.saveWithoutId(new CompoundTag());
         tag.putBoolean("Marker", true);
@@ -317,10 +414,14 @@ public final class ElectionManager {
         }
         stand.setPos(x, y, z);
         level.addFreshEntity(stand);
+        return stand;
     }
 
     /** Supprime les hologrammes d'election. {@code onlyTest} : ne retire que les hologrammes de test. */
     public static void removeHolograms(MinecraftServer server, boolean onlyTest) {
+        if (!onlyTest || revealTest) {
+            revealing = false; // annule une animation de depouillement en cours
+        }
         for (ServerLevel level : server.getAllLevels()) {
             for (Entity e : level.getAllEntities()) {
                 if (e instanceof ArmorStand && e.getPersistentData().getBoolean(HOLO_TAG)
@@ -403,11 +504,11 @@ public final class ElectionManager {
     }
 
     public static boolean previewFull(MinecraftServer server) {
-        List<Scored> fake = fakeScores();
-        boolean ok = spawnHologram(server, "Election (TEST)", fake, true);
-        announceChat(server, "Election (TEST)", fake, true);
-        startFireworks(server);
-        return ok;
+        if (!ElectionData.get(server).holoConfigured()) {
+            return false;
+        }
+        startReveal(server, "Election (TEST)", fakeScores(), true);
+        return true;
     }
 
     public static void removePreview(MinecraftServer server) {
@@ -430,6 +531,7 @@ public final class ElectionManager {
 
     public static void tick(MinecraftServer server) {
         tickFireworks();
+        tickReveal();
         Election el = ElectionData.get(server).current();
         if (el != null && el.status == Status.OPEN && System.currentTimeMillis() >= el.endMillis) {
             close(server);
