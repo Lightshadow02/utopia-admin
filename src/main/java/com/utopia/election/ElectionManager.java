@@ -42,7 +42,7 @@ public final class ElectionManager {
     public static final int MIN_DURATION_MIN = 1;
 
     // Feux d'artifice (cf. cahier des charges).
-    private static final int FW_COUNT = 8;
+    private static final int FW_COUNT = 16;
     private static final double FW_SPREAD = 10.0;
     private static final int FW_DELAY_TICKS = 8; // ~0,4 s
     private static final int[] FW_COLORS = { 0xFFD700, 0xFFFFFF, 0xFFFF00, 0x66FF33 };
