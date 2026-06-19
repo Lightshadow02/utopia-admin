@@ -165,15 +165,53 @@ public final class ElectionMenus {
         }
         List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
         footer.add(new OwoMenuServer.PanelAction(Icons.label("Ajouter un candidat", ChatFormatting.GREEN),
+                ElectionMenus::openAddCandidate));
+        OwoMenuServer.openPanel(player, title, rows, footer, ElectionMenus::openCandidates, ElectionMenus::openAdminMenu);
+    }
+
+    /** Selecteur de candidats : clic sur un joueur en ligne pour l'ajouter (ou nom personnalise). */
+    private static void openAddCandidate(ServerPlayer player) {
+        Election el = ElectionData.get(player.server).current();
+        if (el == null || el.status != Status.SETUP) {
+            openAdminMenu(player);
+            return;
+        }
+        Component title = Component.literal("Ajouter un candidat")
+                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        List<Component> stats = List.of(Component.literal("Clique un joueur, ou ajoute un nom personnalise")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (ServerPlayer target : player.server.getPlayerList().getPlayers()) {
+            String tname = target.getGameProfile().getName();
+            boolean already = el.candidates.stream().anyMatch(c -> c.equalsIgnoreCase(tname));
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(tname, already ? ChatFormatting.DARK_GRAY : ChatFormatting.WHITE), List.of()),
+                    Icons.label(tname, already ? ChatFormatting.DARK_GRAY : ChatFormatting.WHITE),
+                    Icons.lore(already ? "Deja candidat" : "Cliquer pour ajouter",
+                            already ? ChatFormatting.DARK_GRAY : ChatFormatting.GRAY),
+                    sp -> {
+                        if (ElectionManager.addCandidate(sp.server, tname)) {
+                            sp.sendSystemMessage(Messages.success(tname + " ajoute aux candidats."));
+                        } else {
+                            sp.sendSystemMessage(Messages.warn(tname + " est deja candidat."));
+                        }
+                        openAddCandidate(sp);
+                    }));
+        }
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
+                Icons.label("Nom personnalise...", ChatFormatting.AQUA),
+                Icons.lore("Candidat fictif (entite, faction...)", ChatFormatting.GRAY),
                 sp -> Menus.promptText(sp, Icons.label("Nom du candidat", ChatFormatting.GOLD), List.of(),
                         Icons.label("Ajouter", ChatFormatting.GREEN), "", 32,
                         cn -> {
                             if (!ElectionManager.addCandidate(sp.server, cn)) {
                                 sp.sendSystemMessage(Messages.warn("Candidat invalide ou deja present."));
                             }
-                            openCandidates(sp);
+                            openAddCandidate(sp);
                         })));
-        OwoMenuServer.openPanel(player, title, rows, footer, ElectionMenus::openCandidates, ElectionMenus::openAdminMenu);
+
+        OwoMenuServer.openHub(player, title, stats, entries, ElectionMenus::openAddCandidate, ElectionMenus::openCandidates);
     }
 
     private static void doStart(ServerPlayer player) {
