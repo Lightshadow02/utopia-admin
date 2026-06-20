@@ -557,9 +557,12 @@ public final class ElectionManager {
             fake.setYRot(0.0f);
             ItemStack stack = new ItemStack(popper);
             fake.setItemInHand(InteractionHand.MAIN_HAND, stack);
-            stack.use(cfLevel, fake, InteractionHand.MAIN_HAND);
+            fake.getCooldowns().removeCooldown(popper); // le FakePlayer est partage : on evite le cooldown
+            // Chemin serveur d'un vrai clic droit (gere correctement les items des autres mods).
+            fake.gameMode.useItem(fake, cfLevel, fake.getItemInHand(InteractionHand.MAIN_HAND), InteractionHand.MAIN_HAND);
+            fake.stopUsingItem();
             fake.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             cfRemaining = 0; // en cas de souci avec l'item tiers, on arrete proprement
             cfLevel = null;
         }
