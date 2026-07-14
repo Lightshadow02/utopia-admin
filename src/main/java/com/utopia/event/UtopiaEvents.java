@@ -372,9 +372,10 @@ public final class UtopiaEvents {
         }
         // Structures : avancement des dissolutions en cours (chaque tick pour rester fluide).
         com.utopia.structure.StructureManager.tickTransitions();
-        // Structures en mode auto : bascule jour <-> nuit (controle toutes les ~5 s).
+        // Structures en mode auto : bascule jour <-> nuit + presence des marchands (toutes les ~5 s).
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);
+            com.utopia.structure.StructureManager.syncShopNpcs(server);
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.
         com.utopia.election.ElectionManager.tick(server);

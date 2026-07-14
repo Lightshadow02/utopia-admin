@@ -56,6 +56,21 @@ public final class StructureData extends SavedData {
         }
     }
 
+    /**
+     * Un article du marchand : l'objet, son prix d'achat (le joueur achete) et son prix de revente
+     * (le marchand rachete). Un prix negatif desactive le sens correspondant. Stock illimite.
+     */
+    public record Trade(net.minecraft.world.item.ItemStack stack, long buyPrice, long sellPrice) {
+
+        public boolean canBuy() {
+            return buyPrice >= 0;
+        }
+
+        public boolean canSell() {
+            return sellPrice >= 0;
+        }
+    }
+
     /** Une structure : sa zone, ses deux etats et son mode de bascule. */
     public static final class Struct {
         public final String name;
@@ -67,6 +82,15 @@ public final class StructureData extends SavedData {
         public boolean auto;        // true = bascule automatique jour/nuit
         public int current = 1;     // etat actuellement pose (1 ou 2)
         public Anim anim = Anim.RANDOM; // style d'animation de la bascule
+
+        // ---- Marchand optionnel, present uniquement dans l'un des deux etats ----
+        public boolean npcEnabled;
+        public int npcState = 1;            // etat dans lequel le marchand apparait
+        public BlockPos npcPos;             // ou il se tient (null = pas encore place)
+        public String npcName = "Marchand";
+        public String npcSkinValue = "";    // skin (propriete "textures"), vide = Steve
+        public String npcSkinSignature = "";
+        public final List<Trade> trades = new ArrayList<>();
 
         public Struct(String name) {
             this.name = name;
@@ -160,6 +184,26 @@ public final class StructureData extends SavedData {
             } catch (IllegalArgumentException ignored) {
                 st.anim = Anim.RANDOM;
             }
+            // Marchand
+            st.npcEnabled = s.getBoolean("npcEnabled");
+            st.npcState = s.getInt("npcState") == 2 ? 2 : 1;
+            if (s.contains("npcX")) {
+                st.npcPos = new BlockPos(s.getInt("npcX"), s.getInt("npcY"), s.getInt("npcZ"));
+            }
+            if (s.contains("npcName")) {
+                st.npcName = s.getString("npcName");
+            }
+            st.npcSkinValue = s.getString("npcSkinValue");
+            st.npcSkinSignature = s.getString("npcSkinSig");
+            ListTag trades = s.getList("trades", Tag.TAG_COMPOUND);
+            for (int j = 0; j < trades.size(); j++) {
+                CompoundTag t = trades.getCompound(j);
+                net.minecraft.world.item.ItemStack stack = net.minecraft.world.item.ItemStack
+                        .parse(registries, t.getCompound("stack")).orElse(net.minecraft.world.item.ItemStack.EMPTY);
+                if (!stack.isEmpty()) {
+                    st.trades.add(new Trade(stack, t.getLong("buy"), t.getLong("sell")));
+                }
+            }
             data.structures.put(key(name), st);
         }
         return data;
@@ -187,6 +231,26 @@ public final class StructureData extends SavedData {
             s.putBoolean("auto", st.auto);
             s.putInt("current", st.current);
             s.putString("anim", st.anim.name());
+            // Marchand
+            s.putBoolean("npcEnabled", st.npcEnabled);
+            s.putInt("npcState", st.npcState);
+            if (st.npcPos != null) {
+                s.putInt("npcX", st.npcPos.getX());
+                s.putInt("npcY", st.npcPos.getY());
+                s.putInt("npcZ", st.npcPos.getZ());
+            }
+            s.putString("npcName", st.npcName == null ? "Marchand" : st.npcName);
+            s.putString("npcSkinValue", st.npcSkinValue == null ? "" : st.npcSkinValue);
+            s.putString("npcSkinSig", st.npcSkinSignature == null ? "" : st.npcSkinSignature);
+            ListTag trades = new ListTag();
+            for (Trade t : st.trades) {
+                CompoundTag tt = new CompoundTag();
+                tt.put("stack", t.stack().save(registries));
+                tt.putLong("buy", t.buyPrice());
+                tt.putLong("sell", t.sellPrice());
+                trades.add(tt);
+            }
+            s.put("trades", trades);
             list.add(s);
         }
         tag.put("structures", list);

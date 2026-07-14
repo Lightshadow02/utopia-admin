@@ -145,9 +145,14 @@ Une **zone du monde** dont le serveur mémorise **deux états** (deux « schéma
 
 **Animations** (ligne *Animation*, cliquer pour faire défiler) : `Dissolution aléatoire` · `Couche par couche (montée)` · `Couche par couche (descente)` · `Onde depuis le centre` · `Onde vers le centre` · `Instantané`. Seuls les blocs **qui changent réellement** sont animés (~3 s, avec particules et son).
 
+**Marchand (optionnel)** — ligne *Marchand* → **Configurer** : l'active, choisis **à quel état il apparaît** (1 ou 2), place-le (**Ici** = ta position), **renomme**-le, donne-lui **ton skin** (ou Steve), et **gère ses articles**.
+- **Ajouter (objet en main)** → prix d'**achat** (ce que le joueur paie) puis prix de **revente** (ce que le marchand paie). `0` = ce sens est désactivé.
+- **Stock illimité** (boutique serveur). Les joueurs font **clic droit** sur le marchand → menu d'achat/revente en **Utopièces**.
+- Il **apparaît/disparaît tout seul** selon l'état courant de la structure.
+
 > 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié).
 > 💧 **L'eau est ignorée** : elle n'est ni mémorisée ni reposée (la mer/les rivières restent intactes). Les **entités** ne sont pas capturées (sinon chaque bascule en dupliquerait).
-> 📦 Volume max : **1 000 000 de blocs**. La pose est étalée dans le temps, mais la **capture est synchrone** : sur une très grosse zone, le serveur marque une pause d'une seconde ou deux.
+> 📦 Volume max : **5 000 000 de blocs**. Une grosse structure n'est pas refusée : elle **s'anime simplement plus longtemps** (débit plafonné à 120 blocs/tick → TPS stable). Seule la **capture** est synchrone : sur une zone énorme, le serveur marque une pause d'une seconde ou deux au moment du « Capturer ».
 
 #### 🗳️ Élections (`/admin → Élections`)
 - **Créer une élection** : nom + durée (min **1 min**, défaut **24 h**), puis ajout/retrait des **candidats** (libre avant le lancement).

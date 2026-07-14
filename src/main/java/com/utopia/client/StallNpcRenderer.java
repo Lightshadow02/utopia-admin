@@ -1,10 +1,11 @@
 package com.utopia.client;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import com.utopia.entity.StallNpc;
+import com.utopia.entity.SkinNpc;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
@@ -15,39 +16,45 @@ import net.minecraft.client.renderer.entity.layers.CustomHeadLayer;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
- * Rendu du PNJ d'un stand : modele joueur classique, avec le skin par defaut (Steve) tant que le
- * stand est libre, et le skin du proprietaire une fois reserve.
+ * Rendu commun des PNJ du mod (stands de marche, marchands) : modele joueur avec le skin par defaut
+ * (Steve) ou celui porte par l'entite.
  *
- * <p>Le skin est reconstruit a partir de la propriete "textures" synchronisee par l'entite : il
- * s'affiche donc meme si le proprietaire est hors ligne. Le gestionnaire de skins de Minecraft gere
- * le telechargement et le cache.
+ * <p>Le skin est reconstruit a partir de la propriete "textures" synchronisee : il s'affiche donc
+ * meme si le joueur d'origine est hors ligne. Le gestionnaire de skins gere telechargement et cache.
+ *
+ * @param <T> une entite vivante qui expose un skin ({@link SkinNpc})
  */
-public class StallNpcRenderer extends LivingEntityRenderer<StallNpc, PlayerModel<StallNpc>> {
+public class StallNpcRenderer<T extends LivingEntity & SkinNpc>
+        extends LivingEntityRenderer<T, PlayerModel<T>> {
 
-    public StallNpcRenderer(EntityRendererProvider.Context context) {
+    /** Faut-il afficher l'etiquette de nom au-dessus du PNJ ? */
+    private final boolean showName;
+
+    public StallNpcRenderer(EntityRendererProvider.Context context, boolean showName) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
+        this.showName = showName;
         // Couche de la 2e peau (chapeau/veste...) pour un rendu fidele.
         this.addLayer(new CustomHeadLayer<>(this, context.getModelSet(), context.getItemInHandRenderer()));
     }
 
-    /** Jamais d'etiquette au-dessus du PNJ : l'hologramme du stand porte deja le nom. */
     @Override
-    protected boolean shouldShowName(StallNpc entity) {
-        return false;
+    protected boolean shouldShowName(T entity) {
+        return showName && super.shouldShowName(entity);
     }
 
     @Override
-    public ResourceLocation getTextureLocation(StallNpc entity) {
+    public ResourceLocation getTextureLocation(T entity) {
         String value = entity.skinValue();
         if (value == null || value.isEmpty()) {
-            return DefaultPlayerSkin.getDefaultTexture(); // stand libre -> Steve
+            return DefaultPlayerSkin.getDefaultTexture(); // pas de skin defini -> Steve
         }
         String name = entity.ownerName();
         GameProfile profile = new GameProfile(
-                UUID.nameUUIDFromBytes(("utopia_stall:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                name.isEmpty() ? "Stand" : name);
+                UUID.nameUUIDFromBytes(("utopia_npc:" + name).getBytes(StandardCharsets.UTF_8)),
+                name.isEmpty() ? "Npc" : name);
         String signature = entity.skinSignature();
         profile.getProperties().put("textures",
                 new Property("textures", value, signature.isEmpty() ? null : signature));

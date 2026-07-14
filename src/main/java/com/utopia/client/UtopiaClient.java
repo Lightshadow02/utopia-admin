@@ -34,9 +34,14 @@ public final class UtopiaClient {
         event.register(UtopiaMenuType.UTOPIA.get(), UtopiaScreen::new);
     }
 
-    /** Rendu du PNJ des stands de marche (modele joueur + skin du proprietaire). */
+    /** Rendu des PNJ du mod (stands de marche et marchands) : modele joueur + skin porte. */
     private static void onRegisterRenderers(net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.STALL_NPC.get(), StallNpcRenderer::new);
+        // Stand : pas d'etiquette (l'hologramme du stand porte deja le nom).
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.STALL_NPC.get(),
+                ctx -> new StallNpcRenderer<com.utopia.entity.StallNpc>(ctx, false));
+        // Marchand : son nom est affiche au-dessus de lui.
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.SHOP_NPC.get(),
+                ctx -> new StallNpcRenderer<com.utopia.entity.ShopNpc>(ctx, true));
     }
 
     /** POC : /utopiaui ouvre l'ecran owo-ui de demonstration cote client. */

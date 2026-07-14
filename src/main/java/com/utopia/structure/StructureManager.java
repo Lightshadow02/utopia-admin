@@ -46,10 +46,12 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 public final class StructureManager {
 
     /**
-     * Volume maximal d'une zone. La pose est etalee dans le temps, mais la <b>capture</b> reste
-     * synchrone : au-dela, on gele le serveur une seconde ou deux et le schematique devient lourd.
+     * Volume maximal d'une zone. Les grandes structures ne sont pas refusees : elles mettent
+     * simplement <b>plus longtemps</b> a s'animer (le debit par tick est plafonne), ce qui evite les
+     * a-coups. Seule la <b>capture</b> reste synchrone : sur une zone enorme, le serveur marque une
+     * pause d'une seconde ou deux au moment du "Capturer".
      */
-    public static final long MAX_VOLUME = 1_000_000L;
+    public static final long MAX_VOLUME = 5_000_000L;
 
     /**
      * Drapeaux de pose des blocs. On met a jour les clients SANS notifier les voisins
@@ -162,9 +164,13 @@ public final class StructureManager {
 
     // ------------------------------------------------------------------ Transition animee (dissolution)
 
-    /** Duree visee d'une transition (ticks) et debit maximal pour ne pas faire tomber le TPS. */
-    private static final int ANIM_TICKS = 60; // ~3 s
-    private static final int MAX_PER_TICK = 200;
+    /**
+     * Duree visee d'une transition (~3 s) et debit maximal par tick. Le plafond prime : une grosse
+     * structure n'accelere pas, elle s'anime simplement plus longtemps (ex. 300 000 blocs a 120/tick
+     * = ~2 min 5 s), ce qui garde le TPS stable au lieu de poser 5 000 blocs d'un coup.
+     */
+    private static final int ANIM_TICKS = 60;
+    private static final int MAX_PER_TICK = 120;
 
     /** Un bloc a changer : position absolue, etat cible, et NBT eventuel (coffre, panneau...). */
     private record Change(BlockPos pos, BlockState state, CompoundTag nbt) {
@@ -344,6 +350,53 @@ public final class StructureManager {
             if (struct.current != wanted && !isTransitioning(struct)) {
                 applyAnimated(server, struct, wanted); // dissolution aleatoire
             }
+        }
+    }
+
+    /**
+     * A appeler periodiquement : fait apparaitre / disparaitre les marchands selon l'etat courant de
+     * leur structure. Les PNJ ne sont pas sauvegardes, ils sont donc recrees ici apres un redemarrage.
+     */
+    public static void syncShopNpcs(MinecraftServer server) {
+        StructureData data = StructureData.get(server);
+        for (ServerLevel level : server.getAllLevels()) {
+            // Recense les marchands presents, par structure (et supprime les doublons).
+            Map<String, com.utopia.entity.ShopNpc> present = new java.util.HashMap<>();
+            for (net.minecraft.world.entity.Entity e : level.getAllEntities()) {
+                if (e instanceof com.utopia.entity.ShopNpc npc) {
+                    if (present.putIfAbsent(npc.structName(), npc) != null) {
+                        npc.discard();
+                    }
+                }
+            }
+            for (StructureData.Struct st : data.all()) {
+                ServerLevel target = resolveLevel(server, st.dim);
+                if (target != level) {
+                    continue;
+                }
+                com.utopia.entity.ShopNpc npc = present.remove(st.name);
+                boolean wanted = st.npcEnabled && st.npcPos != null && st.current == st.npcState;
+                if (!wanted) {
+                    if (npc != null) {
+                        npc.discard();
+                    }
+                    continue;
+                }
+                if (!level.isLoaded(st.npcPos)) {
+                    continue; // zone non chargee : on retentera
+                }
+                if (npc == null || npc.isRemoved()) {
+                    npc = new com.utopia.entity.ShopNpc(com.utopia.entity.UtopiaEntities.SHOP_NPC.get(), level);
+                    npc.setStructName(st.name);
+                    npc.moveTo(st.npcPos.getX() + 0.5, st.npcPos.getY(), st.npcPos.getZ() + 0.5, 0.0f, 0.0f);
+                    npc.applyShop(st);
+                    level.addFreshEntity(npc);
+                } else {
+                    npc.applyShop(st); // idempotent : ne synchronise que si ca change
+                }
+            }
+            // Marchands restants : structures supprimees ou renommees.
+            present.values().forEach(net.minecraft.world.entity.Entity::discard);
         }
     }
 

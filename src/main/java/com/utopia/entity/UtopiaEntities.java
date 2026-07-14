@@ -25,6 +25,14 @@ public final class UtopiaEntities {
                     .updateInterval(20)
                     .build("stall_npc"));
 
+    /** Marchand d'une structure (present seulement dans l'un des deux etats). */
+    public static final DeferredHolder<EntityType<?>, EntityType<ShopNpc>> SHOP_NPC =
+            ENTITIES.register("shop_npc", () -> EntityType.Builder.<ShopNpc>of(ShopNpc::new, MobCategory.MISC)
+                    .sized(0.6f, 1.8f)
+                    .clientTrackingRange(8)
+                    .updateInterval(20)
+                    .build("shop_npc"));
+
     private UtopiaEntities() {
     }
 
@@ -35,5 +43,6 @@ public final class UtopiaEntities {
 
     private static void onAttributes(EntityAttributeCreationEvent event) {
         event.put(STALL_NPC.get(), LivingEntity.createLivingAttributes().build());
+        event.put(SHOP_NPC.get(), LivingEntity.createLivingAttributes().build());
     }
 }

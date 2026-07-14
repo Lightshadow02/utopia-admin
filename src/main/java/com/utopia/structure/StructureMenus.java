@@ -229,6 +229,13 @@ public final class StructureMenus {
                     Menus.close(sp);
                 }));
 
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Marchand", ChatFormatting.GRAY),
+                Icons.label(st.npcEnabled ? st.npcName + " (etat " + st.npcState + ")" : "desactive",
+                        st.npcEnabled ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label("Configurer", ChatFormatting.YELLOW),
+                sp -> openShopAdmin(sp, name)));
+
         List<OwoMenuServer.PanelAction> footer = List.of(
                 new OwoMenuServer.PanelAction(Icons.label("Supprimer", ChatFormatting.RED),
                         sp -> {
@@ -239,6 +246,183 @@ public final class StructureMenus {
                         }));
 
         OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openStruct(sp, name), StructureMenus::openList);
+    }
+
+    // ------------------------------------------------------------------ Marchand (admin)
+
+    /** Configuration du marchand d'une structure : activation, etat, position, nom, skin, articles. */
+    public static void openShopAdmin(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        Component title = Component.literal("Marchand - " + st.name)
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Actif", ChatFormatting.GRAY),
+                Icons.label(st.npcEnabled ? "oui" : "non", st.npcEnabled ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label("Basculer", ChatFormatting.YELLOW),
+                sp -> {
+                    if (!st.npcEnabled && st.npcPos == null) {
+                        sp.sendSystemMessage(Messages.warn("Place d'abord le marchand (Position)."));
+                        openShopAdmin(sp, name);
+                        return;
+                    }
+                    st.npcEnabled = !st.npcEnabled;
+                    StructureData.get(sp.server).setDirty();
+                    StructureManager.syncShopNpcs(sp.server);
+                    openShopAdmin(sp, name);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Present a l'etat", ChatFormatting.GRAY),
+                Icons.label("Etat " + st.npcState, ChatFormatting.AQUA),
+                Icons.label("Changer", ChatFormatting.YELLOW),
+                sp -> {
+                    st.npcState = st.npcState == 1 ? 2 : 1;
+                    StructureData.get(sp.server).setDirty();
+                    StructureManager.syncShopNpcs(sp.server);
+                    sp.sendSystemMessage(Messages.info("Le marchand apparait a l'etat " + st.npcState + "."));
+                    openShopAdmin(sp, name);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Position", ChatFormatting.GRAY),
+                Icons.label(st.npcPos == null ? "non definie"
+                        : st.npcPos.getX() + " " + st.npcPos.getY() + " " + st.npcPos.getZ(),
+                        st.npcPos == null ? ChatFormatting.RED : ChatFormatting.AQUA),
+                Icons.label("Ici", ChatFormatting.GREEN),
+                sp -> {
+                    st.npcPos = sp.blockPosition();
+                    StructureData.get(sp.server).setDirty();
+                    StructureManager.syncShopNpcs(sp.server);
+                    sp.sendSystemMessage(Messages.success("Marchand place a ta position."));
+                    openShopAdmin(sp, name);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Nom", ChatFormatting.GRAY),
+                Icons.label(st.npcName, ChatFormatting.WHITE),
+                Icons.label("Renommer", ChatFormatting.YELLOW),
+                sp -> Menus.promptText(sp, Icons.label("Nom du marchand", ChatFormatting.GOLD), List.of(),
+                        Icons.label("Valider", ChatFormatting.GREEN), st.npcName, 24,
+                        n -> {
+                            if (n != null && !n.isBlank()) {
+                                st.npcName = n.trim();
+                                StructureData.get(sp.server).setDirty();
+                                StructureManager.syncShopNpcs(sp.server);
+                            }
+                            openShopAdmin(sp, name);
+                        })));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Skin", ChatFormatting.GRAY),
+                Icons.label(st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Steve" : "personnalise",
+                        ChatFormatting.AQUA),
+                Icons.label(st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Mon skin" : "Steve",
+                        ChatFormatting.YELLOW),
+                sp -> {
+                    if (st.npcSkinValue == null || st.npcSkinValue.isEmpty()) {
+                        st.npcSkinValue = "";
+                        st.npcSkinSignature = "";
+                        for (com.mojang.authlib.properties.Property p
+                                : sp.getGameProfile().getProperties().get("textures")) {
+                            st.npcSkinValue = p.value();
+                            st.npcSkinSignature = p.signature() == null ? "" : p.signature();
+                            break;
+                        }
+                        sp.sendSystemMessage(st.npcSkinValue.isEmpty()
+                                ? Messages.warn("Skin indisponible (serveur hors ligne ?) : Steve conserve.")
+                                : Messages.success("Le marchand porte desormais ton skin."));
+                    } else {
+                        st.npcSkinValue = "";
+                        st.npcSkinSignature = "";
+                        sp.sendSystemMessage(Messages.info("Skin remis a Steve."));
+                    }
+                    StructureData.get(sp.server).setDirty();
+                    StructureManager.syncShopNpcs(sp.server);
+                    openShopAdmin(sp, name);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Articles", ChatFormatting.GRAY),
+                Icons.label(st.trades.size() + " article(s)", ChatFormatting.AQUA),
+                Icons.label("Gerer", ChatFormatting.YELLOW),
+                sp -> openTrades(sp, name)));
+
+        OwoMenuServer.openPanel(admin, title, rows, List.of(),
+                sp -> openShopAdmin(sp, name), sp -> openStruct(sp, name));
+    }
+
+    /** Liste des articles du marchand : retrait, et ajout depuis l'objet en main. */
+    public static void openTrades(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        Component title = Component.literal("Articles - " + st.npcName)
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (int i = 0; i < st.trades.size(); i++) {
+            final int idx = i;
+            StructureData.Trade t = st.trades.get(i);
+            String prices = (t.canBuy() ? "achat " + t.buyPrice() : "achat -")
+                    + " / " + (t.canSell() ? "revente " + t.sellPrice() : "revente -");
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(t.stack().getHoverName().getString(), ChatFormatting.WHITE),
+                    Icons.label(prices, ChatFormatting.GOLD),
+                    Icons.label("Retirer", ChatFormatting.RED),
+                    sp -> {
+                        st.trades.remove(idx);
+                        StructureData.get(sp.server).setDirty();
+                        openTrades(sp, name);
+                    }));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun article", ChatFormatting.GRAY),
+                    Icons.label("tiens un objet en main", ChatFormatting.DARK_GRAY), null, null));
+        }
+
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Ajouter (objet en main)", ChatFormatting.GREEN),
+                        sp -> promptAddTrade(sp, name)));
+
+        OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openTrades(sp, name),
+                sp -> openShopAdmin(sp, name));
+    }
+
+    /** Ajoute l'objet en main comme article : on demande le prix d'achat puis de revente. */
+    private static void promptAddTrade(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        ItemStack held = admin.getMainHandItem();
+        if (held.isEmpty()) {
+            admin.sendSystemMessage(Messages.warn("Tiens l'objet a vendre dans ta main, puis reessaie."));
+            openTrades(admin, name);
+            return;
+        }
+        ItemStack model = held.copyWithCount(1); // le prix est unitaire, stock illimite
+        String label = model.getHoverName().getString();
+        Menus.promptAmount(admin, Icons.label("Prix d'ACHAT (joueur -> marchand)", ChatFormatting.GOLD),
+                List.of(Icons.lore("Objet : " + label, ChatFormatting.GRAY),
+                        Icons.lore("Prix unitaire en Utopieces. 0 = achat impossible.", ChatFormatting.DARK_GRAY)),
+                Icons.label("Suivant", ChatFormatting.GREEN), 10, 0, 1_000_000_000L,
+                buy -> Menus.promptAmount(admin, Icons.label("Prix de REVENTE (marchand -> joueur)", ChatFormatting.GOLD),
+                        List.of(Icons.lore("Objet : " + label, ChatFormatting.GRAY),
+                                Icons.lore("Ce que le marchand paie. 0 = il ne rachete pas.", ChatFormatting.DARK_GRAY)),
+                        Icons.label("Ajouter", ChatFormatting.GREEN), 0, 0, 1_000_000_000L,
+                        sell -> {
+                            // 0 = sens desactive (on stocke -1 pour le distinguer d'un prix nul).
+                            st.trades.add(new StructureData.Trade(model,
+                                    buy <= 0 ? -1 : buy, sell <= 0 ? -1 : sell));
+                            StructureData.get(admin.server).setDirty();
+                            admin.sendSystemMessage(Messages.success("Article ajoute : " + label
+                                    + " (achat " + (buy <= 0 ? "-" : buy) + ", revente " + (sell <= 0 ? "-" : sell) + ")."));
+                            openTrades(admin, name);
+                        }));
     }
 
     /** Capture l'etat du monde actuel dans le slot demande (ecrase l'ancien). */
