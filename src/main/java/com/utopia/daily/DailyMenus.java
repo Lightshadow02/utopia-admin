@@ -620,36 +620,35 @@ public final class DailyMenus {
     // Gestion des joueurs
     // =============================================================================================
 
-    public static void openPlayerList(ServerPlayer admin) {
-        MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Gestion des joueurs", ChatFormatting.DARK_AQUA));
+    /** Entrees par page dans le selecteur de joueurs. */
+    private static final int PICKER_PAGE_SIZE = 12;
 
-        List<ServerPlayer> online = server.getPlayerList().getPlayers();
-        int slot = 0;
-        for (ServerPlayer target : online) {
-            if (slot > 44) {
-                break;
-            }
+    public static void openPlayerList(ServerPlayer admin) {
+        openPlayerList(admin, 0);
+    }
+
+    public static void openPlayerList(ServerPlayer admin, int page) {
+        MinecraftServer server = admin.server;
+        Component title = Icons.label("Gestion des joueurs", ChatFormatting.DARK_AQUA);
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (ServerPlayer target : server.getPlayerList().getPlayers()) {
             UUID tid = target.getUUID();
             int streak = DailyManager.currentStreak(server, tid);
             boolean available = DailyManager.isAvailable(server, tid);
-            List<Component> lore = List.of(
-                    Icons.lore("Serie : " + streak + " jour(s)", ChatFormatting.GOLD),
-                    Icons.lore("Recompense : " + (available ? "disponible" : "deja prise aujourd'hui"),
-                            available ? ChatFormatting.GREEN : ChatFormatting.YELLOW),
-                    Icons.lore("Cliquez pour gerer", ChatFormatting.DARK_GRAY));
-            gui.button(slot++,
-                    Icons.playerHead(target, Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE), lore),
-                    sp -> openPlayerPanel(sp, tid));
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE), List.of()),
+                    Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE),
+                    Icons.lore("Serie : " + streak + " j - " + (available ? "recompense dispo" : "deja prise"),
+                            available ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                    sp -> openPlayerPanel(sp, tid)));
         }
-        if (online.size() > 45) {
-            admin.sendSystemMessage(Messages.warn("Plus de 45 joueurs en ligne : seuls les 45 premiers sont affiches."));
-        }
+        List<Component> stats = entries.isEmpty()
+                ? List.of(Icons.lore("Aucun joueur en ligne", ChatFormatting.RED))
+                : List.of();
 
-        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                DailyMenus::openAdminMenu);
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PICKER_PAGE_SIZE,
+                DailyMenus::openPlayerList, DailyMenus::openAdminMenu);
     }
 
     public static void openPlayerPanel(ServerPlayer admin, UUID targetId) {

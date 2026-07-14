@@ -169,8 +169,15 @@ public final class ElectionMenus {
         OwoMenuServer.openPanel(player, title, rows, footer, ElectionMenus::openCandidates, ElectionMenus::openAdminMenu);
     }
 
+    /** Entrees par page dans le selecteur de candidats. */
+    private static final int PICKER_PAGE_SIZE = 12;
+
     /** Selecteur de candidats : clic sur un joueur en ligne pour l'ajouter (ou nom personnalise). */
     private static void openAddCandidate(ServerPlayer player) {
+        openAddCandidate(player, 0);
+    }
+
+    private static void openAddCandidate(ServerPlayer player, int page) {
         Election el = ElectionData.get(player.server).current();
         if (el == null || el.status != Status.SETUP) {
             openAdminMenu(player);
@@ -211,7 +218,8 @@ public final class ElectionMenus {
                             openAddCandidate(sp);
                         })));
 
-        OwoMenuServer.openHub(player, title, stats, entries, ElectionMenus::openAddCandidate, ElectionMenus::openCandidates);
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PICKER_PAGE_SIZE,
+                ElectionMenus::openAddCandidate, ElectionMenus::openCandidates);
     }
 
     private static void doStart(ServerPlayer player) {

@@ -550,6 +550,10 @@ public final class ParcelMenus {
 
     /** Liste des parcelles en vente (triees par ID). Clic gauche = acheter (confirmation), clic droit = apercu. */
     public static void openShop(ServerPlayer player) {
+        openShop(player, 0);
+    }
+
+    public static void openShop(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
         List<Parcel> sale = new ArrayList<>(ParcelData.get(server).forSale());
         sale.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
@@ -569,7 +573,7 @@ public final class ParcelMenus {
                     sp -> openBuyConfirm(sp, pid)));
         }
 
-        OwoMenuServer.openHub(player, title, stats, entries,
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, ADMIN_PAGE_SIZE,
                 ParcelMenus::openShop, com.utopia.menu.MainMenu::open);
     }
 
@@ -924,21 +928,25 @@ public final class ParcelMenus {
     }
 
     private static void openTransferPicker(ServerPlayer admin, String parcelId) {
+        openTransferPicker(admin, parcelId, 0);
+    }
+
+    private static void openTransferPicker(ServerPlayer admin, String parcelId, int page) {
         MinecraftServer server = admin.server;
         Parcel p = getParcel(server, parcelId);
         if (p == null) {
             return;
         }
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Transferer " + p.id() + " a...", ChatFormatting.DARK_RED));
-        int slot = 0;
+        Component title = Icons.label("Transferer " + p.id() + " a...", ChatFormatting.DARK_RED);
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
-            if (slot > 44) {
-                break;
-            }
             UUID id = target.getUUID();
             String tname = target.getGameProfile().getName();
-            gui.button(slot++, Icons.playerHead(target, Icons.label(tname, ChatFormatting.WHITE),
-                    List.of(Icons.lore("Clic : donner la parcelle a ce joueur", ChatFormatting.GRAY))),
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(tname, ChatFormatting.WHITE), List.of()),
+                    Icons.label(tname, ChatFormatting.WHITE),
+                    Icons.lore("Donner la parcelle a ce joueur", ChatFormatting.GRAY),
                     sp -> {
                         Parcel cur = getParcel(server, parcelId);
                         if (cur != null) {
@@ -949,12 +957,14 @@ public final class ParcelMenus {
                             sp.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " transferee a " + tname + "."));
                         }
                         openAdminParcel(sp, parcelId);
-                    });
+                    }));
         }
-        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openAdminParcel(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+        List<Component> stats = entries.isEmpty()
+                ? List.of(Icons.lore("Aucun joueur en ligne", ChatFormatting.RED))
+                : List.of();
+
+        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, ADMIN_PAGE_SIZE,
+                (sp, pg) -> openTransferPicker(sp, parcelId, pg), sp -> openAdminParcel(sp, parcelId));
     }
 
     private static void openHoloMove(ServerPlayer player, String parcelId, boolean fromAdmin) {

@@ -93,6 +93,44 @@ public final class OwoMenuServer {
      * liste de gros boutons. {@code onRefresh} est declenche par le bouton "Rafraichir" (typiquement
      * pour rouvrir le hub avec des donnees a jour). Les actions reutilisent le canal de menu existant.
      */
+    /**
+     * Ouvre un hub <b>pagine</b> : n'affiche qu'une tranche des entrees et ajoute des boutons
+     * "Page precedente / suivante" si necessaire. A utiliser des que la liste peut etre longue
+     * (joueurs en ligne, warps, parcelles...), pour ne jamais depasser {@link #MAX_ACTION_SLOTS}.
+     *
+     * @param reopen rouvre le menu a une page donnee (recoit le joueur et l'index de page)
+     */
+    public static void openHubPaged(ServerPlayer player, Component title, List<Component> stats,
+                                    List<HubEntry> all, int page, int pageSize,
+                                    java.util.function.BiConsumer<ServerPlayer, Integer> reopen,
+                                    Consumer<ServerPlayer> onBack) {
+        int totalPages = Math.max(1, (all.size() + pageSize - 1) / pageSize);
+        final int cur = Math.max(0, Math.min(page, totalPages - 1));
+        int from = cur * pageSize;
+        int to = Math.min(all.size(), from + pageSize);
+
+        List<HubEntry> shown = new ArrayList<>(all.subList(from, to));
+        Component shownTitle = title;
+        if (totalPages > 1) {
+            final int pages = totalPages;
+            shown.add(new HubEntry(new ItemStack(net.minecraft.world.item.Items.ARROW),
+                    Component.literal("< Page precedente")
+                            .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.YELLOW).withItalic(false)),
+                    Component.literal("Page " + (cur + 1) + "/" + pages)
+                            .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.GRAY).withItalic(false)),
+                    sp -> reopen.accept(sp, (cur - 1 + pages) % pages)));
+            shown.add(new HubEntry(new ItemStack(net.minecraft.world.item.Items.ARROW),
+                    Component.literal("Page suivante >")
+                            .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.YELLOW).withItalic(false)),
+                    Component.literal("Page " + (cur + 1) + "/" + pages)
+                            .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.GRAY).withItalic(false)),
+                    sp -> reopen.accept(sp, (cur + 1) % pages)));
+            shownTitle = title.copy().append(Component.literal(" (" + (cur + 1) + "/" + pages + ")")
+                    .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.GRAY).withBold(false)));
+        }
+        openHub(player, shownTitle, stats, shown, sp -> reopen.accept(sp, cur), onBack);
+    }
+
     public static void openHub(ServerPlayer player, Component title, List<Component> stats,
                                List<HubEntry> entries, Consumer<ServerPlayer> onRefresh,
                                Consumer<ServerPlayer> onBack) {

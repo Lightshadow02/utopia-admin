@@ -44,31 +44,34 @@ public final class EconomyMenus {
         return gp.isPresent() ? Icons.playerHead(gp.get(), name, lore) : Icons.icon(Items.PLAYER_HEAD, name, lore);
     }
 
-    /** Liste des joueurs en ligne. */
+    /** Entrees par page dans les selecteurs de joueurs. */
+    private static final int PICKER_PAGE_SIZE = 12;
+
+    /** Liste (paginee) des joueurs en ligne. */
     public static void openAdminMenu(ServerPlayer admin) {
+        openAdminMenu(admin, 0);
+    }
+
+    public static void openAdminMenu(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Economie - joueurs", ChatFormatting.DARK_AQUA));
+        Component title = Icons.label("Economie - joueurs", ChatFormatting.DARK_AQUA);
+        List<Component> stats = List.of(
+                Icons.lore("Joueurs hors ligne : /money give|take|set", ChatFormatting.GRAY));
 
-        int slot = 0;
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
-            if (slot > 44) {
-                break;
-            }
             UUID id = target.getUUID();
-            gui.button(slot++, head(server, id, Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE),
-                    List.of(Icons.lore("Solde : " + EconomyManager.format(EconomyManager.getBalance(server, id)), ChatFormatting.GOLD),
-                            Icons.lore("Clic pour gerer", ChatFormatting.GRAY))),
-                    sp -> openPlayerEco(sp, id));
-        }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucun joueur en ligne", ChatFormatting.RED),
-                    List.of(Icons.lore("Pour les joueurs hors ligne : /money give|take|set", ChatFormatting.GRAY))));
+            String name = target.getGameProfile().getName();
+            entries.add(new OwoMenuServer.HubEntry(
+                    head(server, id, Icons.label(name, ChatFormatting.WHITE), List.of()),
+                    Icons.label(name, ChatFormatting.WHITE),
+                    Icons.lore("Solde : " + EconomyManager.format(EconomyManager.getBalance(server, id)),
+                            ChatFormatting.GOLD),
+                    sp -> openPlayerEco(sp, id)));
         }
 
-        gui.button(49, Icons.icon(Items.BARRIER, Icons.label("Fermer", ChatFormatting.RED), List.of()),
-                com.utopia.gui.Menus::close);
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PICKER_PAGE_SIZE,
+                EconomyMenus::openAdminMenu, com.utopia.menu.AdminMenu::open);
     }
 
     /** Panneau d'un joueur (ecran riche) : saisir un montant, puis Ajouter ou Retirer. */
@@ -167,28 +170,32 @@ public final class EconomyMenus {
     }
 
     private static void openPayPicker(ServerPlayer player) {
+        openPayPicker(player, 0);
+    }
+
+    private static void openPayPicker(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Payer qui ?", ChatFormatting.DARK_AQUA));
-        int slot = 0;
+        Component title = Icons.label("Payer qui ?", ChatFormatting.DARK_AQUA);
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
-            if (slot > 44) {
-                break;
-            }
             if (target.getUUID().equals(player.getUUID())) {
                 continue;
             }
             UUID id = target.getUUID();
-            gui.button(slot++, Icons.playerHead(target, Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE),
-                    List.of(Icons.lore("Clic pour choisir le montant", ChatFormatting.GRAY))),
-                    sp -> openPayAmount(sp, id));
+            String name = target.getGameProfile().getName();
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(name, ChatFormatting.WHITE), List.of()),
+                    Icons.label(name, ChatFormatting.WHITE),
+                    Icons.lore("Choisir le montant a payer", ChatFormatting.GRAY),
+                    sp -> openPayAmount(sp, id)));
         }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucun autre joueur en ligne", ChatFormatting.RED), List.of()));
-        }
-        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
-                EconomyMenus::openPlayerMenu);
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        List<Component> stats = entries.isEmpty()
+                ? List.of(Icons.lore("Aucun autre joueur en ligne", ChatFormatting.RED))
+                : List.of();
+
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PICKER_PAGE_SIZE,
+                EconomyMenus::openPayPicker, EconomyMenus::openPlayerMenu);
     }
 
     private static void openPayAmount(ServerPlayer player, UUID targetId) {

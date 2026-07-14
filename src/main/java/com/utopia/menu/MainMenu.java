@@ -9,7 +9,6 @@ import com.utopia.data.ParcelData;
 import com.utopia.economy.EconomyManager;
 import com.utopia.gui.Icons;
 import com.utopia.gui.Menus;
-import com.utopia.gui.UtopiaGui;
 import com.utopia.net.OwoMenuServer;
 import com.utopia.parcel.ParcelMenus;
 import com.utopia.util.Messages;
@@ -94,33 +93,39 @@ public final class MainMenu {
                 action);
     }
 
-    /** Selecteur de joueur en ligne -> envoie une demande /tpa. */
+    /** Entrees par page dans le selecteur de joueurs. */
+    private static final int PICKER_PAGE_SIZE = 12;
+
+    /** Selecteur (pagine) de joueur en ligne -> envoie une demande /tpa. */
     public static void openTpaPicker(ServerPlayer player) {
+        openTpaPicker(player, 0);
+    }
+
+    public static void openTpaPicker(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Se teleporter a...", ChatFormatting.DARK_AQUA));
-        int slot = 0;
+        Component title = Icons.label("Se teleporter a...", ChatFormatting.DARK_AQUA);
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
-            if (slot > 44) {
-                break;
-            }
             if (target.getUUID().equals(player.getUUID())) {
                 continue;
             }
             String name = target.getGameProfile().getName();
-            gui.button(slot++, Icons.playerHead(target, Icons.label(name, ChatFormatting.WHITE),
-                    List.of(Icons.lore("Envoyer une demande de TP", ChatFormatting.GRAY))),
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(target, Icons.label(name, ChatFormatting.WHITE), List.of()),
+                    Icons.label(name, ChatFormatting.WHITE),
+                    Icons.lore("Envoyer une demande de TP", ChatFormatting.GRAY),
                     sp -> {
                         Menus.close(sp);
                         runAs(sp, "tpa " + name);
-                    });
+                    }));
         }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucun autre joueur en ligne", ChatFormatting.RED), List.of()));
-        }
-        gui.button(49, Icons.icon(Items.ARROW, Icons.label("Retour au menu", ChatFormatting.YELLOW), List.of()),
-                MainMenu::open);
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        List<Component> stats = entries.isEmpty()
+                ? List.of(Icons.lore("Aucun autre joueur en ligne", ChatFormatting.RED))
+                : List.of();
+
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PICKER_PAGE_SIZE,
+                MainMenu::openTpaPicker, MainMenu::open);
     }
 
     private static void runAs(ServerPlayer player, String command) {

@@ -31,6 +31,9 @@ import net.minecraft.world.item.Items;
  */
 public final class AdminMenu {
 
+    /** Entrees par page dans les selecteurs (joueurs, warps...) : garde les menus sous la limite d'actions. */
+    private static final int PICKER_PAGE_SIZE = 12;
+
     private AdminMenu() {
     }
 
@@ -95,6 +98,10 @@ public final class AdminMenu {
 
     /** Liste des warps admin : clic = teleportation. Creation via /setwarp <nom>. */
     public static void openWarps(ServerPlayer player) {
+        openWarps(player, 0);
+    }
+
+    public static void openWarps(ServerPlayer player, int page) {
         com.utopia.data.WarpData data = com.utopia.data.WarpData.get(player.server);
         List<String> names = data.names();
 
@@ -119,7 +126,8 @@ public final class AdminMenu {
                     }));
         }
 
-        OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openWarps, AdminMenu::open);
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PICKER_PAGE_SIZE,
+                AdminMenu::openWarps, AdminMenu::open);
     }
 
     /** Bascule entre les deux inventaires sauvegardes (Inventaire 1 / Inventaire 2). */
@@ -153,6 +161,10 @@ public final class AdminMenu {
 
     /** Selecteur des joueurs en ligne : bascule le statut de maire (acces a /maire). */
     public static void openMairePicker(ServerPlayer player) {
+        openMairePicker(player, 0);
+    }
+
+    public static void openMairePicker(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
         MarketData data = MarketData.get(server);
 
@@ -174,7 +186,8 @@ public final class AdminMenu {
                     sp -> toggleMaire(sp, tid, tname)));
         }
 
-        OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openMairePicker, AdminMenu::open);
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PICKER_PAGE_SIZE,
+                AdminMenu::openMairePicker, AdminMenu::open);
     }
 
     private static void toggleMaire(ServerPlayer admin, UUID targetId, String targetName) {
@@ -223,6 +236,10 @@ public final class AdminMenu {
 
     /** Selecteur des joueurs en ligne : bascule le statut d'aubergiste. */
     public static void openAubergistePicker(ServerPlayer player) {
+        openAubergistePicker(player, 0);
+    }
+
+    public static void openAubergistePicker(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
         RoomData data = RoomData.get(server);
 
@@ -244,7 +261,8 @@ public final class AdminMenu {
                     sp -> toggle(sp, tid, tname)));
         }
 
-        OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openAubergistePicker, AdminMenu::open);
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PICKER_PAGE_SIZE,
+                AdminMenu::openAubergistePicker, AdminMenu::open);
     }
 
     private static void toggle(ServerPlayer admin, UUID targetId, String targetName) {

@@ -145,7 +145,14 @@ public final class RoomMenus {
                 sp -> openRoom(sp, roomId), RoomMenus::openAuberge);
     }
 
+    /** Entrees par page dans le selecteur de joueurs. */
+    private static final int PICKER_PAGE_SIZE = 12;
+
     private static void openAssignPicker(ServerPlayer admin, String roomId) {
+        openAssignPicker(admin, roomId, 0);
+    }
+
+    private static void openAssignPicker(ServerPlayer admin, String roomId, int page) {
         MinecraftServer server = admin.server;
         Component title = Icons.label("Attribuer - choisir un joueur", ChatFormatting.GOLD);
         List<Component> stats = List.of(Component.literal("Chambre : " + roomId)
@@ -162,8 +169,8 @@ public final class RoomMenus {
                     sp -> openAssignPrice(sp, roomId, id, tname)));
         }
 
-        OwoMenuServer.openHub(admin, title, stats, entries,
-                sp -> openAssignPicker(sp, roomId), sp -> openRoom(sp, roomId));
+        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PICKER_PAGE_SIZE,
+                (sp, p) -> openAssignPicker(sp, roomId, p), sp -> openRoom(sp, roomId));
     }
 
     private static void openAssignPrice(ServerPlayer admin, String roomId, UUID targetId, String targetName) {
