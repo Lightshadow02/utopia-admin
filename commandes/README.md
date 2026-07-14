@@ -135,6 +135,16 @@ Exemple : `/parcel trust Steve build containers create`.
 |---|---|
 | `/admin` | 🖱️ Ouvre le **hub admin** : Parcelles, Économie, Récompenses, Auberge/chambres, Aubergistes, Marché (définir un stand, récupération), **Maire**, **Inventaires**, **Warps**, **Élections**. |
 
+#### 🏗️ Structures à états (`/admin → Structures`)
+Une **zone du monde** dont le serveur mémorise **deux états** (deux « schématiques » capturées automatiquement), qu'il repose à la demande. Plusieurs structures possibles.
+
+1. **Nouvelle structure** → active le mode zone : **clic gauche = coin 1**, **clic droit = coin 2** (boîte **rouge** en particules).
+2. Retourne dans `/admin → Structures` → **Valider et nommer** (ex. `montgolfiere`) → l'**état 1 est capturé** depuis le monde actuel.
+3. **Modifie ta construction** en jeu (ex. la montgolfière est partie), puis → **Capturer** sur la ligne **État 2**.
+4. Clic sur la structure : **Basculer** manuellement, ou passer en **Auto** → **nuit = état 2**, **jour = état 1**.
+
+> 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié). Volume max : 200 000 blocs. Les schématiques utilisent le moteur de structures vanilla (palette + block entities).
+
 #### 🗳️ Élections (`/admin → Élections`)
 - **Créer une élection** : nom + durée (min **1 min**, défaut **24 h**), puis ajout/retrait des **candidats** (libre avant le lancement).
 - **Lancer** : verrouille les candidats, ouvre le vote, **annonce broadcast**. Irréversible.

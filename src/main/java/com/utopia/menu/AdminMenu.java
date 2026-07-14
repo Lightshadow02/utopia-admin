@@ -92,6 +92,16 @@ public final class AdminMenu {
                 Icons.label("Elections", ChatFormatting.GOLD),
                 Icons.lore("Creer/lancer une election, hologramme des resultats, tests", ChatFormatting.GRAY),
                 com.utopia.election.ElectionMenus::openAdminMenu));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.STRUCTURE_BLOCK),
+                Icons.label("Structures", ChatFormatting.AQUA),
+                Icons.lore("Zones a 2 etats (bascule manuelle ou auto jour/nuit)", ChatFormatting.GRAY),
+                sp -> {
+                    if (com.utopia.structure.StructureManager.isSelecting(sp.getUUID())) {
+                        com.utopia.structure.StructureMenus.openSelection(sp); // selection en cours
+                    } else {
+                        com.utopia.structure.StructureMenus.openList(sp);
+                    }
+                }));
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
     }

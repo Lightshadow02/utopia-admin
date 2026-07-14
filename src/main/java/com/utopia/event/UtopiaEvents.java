@@ -163,6 +163,14 @@ public final class UtopiaEvents {
         if (!(event.getEntity() instanceof ServerPlayer sp) || !(event.getLevel() instanceof ServerLevel)) {
             return;
         }
+        // Mode "zone de structure" : clic gauche = coin 1.
+        if (com.utopia.structure.StructureManager.isSelecting(sp.getUUID())) {
+            com.utopia.structure.StructureManager.setCorner(sp.getUUID(), event.getPos(), true);
+            BlockPos c = event.getPos();
+            sp.sendSystemMessage(Messages.success("Structure - coin 1 : " + c.getX() + " " + c.getY() + " " + c.getZ()));
+            event.setCanceled(true);
+            return;
+        }
         if (ParcelManager.isWand(event.getItemStack()) && ParcelManager.isOp(sp)) {
             BlockPos removed = ParcelManager.undoPoint(sp.getUUID());
             sp.sendSystemMessage(removed == null ? Messages.warn("Aucun point a annuler.")
@@ -185,6 +193,15 @@ public final class UtopiaEvents {
             return;
         }
         BlockPos pos = event.getPos();
+        // Mode "zone de structure" : clic droit = coin 2.
+        if (com.utopia.structure.StructureManager.isSelecting(sp.getUUID())) {
+            com.utopia.structure.StructureManager.setCorner(sp.getUUID(), pos, false);
+            sp.sendSystemMessage(Messages.success("Structure - coin 2 : "
+                    + pos.getX() + " " + pos.getY() + " " + pos.getZ()
+                    + " (valide dans /admin -> Structures)"));
+            event.setCanceled(true);
+            return;
+        }
         // Stand de marche : clic droit -> reserver / gerer / acheter.
         com.utopia.data.MarketData.Stall stall =
                 com.utopia.data.MarketData.get(level.getServer()).stallAt(level.dimension().location(), pos);
@@ -333,6 +350,7 @@ public final class UtopiaEvents {
             ParcelHolograms.renderPreviews(server);
             ParcelHolograms.renderNearby(server); // contour au sol des parcelles a < 20 blocs
             RoomManager.renderSelections(server);
+            com.utopia.structure.StructureManager.renderSelections(server); // boite rouge des structures
         }
         // Synchronisation des hologrammes + balayage anti-feu (toutes les ~2s).
         if (t % 40 == 0) {
@@ -351,6 +369,10 @@ public final class UtopiaEvents {
         // Verification des licences commerciales (echelle de jours : un controle toutes les ~10 s suffit).
         if (t % 200 == 0) {
             ParcelManager.checkCommercialLicenses(server);
+        }
+        // Structures en mode auto : bascule jour <-> nuit (controle toutes les ~5 s, la pose est ponctuelle).
+        if (t % 100 == 0) {
+            com.utopia.structure.StructureManager.tickAuto(server);
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.
         com.utopia.election.ElectionManager.tick(server);
