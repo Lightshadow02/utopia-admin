@@ -71,16 +71,21 @@ public final class StructureData extends SavedData {
         }
     }
 
-    /** Une structure : sa zone, ses deux etats et son mode de bascule. */
+    /** Bornes du nombre d'etats d'une structure. */
+    public static final int MIN_STATES = 2;
+    public static final int MAX_STATES = 5;
+
+    /** Une structure : sa zone, ses etats (2 a 5) et son mode de bascule. */
     public static final class Struct {
         public final String name;
         public String dim;
         public BlockPos min;   // coin minimal de la zone
         public Vec3i size;     // dimensions (x, y, z)
-        public CompoundTag stateA;  // schematique de l'etat 1 (null = pas encore capture)
-        public CompoundTag stateB;  // schematique de l'etat 2
-        public boolean auto;        // true = bascule automatique jour/nuit
-        public int current = 1;     // etat actuellement pose (1 ou 2)
+        /** Schematiques des etats 1..MAX_STATES (index 0 = etat 1) ; null = pas encore capture. */
+        private final CompoundTag[] states = new CompoundTag[MAX_STATES];
+        public int stateCount = MIN_STATES; // nombre d'etats utilises (2 a 5)
+        public boolean auto;        // true = bascule automatique jour/nuit (etat 1 = jour, etat 2 = nuit)
+        public int current = 1;     // etat actuellement pose (1..stateCount)
         public Anim anim = Anim.RANDOM; // style d'animation de la bascule
 
         // ---- Marchand optionnel, present uniquement dans l'un des deux etats ----
@@ -96,19 +101,48 @@ public final class StructureData extends SavedData {
             this.name = name;
         }
 
+        /** Un numero d'etat valide ? (1..MAX_STATES) */
+        private static boolean valid(int slot) {
+            return slot >= 1 && slot <= MAX_STATES;
+        }
+
         public boolean hasState(int slot) {
-            return (slot == 2 ? stateB : stateA) != null;
+            return valid(slot) && states[slot - 1] != null;
         }
 
         public CompoundTag state(int slot) {
-            return slot == 2 ? stateB : stateA;
+            return valid(slot) ? states[slot - 1] : null;
         }
 
         public void setState(int slot, CompoundTag tag) {
-            if (slot == 2) {
-                stateB = tag;
-            } else {
-                stateA = tag;
+            if (valid(slot)) {
+                states[slot - 1] = tag;
+            }
+        }
+
+        /** Tous les etats utilises (1..stateCount) sont-ils captures ? */
+        public boolean allStatesReady() {
+            for (int i = 1; i <= stateCount; i++) {
+                if (!hasState(i)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** Etat suivant dans le cycle (revient a 1 apres le dernier). */
+        public int nextState() {
+            return current >= stateCount ? 1 : current + 1;
+        }
+
+        /** Borne le nombre d'etats et recadre l'etat courant / celui du marchand. */
+        public void setStateCount(int count) {
+            stateCount = Math.max(MIN_STATES, Math.min(MAX_STATES, count));
+            if (current > stateCount) {
+                current = 1;
+            }
+            if (npcState > stateCount) {
+                npcState = 1;
             }
         }
 
@@ -171,14 +205,22 @@ public final class StructureData extends SavedData {
             st.dim = s.getString("dim");
             st.min = new BlockPos(s.getInt("x"), s.getInt("y"), s.getInt("z"));
             st.size = new Vec3i(s.getInt("sx"), s.getInt("sy"), s.getInt("sz"));
+            // Ancien format (2 etats) : migre vers les etats 1 et 2.
             if (s.contains("stateA", Tag.TAG_COMPOUND)) {
-                st.stateA = s.getCompound("stateA");
+                st.setState(1, s.getCompound("stateA"));
             }
             if (s.contains("stateB", Tag.TAG_COMPOUND)) {
-                st.stateB = s.getCompound("stateB");
+                st.setState(2, s.getCompound("stateB"));
             }
+            for (int slot = 1; slot <= MAX_STATES; slot++) {
+                if (s.contains("state" + slot, Tag.TAG_COMPOUND)) {
+                    st.setState(slot, s.getCompound("state" + slot));
+                }
+            }
+            st.stateCount = Math.max(MIN_STATES, Math.min(MAX_STATES,
+                    s.contains("stateCount") ? s.getInt("stateCount") : MIN_STATES));
             st.auto = s.getBoolean("auto");
-            st.current = s.getInt("current") == 2 ? 2 : 1;
+            st.current = Math.max(1, Math.min(st.stateCount, s.getInt("current")));
             try {
                 st.anim = Anim.valueOf(s.getString("anim"));
             } catch (IllegalArgumentException ignored) {
@@ -222,12 +264,13 @@ public final class StructureData extends SavedData {
             s.putInt("sx", st.size.getX());
             s.putInt("sy", st.size.getY());
             s.putInt("sz", st.size.getZ());
-            if (st.stateA != null) {
-                s.put("stateA", st.stateA);
+            for (int slot = 1; slot <= MAX_STATES; slot++) {
+                CompoundTag state = st.state(slot);
+                if (state != null) {
+                    s.put("state" + slot, state);
+                }
             }
-            if (st.stateB != null) {
-                s.put("stateB", st.stateB);
-            }
+            s.putInt("stateCount", st.stateCount);
             s.putBoolean("auto", st.auto);
             s.putInt("current", st.current);
             s.putString("anim", st.anim.name());

@@ -46,8 +46,8 @@ public final class StructureMenus {
 
         for (StructureData.Struct st : data.all()) {
             String name = st.name;
-            String state = "Etat " + st.current + (st.auto ? " - auto" : " - manuel");
-            boolean ready = st.hasState(1) && st.hasState(2);
+            String state = "Etat " + st.current + "/" + st.stateCount + (st.auto ? " - auto" : " - manuel");
+            boolean ready = st.allStatesReady();
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(ready ? Items.LODESTONE : Items.STRUCTURE_BLOCK),
                     Icons.label(name, ready ? ChatFormatting.AQUA : ChatFormatting.YELLOW),
                     Icons.lore(ready ? state : "Etats incomplets - a configurer", ChatFormatting.GRAY),
@@ -167,16 +167,27 @@ public final class StructureMenus {
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Etat actuel", ChatFormatting.GRAY),
-                Icons.label("Etat " + st.current, ChatFormatting.AQUA),
-                Icons.label("Basculer", ChatFormatting.YELLOW),
+                Icons.label("Etat " + st.current + " / " + st.stateCount, ChatFormatting.AQUA),
+                Icons.label("Suivant", ChatFormatting.YELLOW),
                 sp -> {
-                    int target = st.current == 1 ? 2 : 1;
+                    int target = st.nextState();
                     if (StructureManager.applyAnimated(sp.server, st, target)) {
-                        sp.sendSystemMessage(Messages.success("Structure \"" + st.name + "\" -> etat " + target
-                                + " (dissolution en cours)."));
+                        sp.sendSystemMessage(Messages.success("Structure \"" + st.name + "\" -> etat " + target + "."));
                     } else {
                         sp.sendSystemMessage(Messages.warn("Etat " + target + " pas encore defini."));
                     }
+                    openStruct(sp, name);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Nombre d'etats", ChatFormatting.GRAY),
+                Icons.label(String.valueOf(st.stateCount), ChatFormatting.AQUA),
+                Icons.label("Changer", ChatFormatting.YELLOW),
+                sp -> {
+                    int next = st.stateCount >= StructureData.MAX_STATES
+                            ? StructureData.MIN_STATES : st.stateCount + 1;
+                    st.setStateCount(next);
+                    StructureData.get(sp.server).setDirty();
+                    sp.sendSystemMessage(Messages.info(st.name + " : " + st.stateCount + " etats."));
                     openStruct(sp, name);
                 }));
         rows.add(new OwoMenuServer.PanelRow(
@@ -206,18 +217,18 @@ public final class StructureMenus {
                     sp.sendSystemMessage(Messages.info("Animation : " + st.anim.label()));
                     openStruct(sp, name);
                 }));
-        rows.add(new OwoMenuServer.PanelRow(
-                Icons.label("Etat 1", ChatFormatting.GRAY),
-                Icons.label(st.hasState(1) ? "defini" : "manquant",
-                        st.hasState(1) ? ChatFormatting.GREEN : ChatFormatting.RED),
-                Icons.label("Capturer", ChatFormatting.GOLD),
-                sp -> captureState(sp, name, 1)));
-        rows.add(new OwoMenuServer.PanelRow(
-                Icons.label("Etat 2", ChatFormatting.GRAY),
-                Icons.label(st.hasState(2) ? "defini" : "manquant",
-                        st.hasState(2) ? ChatFormatting.GREEN : ChatFormatting.RED),
-                Icons.label("Capturer", ChatFormatting.GOLD),
-                sp -> captureState(sp, name, 2)));
+        // Une ligne par etat : capture depuis le monde, et pose directe si deja defini.
+        for (int slot = 1; slot <= st.stateCount; slot++) {
+            final int s = slot;
+            boolean defined = st.hasState(s);
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Etat " + s + (st.current == s ? " (actuel)" : ""),
+                            st.current == s ? ChatFormatting.AQUA : ChatFormatting.GRAY),
+                    Icons.label(defined ? "defini" : "manquant",
+                            defined ? ChatFormatting.GREEN : ChatFormatting.RED),
+                    Icons.label(defined ? "Capturer / Poser" : "Capturer", ChatFormatting.GOLD),
+                    sp -> openStateMenu(sp, name, s)));
+        }
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Zone", ChatFormatting.GRAY),
                 Icons.label(st.size.getX() + "x" + st.size.getY() + "x" + st.size.getZ()
@@ -246,6 +257,44 @@ public final class StructureMenus {
                         }));
 
         OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openStruct(sp, name), StructureMenus::openList);
+    }
+
+    /** Fiche d'un etat : le (re)capturer depuis le monde, ou le poser tout de suite. */
+    public static void openStateMenu(ServerPlayer admin, String name, int slot) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        boolean defined = st.hasState(slot);
+        Component title = Component.literal(st.name + " - etat " + slot)
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        List<Component> stats = List.of(Component.literal(defined
+                ? (st.current == slot ? "Etat defini, actuellement pose" : "Etat defini")
+                : "Etat non capture")
+                .withStyle(s -> s.withColor(defined ? ChatFormatting.GREEN : ChatFormatting.RED).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.STRUCTURE_BLOCK),
+                Icons.label(defined ? "Re-capturer" : "Capturer", ChatFormatting.GOLD),
+                Icons.lore("Memorise la zone telle qu'elle est maintenant", ChatFormatting.GRAY),
+                sp -> {
+                    captureState(sp, name, slot);
+                    openStateMenu(sp, name, slot);
+                }));
+        if (defined) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LODESTONE),
+                    Icons.label("Poser cet etat", ChatFormatting.GREEN),
+                    Icons.lore("Applique l'etat " + slot + " dans le monde", ChatFormatting.GRAY),
+                    sp -> {
+                        StructureManager.applyAnimated(sp.server, st, slot);
+                        sp.sendSystemMessage(Messages.success(st.name + " -> etat " + slot + "."));
+                        openStateMenu(sp, name, slot);
+                    }));
+        }
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openStateMenu(sp, name, slot), sp -> openStruct(sp, name));
     }
 
     // ------------------------------------------------------------------ Marchand (admin)
@@ -278,10 +327,10 @@ public final class StructureMenus {
                 }));
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Present a l'etat", ChatFormatting.GRAY),
-                Icons.label("Etat " + st.npcState, ChatFormatting.AQUA),
+                Icons.label("Etat " + st.npcState + " / " + st.stateCount, ChatFormatting.AQUA),
                 Icons.label("Changer", ChatFormatting.YELLOW),
                 sp -> {
-                    st.npcState = st.npcState == 1 ? 2 : 1;
+                    st.npcState = st.npcState >= st.stateCount ? 1 : st.npcState + 1;
                     StructureData.get(sp.server).setDirty();
                     StructureManager.syncShopNpcs(sp.server);
                     sp.sendSystemMessage(Messages.info("Le marchand apparait a l'etat " + st.npcState + "."));

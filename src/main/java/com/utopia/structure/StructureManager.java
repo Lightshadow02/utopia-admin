@@ -157,7 +157,7 @@ public final class StructureManager {
         template.load(level.holderLookup(Registries.BLOCK), tag);
         template.placeInWorld(level, struct.min, struct.min, new StructurePlaceSettings(),
                 level.getRandom(), PLACE_FLAGS);
-        struct.current = slot == 2 ? 2 : 1;
+        struct.current = slot;
         StructureData.get(server).setDirty();
         return true;
     }
@@ -221,7 +221,7 @@ public final class StructureManager {
         List<Change> changes = diff(level, struct, tag);
         cancelFor(struct);
         // L'etat est marque tout de suite : evite que la bascule auto ne relance la transition.
-        struct.current = slot == 2 ? 2 : 1;
+        struct.current = slot;
         StructureData.get(server).setDirty();
         if (changes.isEmpty()) {
             return true; // le monde correspond deja a cet etat
@@ -339,6 +339,8 @@ public final class StructureManager {
     public static void tickAuto(MinecraftServer server) {
         StructureData data = StructureData.get(server);
         for (StructureData.Struct struct : data.all()) {
+            // Le mode auto suit le cycle jour/nuit : etat 1 le jour, etat 2 la nuit.
+            // Les etats 3 a 5 eventuels restent pilotes a la main.
             if (!struct.auto || !struct.hasState(1) || !struct.hasState(2)) {
                 continue;
             }

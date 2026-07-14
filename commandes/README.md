@@ -140,8 +140,12 @@ Une **zone du monde** dont le serveur mémorise **deux états** (deux « schéma
 
 1. **Nouvelle structure** → active le mode zone : **clic gauche = coin 1**, **clic droit = coin 2** (boîte **rouge** en particules).
 2. Retourne dans `/admin → Structures` → **Valider et nommer** (ex. `montgolfiere`) → l'**état 1 est capturé** depuis le monde actuel.
-3. **Modifie ta construction** en jeu (ex. la montgolfière est partie), puis → **Capturer** sur la ligne **État 2**.
-4. Clic sur la structure : **Basculer** manuellement, ou passer en **Auto** → **nuit = état 2**, **jour = état 1**.
+3. **Modifie ta construction** en jeu (ex. la montgolfière est partie), puis clique la ligne **État 2** → **Capturer**.
+4. Clic sur la structure : **Suivant** fait tourner les états, ou passe en **Auto** → **nuit = état 2**, **jour = état 1**.
+
+**Jusqu'à 5 états** (minimum 2) : ligne **Nombre d'états** → clique pour faire défiler `2 → 3 → 4 → 5 → 2`. Chaque état a sa ligne : **Capturer** (mémorise la zone telle qu'elle est) et **Poser cet état**. Le bouton **Suivant** cycle `1 → 2 → … → N → 1`.
+
+> ⏰ Le mode **Auto** suit le cycle jour/nuit et n'utilise donc que les **états 1 (jour) et 2 (nuit)**. Les états **3 à 5** se pilotent à la main (menu, ou bouton Suivant).
 
 **Animations** (ligne *Animation*, cliquer pour faire défiler) : `Dissolution aléatoire` · `Couche par couche (montée)` · `Couche par couche (descente)` · `Onde depuis le centre` · `Onde vers le centre` · `Instantané`. Seuls les blocs **qui changent réellement** sont animés (~3 s, avec particules et son).
 
