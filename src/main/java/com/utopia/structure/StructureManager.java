@@ -29,11 +29,11 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.Container;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
 /**
@@ -142,7 +142,11 @@ public final class StructureManager {
         return true;
     }
 
-    /** Pose l'etat demande d'un coup (sans animation). */
+    /**
+     * Pose l'etat demande d'un coup (sans animation). Passe par le meme chemin que l'animation
+     * (diff + pose bloc par bloc) pour beneficier des memes protections : pas de drop, conteneurs
+     * vides avant remplacement, blocs inchanges laisses tranquilles.
+     */
     public static boolean apply(MinecraftServer server, StructureData.Struct struct, int slot) {
         CompoundTag tag = struct.state(slot);
         if (tag == null) {
@@ -153,10 +157,10 @@ public final class StructureManager {
             return false;
         }
         cancelFor(struct);
-        StructureTemplate template = new StructureTemplate();
-        template.load(level.holderLookup(Registries.BLOCK), tag);
-        template.placeInWorld(level, struct.min, struct.min, new StructurePlaceSettings(),
-                level.getRandom(), PLACE_FLAGS);
+        List<Change> changes = diff(level, struct, tag);
+        for (int i = 0; i < changes.size(); i++) {
+            applyChange(level, changes.get(i), i);
+        }
         struct.current = slot;
         StructureData.get(server).setDirty();
         return true;
@@ -265,6 +269,13 @@ public final class StructureManager {
     private static void applyChange(ServerLevel level, Change c, int index) {
         BlockState old = level.getBlockState(c.pos());
         BlockState fx = old.isAir() ? c.state() : old;
+        // Un conteneur lache son contenu dans onRemove quand on le remplace (piedestal et son livre,
+        // coffres...) : UPDATE_SUPPRESS_DROPS ne couvre que les drops du bloc lui-meme. On le vide
+        // donc avant. Sans risque : le contenu est restaure depuis le NBT du schematique.
+        BlockEntity oldBe = level.getBlockEntity(c.pos());
+        if (oldBe instanceof Container container) {
+            container.clearContent();
+        }
         level.setBlock(c.pos(), c.state(), PLACE_FLAGS);
         if (c.nbt() != null) {
             BlockEntity be = level.getBlockEntity(c.pos());
