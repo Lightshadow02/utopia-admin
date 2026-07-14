@@ -171,8 +171,9 @@ public final class StructureMenus {
                 Icons.label("Basculer", ChatFormatting.YELLOW),
                 sp -> {
                     int target = st.current == 1 ? 2 : 1;
-                    if (StructureManager.apply(sp.server, st, target)) {
-                        sp.sendSystemMessage(Messages.success("Structure \"" + st.name + "\" -> etat " + target + "."));
+                    if (StructureManager.applyAnimated(sp.server, st, target)) {
+                        sp.sendSystemMessage(Messages.success("Structure \"" + st.name + "\" -> etat " + target
+                                + " (dissolution en cours)."));
                     } else {
                         sp.sendSystemMessage(Messages.warn("Etat " + target + " pas encore defini."));
                     }

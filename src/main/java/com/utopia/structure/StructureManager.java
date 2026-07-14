@@ -1,5 +1,8 @@
 package com.utopia.structure;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,16 +12,25 @@ import org.joml.Vector3f;
 import com.utopia.data.StructureData;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
@@ -110,7 +122,7 @@ public final class StructureManager {
         return true;
     }
 
-    /** Pose l'etat demande dans le monde. Renvoie false si l'etat n'existe pas / dimension absente. */
+    /** Pose l'etat demande d'un coup (sans animation). */
     public static boolean apply(MinecraftServer server, StructureData.Struct struct, int slot) {
         CompoundTag tag = struct.state(slot);
         if (tag == null) {
@@ -120,6 +132,7 @@ public final class StructureManager {
         if (level == null) {
             return false;
         }
+        cancelFor(struct);
         StructureTemplate template = new StructureTemplate();
         template.load(level.holderLookup(Registries.BLOCK), tag);
         template.placeInWorld(level, struct.min, struct.min, new StructurePlaceSettings(),
@@ -127,6 +140,152 @@ public final class StructureManager {
         struct.current = slot == 2 ? 2 : 1;
         StructureData.get(server).setDirty();
         return true;
+    }
+
+    // ------------------------------------------------------------------ Transition animee (dissolution)
+
+    /** Duree visee d'une transition (ticks) et debit maximal pour ne pas faire tomber le TPS. */
+    private static final int ANIM_TICKS = 60; // ~3 s
+    private static final int MAX_PER_TICK = 200;
+
+    /** Un bloc a changer : position absolue, etat cible, et NBT eventuel (coffre, panneau...). */
+    private record Change(BlockPos pos, BlockState state, CompoundTag nbt) {
+    }
+
+    /** Une transition en cours : les changements restants, melanges au hasard. */
+    private static final class Transition {
+        final ServerLevel level;
+        final StructureData.Struct struct;
+        final List<Change> changes;
+        final int perTick;
+        int index;
+
+        Transition(ServerLevel level, StructureData.Struct struct, List<Change> changes, int perTick) {
+            this.level = level;
+            this.struct = struct;
+            this.changes = changes;
+            this.perTick = perTick;
+        }
+    }
+
+    private static final List<Transition> TRANSITIONS = new ArrayList<>(); // thread serveur uniquement
+
+    public static boolean isTransitioning(StructureData.Struct struct) {
+        return TRANSITIONS.stream().anyMatch(t -> t.struct == struct);
+    }
+
+    private static void cancelFor(StructureData.Struct struct) {
+        TRANSITIONS.removeIf(t -> t.struct == struct);
+    }
+
+    /**
+     * Pose l'etat demande en <b>dissolution aleatoire</b> : seuls les blocs qui changent reellement
+     * sont modifies, dans un ordre aleatoire, etales dans le temps, avec particules et son.
+     */
+    public static boolean applyAnimated(MinecraftServer server, StructureData.Struct struct, int slot) {
+        CompoundTag tag = struct.state(slot);
+        if (tag == null) {
+            return false;
+        }
+        ServerLevel level = resolveLevel(server, struct.dim);
+        if (level == null) {
+            return false;
+        }
+        List<Change> changes = diff(level, struct, tag);
+        cancelFor(struct);
+        // L'etat est marque tout de suite : evite que la bascule auto ne relance la transition.
+        struct.current = slot == 2 ? 2 : 1;
+        StructureData.get(server).setDirty();
+        if (changes.isEmpty()) {
+            return true; // le monde correspond deja a cet etat
+        }
+        Collections.shuffle(changes);
+        int perTick = Math.max(1, Math.min(MAX_PER_TICK, (changes.size() + ANIM_TICKS - 1) / ANIM_TICKS));
+        TRANSITIONS.add(new Transition(level, struct, changes, perTick));
+        return true;
+    }
+
+    /** A appeler chaque tick : avance les transitions en cours. */
+    public static void tickTransitions() {
+        if (TRANSITIONS.isEmpty()) {
+            return;
+        }
+        TRANSITIONS.removeIf(t -> {
+            int end = Math.min(t.changes.size(), t.index + t.perTick);
+            for (; t.index < end; t.index++) {
+                applyChange(t.level, t.changes.get(t.index), t.index);
+            }
+            return t.index >= t.changes.size();
+        });
+    }
+
+    /** Pose un bloc + effets. Les particules montrent le bloc qui disparait (ou celui qui apparait). */
+    private static void applyChange(ServerLevel level, Change c, int index) {
+        BlockState old = level.getBlockState(c.pos());
+        BlockState fx = old.isAir() ? c.state() : old;
+        level.setBlock(c.pos(), c.state(), Block.UPDATE_ALL);
+        if (c.nbt() != null) {
+            BlockEntity be = level.getBlockEntity(c.pos());
+            if (be != null) {
+                CompoundTag t = c.nbt().copy();
+                t.putInt("x", c.pos().getX());
+                t.putInt("y", c.pos().getY());
+                t.putInt("z", c.pos().getZ());
+                be.loadWithComponents(t, level.registryAccess());
+                be.setChanged();
+            }
+        }
+        if (!fx.isAir()) {
+            level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, fx),
+                    c.pos().getX() + 0.5, c.pos().getY() + 0.5, c.pos().getZ() + 0.5,
+                    6, 0.25, 0.25, 0.25, 0.0);
+            // Son echantillonne : un bloc sur 8, sinon c'est un vacarme.
+            if (index % 8 == 0) {
+                level.playSound(null, c.pos(), fx.getSoundType().getPlaceSound(),
+                        SoundSource.BLOCKS, 0.35f, 0.8f + level.getRandom().nextFloat() * 0.4f);
+            }
+        }
+    }
+
+    /**
+     * Liste des blocs qui different entre le monde et le schematique. Lit directement le NBT du
+     * StructureTemplate (format vanilla : "palette" + "blocks"), ce qui permet de poser dans notre
+     * propre ordre au lieu du placement instantane.
+     */
+    private static List<Change> diff(ServerLevel level, StructureData.Struct struct, CompoundTag tag) {
+        HolderGetter<Block> lookup = level.holderLookup(Registries.BLOCK);
+        ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
+        if (paletteTag.isEmpty() && tag.contains("palettes", Tag.TAG_LIST)) {
+            ListTag palettes = tag.getList("palettes", Tag.TAG_LIST);
+            if (!palettes.isEmpty()) {
+                paletteTag = palettes.getList(0);
+            }
+        }
+        List<BlockState> palette = new ArrayList<>(paletteTag.size());
+        for (int i = 0; i < paletteTag.size(); i++) {
+            palette.add(NbtUtils.readBlockState(lookup, paletteTag.getCompound(i)));
+        }
+
+        ListTag blocksTag = tag.getList("blocks", Tag.TAG_COMPOUND);
+        List<Change> out = new ArrayList<>();
+        for (int i = 0; i < blocksTag.size(); i++) {
+            CompoundTag b = blocksTag.getCompound(i);
+            int state = b.getInt("state");
+            if (state < 0 || state >= palette.size()) {
+                continue;
+            }
+            ListTag p = b.getList("pos", Tag.TAG_INT);
+            if (p.size() < 3) {
+                continue;
+            }
+            BlockPos abs = struct.min.offset(p.getInt(0), p.getInt(1), p.getInt(2));
+            BlockState target = palette.get(state);
+            if (level.getBlockState(abs).equals(target)) {
+                continue; // deja au bon etat : on ne touche pas
+            }
+            out.add(new Change(abs, target, b.contains("nbt", Tag.TAG_COMPOUND) ? b.getCompound("nbt") : null));
+        }
+        return out;
     }
 
     // ------------------------------------------------------------------ Bascule automatique
@@ -146,8 +305,8 @@ public final class StructureManager {
                 continue;
             }
             int wanted = isNight(level) ? 2 : 1;
-            if (struct.current != wanted) {
-                apply(server, struct, wanted);
+            if (struct.current != wanted && !isTransitioning(struct)) {
+                applyAnimated(server, struct, wanted); // dissolution aleatoire
             }
         }
     }

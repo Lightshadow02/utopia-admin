@@ -370,7 +370,9 @@ public final class UtopiaEvents {
         if (t % 200 == 0) {
             ParcelManager.checkCommercialLicenses(server);
         }
-        // Structures en mode auto : bascule jour <-> nuit (controle toutes les ~5 s, la pose est ponctuelle).
+        // Structures : avancement des dissolutions en cours (chaque tick pour rester fluide).
+        com.utopia.structure.StructureManager.tickTransitions();
+        // Structures en mode auto : bascule jour <-> nuit (controle toutes les ~5 s).
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);
         }
