@@ -165,11 +165,17 @@ public final class StructureMenus {
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        // A 2 etats une simple bascule suffit ; au-dela, on ouvre un selecteur.
+        boolean many = st.stateCount > 2;
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Etat actuel", ChatFormatting.GRAY),
                 Icons.label("Etat " + st.current + " / " + st.stateCount, ChatFormatting.AQUA),
-                Icons.label("Suivant", ChatFormatting.YELLOW),
+                Icons.label(many ? "Choisir" : "Suivant", ChatFormatting.YELLOW),
                 sp -> {
+                    if (many) {
+                        openStatePicker(sp, name);
+                        return;
+                    }
                     int target = st.nextState();
                     if (StructureManager.applyAnimated(sp.server, st, target)) {
                         sp.sendSystemMessage(Messages.success("Structure \"" + st.name + "\" -> etat " + target + "."));
@@ -257,6 +263,53 @@ public final class StructureMenus {
                         }));
 
         OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openStruct(sp, name), StructureMenus::openList);
+    }
+
+    /**
+     * Selecteur d'etat : la liste des etats, un clic pose celui choisi. Propose des qu'il y a plus de
+     * deux etats (a deux, la bascule "Suivant" suffit).
+     */
+    public static void openStatePicker(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        Component title = Component.literal("Choisir l'etat - " + st.name)
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        List<Component> stats = List.of(Component.literal("Actuel : etat " + st.current + " / " + st.stateCount)
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (int slot = 1; slot <= st.stateCount; slot++) {
+            final int s = slot;
+            boolean defined = st.hasState(s);
+            boolean isCurrent = st.current == s;
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(isCurrent ? Items.LIME_DYE : defined ? Items.LODESTONE : Items.BARRIER),
+                    Icons.label("Etat " + s, isCurrent ? ChatFormatting.GREEN
+                            : defined ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY),
+                    Icons.lore(isCurrent ? "Etat actuel" : defined ? "Cliquer pour poser" : "Non capture",
+                            isCurrent ? ChatFormatting.GREEN : defined ? ChatFormatting.GRAY : ChatFormatting.RED),
+                    sp -> {
+                        if (!defined) {
+                            sp.sendSystemMessage(Messages.warn("L'etat " + s + " n'est pas encore capture."));
+                            openStatePicker(sp, name);
+                            return;
+                        }
+                        if (isCurrent) {
+                            sp.sendSystemMessage(Messages.info("La structure est deja a l'etat " + s + "."));
+                            openStatePicker(sp, name);
+                            return;
+                        }
+                        StructureManager.applyAnimated(sp.server, st, s);
+                        sp.sendSystemMessage(Messages.success(st.name + " -> etat " + s + "."));
+                        openStruct(sp, name);
+                    }));
+        }
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openStatePicker(sp, name), sp -> openStruct(sp, name));
     }
 
     /** Fiche d'un etat : le (re)capturer depuis le monde, ou le poser tout de suite. */
