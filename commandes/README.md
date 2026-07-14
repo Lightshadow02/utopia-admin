@@ -145,7 +145,9 @@ Une **zone du monde** dont le serveur mémorise **deux états** (deux « schéma
 
 **Animations** (ligne *Animation*, cliquer pour faire défiler) : `Dissolution aléatoire` · `Couche par couche (montée)` · `Couche par couche (descente)` · `Onde depuis le centre` · `Onde vers le centre` · `Instantané`. Seuls les blocs **qui changent réellement** sont animés (~3 s, avec particules et son).
 
-**Marchand (optionnel)** — ligne *Marchand* → **Configurer** : l'active, choisis **à quel état il apparaît** (1 ou 2), place-le (**Ici** = ta position), **renomme**-le, donne-lui **ton skin** (ou Steve), et **gère ses articles**.
+**Marchand (optionnel)** — ligne *Marchand* → **Configurer** : l'active, choisis **à quel état il apparaît** (1 ou 2), place-le (**Ici** = ta position), **renomme**-le, choisis son **skin**, et **gère ses articles**.
+- **Skin** → 3 choix : **Mon skin** (ton apparence) · **Depuis une URL** · **Steve** (défaut).
+  > 🔗 Pour l'URL : colle une adresse `textures.minecraft.net/texture/<hash>` **ou juste le hash** (c'est ce que donnent NameMC, MineSkin…). ⚠️ Seul ce domaine fonctionne : le client Minecraft **refuse** les autres (imgur & co).
 - **Ajouter (objet en main)** → prix d'**achat** (ce que le joueur paie) puis prix de **revente** (ce que le marchand paie). `0` = ce sens est désactivé.
 - **Stock illimité** (boutique serveur). Les joueurs font **clic droit** sur le marchand → menu d'achat/revente en **Utopièces**.
 - Il **apparaît/disparaît tout seul** selon l'état courant de la structure.

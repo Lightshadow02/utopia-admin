@@ -400,6 +400,45 @@ public final class StructureManager {
         }
     }
 
+    // ------------------------------------------------------------------ Skin par URL
+
+    /** Hote autorise par authlib cote client : toute autre URL de skin serait ignoree. */
+    private static final String SKIN_HOST = "textures.minecraft.net";
+    /** Caracteres acceptes dans une URL de skin (evite toute injection dans le JSON). */
+    private static final java.util.regex.Pattern SKIN_URL_OK =
+            java.util.regex.Pattern.compile("[A-Za-z0-9:/._-]+");
+
+    /**
+     * Construit la valeur de propriete "textures" (JSON encode en base64) a partir d'une URL de skin
+     * ou d'un simple hash. Renvoie null si l'entree n'est pas exploitable.
+     *
+     * <p>Seul {@code textures.minecraft.net} est accepte : c'est le seul domaine que le client
+     * autorise (c'est aussi ce que fournissent NameMC, MineSkin, etc.).
+     */
+    public static String skinValueFromUrl(String input) {
+        if (input == null) {
+            return null;
+        }
+        String url = input.trim();
+        if (url.isEmpty() || !SKIN_URL_OK.matcher(url).matches()) {
+            return null;
+        }
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "http://" + SKIN_HOST + "/texture/" + url; // hash seul
+        }
+        try {
+            String host = java.net.URI.create(url).getHost();
+            if (host == null || !host.equalsIgnoreCase(SKIN_HOST)) {
+                return null;
+            }
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
+        return java.util.Base64.getEncoder()
+                .encodeToString(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     /** Nuit minecraftienne (approximativement de 13000 a 23000). */
     public static boolean isNight(ServerLevel level) {
         long t = level.getDayTime() % 24000L;

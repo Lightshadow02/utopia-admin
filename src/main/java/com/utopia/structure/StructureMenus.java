@@ -318,30 +318,8 @@ public final class StructureMenus {
                 Icons.label("Skin", ChatFormatting.GRAY),
                 Icons.label(st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Steve" : "personnalise",
                         ChatFormatting.AQUA),
-                Icons.label(st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Mon skin" : "Steve",
-                        ChatFormatting.YELLOW),
-                sp -> {
-                    if (st.npcSkinValue == null || st.npcSkinValue.isEmpty()) {
-                        st.npcSkinValue = "";
-                        st.npcSkinSignature = "";
-                        for (com.mojang.authlib.properties.Property p
-                                : sp.getGameProfile().getProperties().get("textures")) {
-                            st.npcSkinValue = p.value();
-                            st.npcSkinSignature = p.signature() == null ? "" : p.signature();
-                            break;
-                        }
-                        sp.sendSystemMessage(st.npcSkinValue.isEmpty()
-                                ? Messages.warn("Skin indisponible (serveur hors ligne ?) : Steve conserve.")
-                                : Messages.success("Le marchand porte desormais ton skin."));
-                    } else {
-                        st.npcSkinValue = "";
-                        st.npcSkinSignature = "";
-                        sp.sendSystemMessage(Messages.info("Skin remis a Steve."));
-                    }
-                    StructureData.get(sp.server).setDirty();
-                    StructureManager.syncShopNpcs(sp.server);
-                    openShopAdmin(sp, name);
-                }));
+                Icons.label("Changer", ChatFormatting.YELLOW),
+                sp -> openSkinMenu(sp, name)));
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Articles", ChatFormatting.GRAY),
                 Icons.label(st.trades.size() + " article(s)", ChatFormatting.AQUA),
@@ -350,6 +328,82 @@ public final class StructureMenus {
 
         OwoMenuServer.openPanel(admin, title, rows, List.of(),
                 sp -> openShopAdmin(sp, name), sp -> openStruct(sp, name));
+    }
+
+    /** Choix du skin du marchand : celui de l'admin, une URL de skin, ou Steve. */
+    public static void openSkinMenu(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        Component title = Component.literal("Skin - " + st.npcName)
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        List<Component> stats = List.of(Component.literal(
+                st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Actuel : Steve" : "Actuel : personnalise")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.PLAYER_HEAD),
+                Icons.label("Mon skin", ChatFormatting.GREEN),
+                Icons.lore("Le marchand prend ton apparence", ChatFormatting.GRAY),
+                sp -> {
+                    String value = "";
+                    String sig = "";
+                    for (com.mojang.authlib.properties.Property p
+                            : sp.getGameProfile().getProperties().get("textures")) {
+                        value = p.value();
+                        sig = p.signature() == null ? "" : p.signature();
+                        break;
+                    }
+                    if (value.isEmpty()) {
+                        sp.sendSystemMessage(Messages.warn("Skin indisponible (serveur hors ligne ?)."));
+                    } else {
+                        st.npcSkinValue = value;
+                        st.npcSkinSignature = sig;
+                        applySkin(sp, st, "Le marchand porte desormais ton skin.");
+                    }
+                    openSkinMenu(sp, name);
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.PAINTING),
+                Icons.label("Depuis une URL", ChatFormatting.AQUA),
+                Icons.lore("URL textures.minecraft.net (ou juste le hash)", ChatFormatting.GRAY),
+                sp -> Menus.promptText(sp, Icons.label("URL du skin", ChatFormatting.GOLD),
+                        List.of(Icons.lore("http://textures.minecraft.net/texture/<hash>", ChatFormatting.GRAY),
+                                Icons.lore("Le hash seul suffit (NameMC, MineSkin...).", ChatFormatting.DARK_GRAY),
+                                Icons.lore("Seul ce domaine est accepte par le client.", ChatFormatting.DARK_GRAY)),
+                        Icons.label("Appliquer", ChatFormatting.GREEN), "", 256,
+                        url -> {
+                            String value = StructureManager.skinValueFromUrl(url);
+                            if (value == null) {
+                                sp.sendSystemMessage(Messages.error(
+                                        "URL invalide. Attendu : un hash, ou une URL textures.minecraft.net."));
+                            } else {
+                                st.npcSkinValue = value;
+                                st.npcSkinSignature = ""; // skin non signe : le client l'accepte quand meme
+                                applySkin(sp, st, "Skin applique depuis l'URL.");
+                            }
+                            openSkinMenu(sp, name);
+                        })));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.BARRIER),
+                Icons.label("Steve (defaut)", ChatFormatting.GRAY),
+                Icons.lore("Retire le skin personnalise", ChatFormatting.GRAY),
+                sp -> {
+                    st.npcSkinValue = "";
+                    st.npcSkinSignature = "";
+                    applySkin(sp, st, "Skin remis a Steve.");
+                    openSkinMenu(sp, name);
+                }));
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openSkinMenu(sp, name), sp -> openShopAdmin(sp, name));
+    }
+
+    /** Persiste le skin et rafraichit le marchand en jeu. */
+    private static void applySkin(ServerPlayer admin, StructureData.Struct st, String message) {
+        StructureData.get(admin.server).setDirty();
+        StructureManager.syncShopNpcs(admin.server);
+        admin.sendSystemMessage(Messages.success(message));
     }
 
     /** Liste des articles du marchand : retrait, et ajout depuis l'objet en main. */
