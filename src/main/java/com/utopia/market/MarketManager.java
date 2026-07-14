@@ -111,8 +111,24 @@ public final class MarketManager {
         }
         stall.owner = player.getUUID();
         stall.ownerName = player.getGameProfile().getName();
+        captureSkin(player, stall); // pour que le PNJ porte son skin, meme hors ligne
         data.setDirty();
         return ClaimResult.OK;
+    }
+
+    /**
+     * Memorise le skin du joueur (propriete "textures" de son profil) sur le stand, pour que le PNJ
+     * porte son apparence meme quand il est hors ligne. Sans propriete (mode hors ligne), on retombe
+     * sur le skin par defaut.
+     */
+    private static void captureSkin(ServerPlayer player, MarketData.Stall stall) {
+        stall.ownerSkinValue = "";
+        stall.ownerSkinSignature = "";
+        for (com.mojang.authlib.properties.Property prop : player.getGameProfile().getProperties().get("textures")) {
+            stall.ownerSkinValue = prop.value();
+            stall.ownerSkinSignature = prop.signature() == null ? "" : prop.signature();
+            break;
+        }
     }
 
     /** Libere un emplacement : remet les objets invendus au proprietaire (ou recuperation si absent). */
@@ -165,6 +181,8 @@ public final class MarketManager {
     private static void freeStall(MinecraftServer server, MarketData.Stall stall) {
         stall.owner = null;
         stall.ownerName = null;
+        stall.ownerSkinValue = "";      // le PNJ redevient Steve
+        stall.ownerSkinSignature = "";
         stall.offers.clear();
         MarketData.get(server).setDirty();
     }

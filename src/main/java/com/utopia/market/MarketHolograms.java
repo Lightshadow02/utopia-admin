@@ -56,7 +56,14 @@ public final class MarketHolograms {
             String dimStr = level.dimension().location().toString();
 
             Map<String, List<Entity>> existing = new HashMap<>();
+            Map<String, com.utopia.entity.StallNpc> npcs = new HashMap<>();
             for (Entity e : level.getAllEntities()) {
+                if (e instanceof com.utopia.entity.StallNpc npc) {
+                    if (npcs.putIfAbsent(npc.stallKey(), npc) != null) {
+                        npc.discard(); // doublon (ex. apres un rechargement) : on n'en garde qu'un
+                    }
+                    continue;
+                }
                 String k = e.getPersistentData().getString(HOLO_STALL);
                 if (!k.isEmpty() && (e instanceof ArmorStand || e instanceof Display.ItemDisplay)) {
                     existing.computeIfAbsent(k, key -> new ArrayList<>()).add(e);
@@ -70,6 +77,7 @@ public final class MarketHolograms {
                 }
                 String key = stallKeyOf(stall);
                 wanted.add(key);
+                syncNpc(level, stall, key, npcs.remove(key));
                 Layout layout = layout(stall, tick, headerCol);
                 List<Entity> ents = existing.get(key);
                 if (needsRebuild(ents, layout)) {
@@ -87,7 +95,29 @@ public final class MarketHolograms {
                     entry.getValue().forEach(Entity::discard);
                 }
             }
+            // PNJ restants = stands supprimes (ou cle inconnue) : on les enleve.
+            npcs.values().forEach(Entity::discard);
         }
+    }
+
+    /**
+     * Maintient le PNJ "vendeur" du stand : le cree s'il manque, et met a jour son apparence
+     * (Steve si le stand est libre, skin du proprietaire sinon). Il se tient sur le bloc du stand.
+     */
+    private static void syncNpc(ServerLevel level, MarketData.Stall stall, String key,
+                                com.utopia.entity.StallNpc existing) {
+        BlockPos pos = stall.pos();
+        com.utopia.entity.StallNpc npc = existing;
+        if (npc == null || npc.isRemoved()) {
+            npc = new com.utopia.entity.StallNpc(com.utopia.entity.UtopiaEntities.STALL_NPC.get(), level);
+            npc.setStallKey(key);
+            npc.moveTo(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 0.0f, 0.0f);
+            npc.applyStall(stall);
+            level.addFreshEntity(npc);
+            return;
+        }
+        // applyStall est idempotent : les donnees synchronisees ne partent que si elles changent.
+        npc.applyStall(stall);
     }
 
     private static boolean needsRebuild(List<Entity> ents, Layout layout) {
@@ -227,12 +257,8 @@ public final class MarketHolograms {
             }
             MarketData.Offer o = stall.offers.get(offerIndex);
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
-            double baseY = sp.getY();
-            // Prix unitaire au-dessus, objet flottant juste en dessous (colle, peu d'espace).
-            Component priceLine = Component.literal(o.price + " Utopieces /u")
-                    .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false));
-            l.texts.add(new TextLine(j + 1, cx, baseY + 1.30, cz, priceLine));
-            l.items.add(new ItemSpot(j, cx, baseY + 1.15, cz, o.stack.copyWithCount(1)));
+            // Seulement l'objet flottant : pas de texte sur les emplacements (le prix est dans le menu).
+            l.items.add(new ItemSpot(j, cx, sp.getY() + 1.15, cz, o.stack.copyWithCount(1)));
         }
         l.sig = sig.toString();
         return l;

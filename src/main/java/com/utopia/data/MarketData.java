@@ -58,6 +58,9 @@ public final class MarketData extends SavedData {
         public final int z;
         public UUID owner;          // null = libre
         public String ownerName;
+        /** Skin du proprietaire (propriete "textures" de son profil), pour le NPC du stand meme hors ligne. */
+        public String ownerSkinValue = "";
+        public String ownerSkinSignature = "";
         public final List<Offer> offers = new ArrayList<>();
         /** Emplacements ou afficher les objets en vente (definis par un op) ; vide = au-dessus du bloc. */
         public final List<BlockPos> displaySpots = new ArrayList<>();
@@ -243,6 +246,8 @@ public final class MarketData extends SavedData {
                 try {
                     stall.owner = UUID.fromString(st.getString("owner"));
                     stall.ownerName = st.getString("ownerName");
+                    stall.ownerSkinValue = st.getString("skinValue");
+                    stall.ownerSkinSignature = st.getString("skinSig");
                 } catch (IllegalArgumentException ignored) {
                     stall.owner = null;
                 }
@@ -303,6 +308,8 @@ public final class MarketData extends SavedData {
             if (s.owner != null) {
                 st.putString("owner", s.owner.toString());
                 st.putString("ownerName", s.ownerName == null ? "" : s.ownerName);
+                st.putString("skinValue", s.ownerSkinValue == null ? "" : s.ownerSkinValue);
+                st.putString("skinSig", s.ownerSkinSignature == null ? "" : s.ownerSkinSignature);
             }
             ListTag offers = new ListTag();
             for (Offer o : s.offers) {

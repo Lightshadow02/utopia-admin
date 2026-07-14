@@ -22,6 +22,7 @@ public final class UtopiaClient {
 
     public static void init(IEventBus modBus) {
         modBus.addListener(UtopiaClient::onRegisterScreens);
+        modBus.addListener(UtopiaClient::onRegisterRenderers);
         // RegisterClientCommandsEvent est sur le bus de jeu (pas le bus mod).
         NeoForge.EVENT_BUS.addListener(UtopiaClient::onRegisterClientCommands);
         // Lecteur de musique personnalise (jour / nuit / grotte) sur le bus de jeu.
@@ -31,6 +32,11 @@ public final class UtopiaClient {
 
     private static void onRegisterScreens(RegisterMenuScreensEvent event) {
         event.register(UtopiaMenuType.UTOPIA.get(), UtopiaScreen::new);
+    }
+
+    /** Rendu du PNJ des stands de marche (modele joueur + skin du proprietaire). */
+    private static void onRegisterRenderers(net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.STALL_NPC.get(), StallNpcRenderer::new);
     }
 
     /** POC : /utopiaui ouvre l'ecran owo-ui de demonstration cote client. */

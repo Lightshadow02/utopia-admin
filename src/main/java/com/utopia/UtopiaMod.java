@@ -35,6 +35,8 @@ public final class UtopiaMod {
         com.utopia.gui.UtopiaMenuType.register(modEventBus);
         // Enregistre les musiques personnalisees (jour / nuit / grotte).
         com.utopia.sound.UtopiaSounds.register(modEventBus);
+        // Enregistre les entites du mod (PNJ des stands de marche).
+        com.utopia.entity.UtopiaEntities.register(modEventBus);
         // Enregistre les paquets reseau (menus owo-ui).
         modEventBus.addListener(com.utopia.net.UtopiaNet::onRegister);
         // Cote client uniquement : enregistre l'ecran custom du menu.
