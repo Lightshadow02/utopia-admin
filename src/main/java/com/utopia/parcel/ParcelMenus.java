@@ -576,59 +576,70 @@ public final class ParcelMenus {
     // ----------------------------------------------------------------------------------- admin : toutes les parcelles
 
     /** Toutes les parcelles (triees par ID). Clic gauche = menu admin, clic droit = teleportation. */
+    /** Nombre de parcelles affichees par page dans le menu admin global. */
+    private static final int ADMIN_PAGE_SIZE = 10;
+
     public static void openAdminAll(ServerPlayer admin) {
+        openAdminAll(admin, 0);
+    }
+
+    /**
+     * Menu admin global (style panneau owo, pagine) : une ligne par parcelle + actions de creation.
+     * Remplace l'ancienne grille de coffre qui s'etalait sur l'ecran et plafonnait a 45 parcelles.
+     */
+    public static void openAdminAll(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
         List<Parcel> all = new ArrayList<>(ParcelData.get(server).all());
         all.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
 
-        UtopiaGui gui = new UtopiaGui(6, Icons.label("Admin - toutes les parcelles", ChatFormatting.DARK_AQUA));
-        int slot = 0;
-        for (Parcel p : all) {
-            if (slot > 44) { // derniere rangee reservee aux controles
-                break;
-            }
+        int totalPages = Math.max(1, (all.size() + ADMIN_PAGE_SIZE - 1) / ADMIN_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, totalPages - 1));
+        int from = cur * ADMIN_PAGE_SIZE;
+        int to = Math.min(all.size(), from + ADMIN_PAGE_SIZE);
+
+        Component title = Icons.label("Parcelles (" + (cur + 1) + "/" + totalPages + ") - "
+                + all.size() + " au total", ChatFormatting.DARK_AQUA);
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (Parcel p : all.subList(from, to)) {
             String pid = p.id();
-            gui.button(slot++, Icons.icon(p.isAdmin() ? Items.BEDROCK : p.forSale() ? Items.GOLD_BLOCK : Items.GRASS_BLOCK,
-                            Icons.label((p.isAdmin() ? "[ADMIN] " : "") + "Parcelle " + pid,
-                                    p.isAdmin() ? ChatFormatting.RED : ChatFormatting.AQUA), List.of(
-                            Icons.lore(p.isAdmin() ? "Type : ADMIN (protegee, hors shop)" : "Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"),
-                                    p.isAdmin() ? ChatFormatting.RED : ChatFormatting.GRAY),
-                            Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
-                                    p.forSale() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
-                            Icons.lore("Clic GAUCHE : gerer", ChatFormatting.YELLOW),
-                            Icons.lore("Clic DROIT : se teleporter", ChatFormatting.YELLOW))),
-                    sp -> openAdminParcel(sp, pid),
-                    sp -> {
-                        Parcel cur = getParcel(sp.server, pid);
-                        if (cur != null) {
-                            teleportTo(sp, cur);
-                        }
-                        com.utopia.gui.Menus.close(sp);
-                    });
+            String value = p.isAdmin() ? "protegee, hors shop"
+                    : (p.isOwned() ? p.ownerName() : "Mairie")
+                            + (p.forSale() ? " - " + EconomyManager.format(p.price()) : "");
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label((p.isAdmin() ? "[ADMIN] " : "") + pid,
+                            p.isAdmin() ? ChatFormatting.RED : ChatFormatting.AQUA),
+                    Icons.label(value, p.isAdmin() ? ChatFormatting.RED
+                            : p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                    Icons.label("Gerer", ChatFormatting.YELLOW),
+                    sp -> openAdminParcel(sp, pid)));
         }
-        if (slot == 0) {
-            gui.set(22, Icons.icon(Items.BARRIER, Icons.label("Aucune parcelle", ChatFormatting.RED), List.of()));
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune parcelle", ChatFormatting.GRAY),
+                    Icons.label("trace au wand puis Creer", ChatFormatting.DARK_GRAY), null, null));
         }
-        // Rangee du bas : outil + creation par type (trace d'abord la zone au wand).
-        gui.button(45, Icons.icon(ParcelManager.wandItem(), Icons.label("Recevoir le wand parcelle", ChatFormatting.LIGHT_PURPLE),
-                List.of(Icons.lore("Clic droit au sol pour tracer les points", ChatFormatting.GRAY),
-                        Icons.lore("Puis utilise un bouton Creer ci-dessous", ChatFormatting.DARK_GRAY))),
-                sp -> {
-                    sp.getInventory().add(new ItemStack(ParcelManager.wandItem()));
-                    sp.sendSystemMessage(Messages.success("Wand parcelle recu. Clic droit au sol pour tracer."));
-                    com.utopia.gui.Menus.close(sp);
-                });
-        gui.button(47, Icons.icon(Items.BLUE_WOOL, Icons.label("Creer : Habitation", ChatFormatting.AQUA),
-                List.of(Icons.lore("Parcelle classique (contour bleu)", ChatFormatting.GRAY))),
-                sp -> promptCreate(sp, "Habitation", false, Parcel.Type.HABITATION));
-        gui.button(48, Icons.icon(Items.YELLOW_WOOL, Icons.label("Creer : Commerce", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Parcelle classique (contour jaune)", ChatFormatting.GRAY))),
-                sp -> promptCreate(sp, "Commerce", false, Parcel.Type.COMMERCE));
-        gui.button(49, Icons.icon(Items.BEDROCK, Icons.label("Creer : Admin", ChatFormatting.RED),
-                List.of(Icons.lore("Protegee anti-grief, hors shop", ChatFormatting.GRAY))),
-                sp -> promptCreate(sp, "Admin", true, null));
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+
+        // Actions : outil de trace + creation par type (trace d'abord la zone au wand).
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Wand", ChatFormatting.LIGHT_PURPLE),
+                        sp -> {
+                            sp.getInventory().add(new ItemStack(ParcelManager.wandItem()));
+                            sp.sendSystemMessage(Messages.success("Wand parcelle recu. Clic droit au sol pour tracer."));
+                            Menus.close(sp);
+                        }),
+                new OwoMenuServer.PanelAction(Icons.label("+ Habitation", ChatFormatting.AQUA),
+                        sp -> promptCreate(sp, "Habitation", false, Parcel.Type.HABITATION)),
+                new OwoMenuServer.PanelAction(Icons.label("+ Commerce", ChatFormatting.YELLOW),
+                        sp -> promptCreate(sp, "Commerce", false, Parcel.Type.COMMERCE)),
+                new OwoMenuServer.PanelAction(Icons.label("+ Admin", ChatFormatting.RED),
+                        sp -> promptCreate(sp, "Admin", true, null)));
+
+        final int pages = totalPages;
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openAdminAll(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openAdminAll(sp, (cur + 1) % pages) : null;
+
+        OwoMenuServer.openPanel(admin, title, rows, footer, false, onPrev, onNext,
+                sp -> openAdminAll(sp, cur), com.utopia.menu.AdminMenu::open);
     }
 
     /** Demande un identifiant puis cree une parcelle du type voulu a partir du trace au wand. */

@@ -51,6 +51,24 @@ public final class OwoMenuServer {
     private static final Map<UUID, Session> SESSIONS = new ConcurrentHashMap<>();
     private static final AtomicInteger COUNTER = new AtomicInteger();
 
+    /**
+     * Nombre d'actions adressables : les clics sont portes par un {@link UtopiaGui} de 6 rangees max,
+     * soit 54 slots. Un id au-dela est ignore en silence par le GUI -> bouton mort. Les menus doivent
+     * donc rester sous cette limite (sinon : paginer).
+     */
+    public static final int MAX_ACTION_SLOTS = 54;
+
+    /** Tronque une liste d'entrees a {@code max} en journalisant le surplus (evite les boutons morts). */
+    private static <T> List<T> clampEntries(List<T> entries, int max, Component title) {
+        if (entries.size() <= max) {
+            return entries;
+        }
+        com.utopia.UtopiaMod.LOGGER.warn(
+                "[Utopia] Menu \"{}\" : {} entrees pour {} slots d'action disponibles ; le surplus est masque "
+                        + "(pense a paginer ce menu).", title.getString(), entries.size(), max);
+        return entries.subList(0, max);
+    }
+
     /** Ouvre (ou remplace) le menu a icones du joueur. */
     public static void open(ServerPlayer player, UtopiaGui gui) {
         int id = COUNTER.incrementAndGet();
@@ -79,6 +97,9 @@ public final class OwoMenuServer {
                                List<HubEntry> entries, Consumer<ServerPlayer> onRefresh,
                                Consumer<ServerPlayer> onBack) {
         int id = COUNTER.incrementAndGet();
+        // Garde-fou : les actions sont portees par un UtopiaGui de 54 slots max. Au-dela, les ids
+        // seraient ignores en silence -> boutons morts (y compris Rafraichir/Retour). On tronque.
+        entries = clampEntries(entries, MAX_ACTION_SLOTS - 2, title);
         int n = entries.size();
         int refreshId = n;                              // slot d'action du bouton "Rafraichir"
         int backId = onBack != null ? n + 1 : -1;       // slot d'action du bouton "Retour" (optionnel)
@@ -142,6 +163,11 @@ public final class OwoMenuServer {
                                  Consumer<ServerPlayer> onRefresh, Consumer<ServerPlayer> onBack) {
         int id = COUNTER.incrementAndGet();
         UtopiaGui gui = new UtopiaGui(6, title); // 54 slots d'actions
+
+        // Garde-fou : lignes + pied de page + Rafraichir/Retour/Prec./Suiv. doivent tenir dans 54 slots.
+        int reserved = footer.size() + (onRefresh != null ? 1 : 0) + (onBack != null ? 1 : 0)
+                + (onPrev != null ? 1 : 0) + (onNext != null ? 1 : 0);
+        rows = clampEntries(rows, Math.max(1, MAX_ACTION_SLOTS - reserved), title);
 
         List<OpenPanelPayload.Row> netRows = new ArrayList<>(rows.size());
         int idCounter = 0;

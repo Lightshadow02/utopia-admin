@@ -180,30 +180,47 @@ public final class MarketMenus {
         openRecovery(admin, com.utopia.menu.AdminMenu::open);
     }
 
+    /** Nombre d'objets en attente affiches par page dans la recuperation. */
+    private static final int RECOVERY_PAGE_SIZE = 10;
+
     /** Liste de la recuperation ; {@code onBack} = ou revient le bouton Retour (admin ou maire). */
     public static void openRecovery(ServerPlayer player, Consumer<ServerPlayer> onBack) {
+        openRecovery(player, onBack, 0);
+    }
+
+    /** Liste paginee : la recuperation grandit a chaque offre expiree, elle peut etre tres longue. */
+    public static void openRecovery(ServerPlayer player, Consumer<ServerPlayer> onBack, int page) {
         MarketData data = MarketData.get(player.server);
         List<MarketData.RecoveryEntry> rec = new ArrayList<>(data.recovery());
 
-        Component title = Component.literal("Recuperation - Mairie")
+        int totalPages = Math.max(1, (rec.size() + RECOVERY_PAGE_SIZE - 1) / RECOVERY_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, totalPages - 1));
+        int from = cur * RECOVERY_PAGE_SIZE;
+        int to = Math.min(rec.size(), from + RECOVERY_PAGE_SIZE);
+
+        Component title = Component.literal("Recuperation (" + (cur + 1) + "/" + totalPages + ") - "
+                + rec.size() + " objet(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
-        for (MarketData.RecoveryEntry e : rec) {
+        for (MarketData.RecoveryEntry e : rec.subList(from, to)) {
             rows.add(new OwoMenuServer.PanelRow(
                     Icons.label(e.ownerName(), ChatFormatting.WHITE),
                     Icons.label(e.stack().getCount() + "x " + e.stack().getHoverName().getString(), ChatFormatting.AQUA),
                     Icons.label("Rendre", ChatFormatting.GREEN),
                     sp -> {
                         returnRecovery(sp, e);
-                        openRecovery(sp, onBack);
+                        openRecovery(sp, onBack, cur);
                     }));
         }
         if (rows.isEmpty()) {
             rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun objet en attente", ChatFormatting.GRAY),
                     Icons.label("", ChatFormatting.WHITE), null, null));
         }
-        OwoMenuServer.openPanel(player, title, rows, List.of(),
-                sp -> openRecovery(sp, onBack), onBack);
+        final int pages = totalPages;
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openRecovery(sp, onBack, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openRecovery(sp, onBack, (cur + 1) % pages) : null;
+        OwoMenuServer.openPanel(player, title, rows, List.of(), false, onPrev, onNext,
+                sp -> openRecovery(sp, onBack, cur), onBack);
     }
 
     // -------- Menu du compte de la mairie (/maire) --------
