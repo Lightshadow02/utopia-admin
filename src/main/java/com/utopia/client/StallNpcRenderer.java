@@ -32,6 +32,12 @@ public class StallNpcRenderer extends LivingEntityRenderer<StallNpc, PlayerModel
         this.addLayer(new CustomHeadLayer<>(this, context.getModelSet(), context.getItemInHandRenderer()));
     }
 
+    /** Jamais d'etiquette au-dessus du PNJ : l'hologramme du stand porte deja le nom. */
+    @Override
+    protected boolean shouldShowName(StallNpc entity) {
+        return false;
+    }
+
     @Override
     public ResourceLocation getTextureLocation(StallNpc entity) {
         String value = entity.skinValue();

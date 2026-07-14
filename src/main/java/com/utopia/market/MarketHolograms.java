@@ -41,6 +41,12 @@ public final class MarketHolograms {
     private static final String HOLO_LINE = "utopiaMarketLine";
     private static final String HOLO_SIG = "utopiaMarketSig";
 
+    /**
+     * Hauteur libre au-dessus du bloc du stand : le PNJ s'y tient (pose a +1.0, haut de 1.8), donc
+     * tout ce qui est affiche doit passer au-dessus de sa tete.
+     */
+    private static final double NPC_TOP = 3.0;
+
     private static final float ITEM_SCALE = 0.5f;     // objet reduit
     private static final float SPIN_DEG_PER_TICK = 3.0f; // ~6 s par tour
     private static final int PAGE_TICKS = 100;          // ~5 s par page d'offres
@@ -218,23 +224,22 @@ public final class MarketHolograms {
 
         if (stall.owner == null) {
             sig.append("FREE");
-            l.texts.add(new TextLine(0, sbx, stall.y + 1.55, sbz,
+            l.texts.add(new TextLine(0, sbx, stall.y + NPC_TOP + 0.30, sbz,
                     Component.literal("Stand libre").withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true))));
-            l.texts.add(new TextLine(1, sbx, stall.y + 1.25, sbz,
+            l.texts.add(new TextLine(1, sbx, stall.y + NPC_TOP, sbz,
                     Component.literal("Clic droit pour vendre").withStyle(s -> s.withColor(ChatFormatting.GRAY))));
             l.sig = sig.toString();
             return l;
         }
 
         sig.append("OWN|").append(stall.ownerName);
-        double headerY = stall.y + (hasSpots ? 1.5 : 1.95);
+        // L'en-tete passe au-dessus de la tete du PNJ (sinon il se superpose a lui).
+        double headerY = stall.y + (hasSpots ? NPC_TOP : NPC_TOP + 0.45);
         l.texts.add(new TextLine(0, sbx, headerY, sbz, ownerHeader(stall, headerCol)));
 
         int n = stall.offers.size();
         if (n == 0) {
             sig.append("|empty");
-            l.texts.add(new TextLine(1, sbx, stall.y + 1.2, sbz,
-                    Component.literal("(aucune offre)").withStyle(s -> s.withColor(ChatFormatting.GRAY))));
             l.sig = sig.toString();
             return l;
         }
@@ -258,7 +263,9 @@ public final class MarketHolograms {
             MarketData.Offer o = stall.offers.get(offerIndex);
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             // Seulement l'objet flottant : pas de texte sur les emplacements (le prix est dans le menu).
-            l.items.add(new ItemSpot(j, cx, sp.getY() + 1.15, cz, o.stack.copyWithCount(1)));
+            // Sans emplacement defini, l'objet passe au-dessus du PNJ (qui occupe le bloc du stand).
+            double itemY = sp.getY() + (hasSpots ? 1.15 : NPC_TOP + 0.15);
+            l.items.add(new ItemSpot(j, cx, itemY, cz, o.stack.copyWithCount(1)));
         }
         l.sig = sig.toString();
         return l;
