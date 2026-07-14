@@ -143,7 +143,11 @@ Une **zone du monde** dont le serveur mémorise **deux états** (deux « schéma
 3. **Modifie ta construction** en jeu (ex. la montgolfière est partie), puis → **Capturer** sur la ligne **État 2**.
 4. Clic sur la structure : **Basculer** manuellement, ou passer en **Auto** → **nuit = état 2**, **jour = état 1**.
 
-> 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié). Volume max : 200 000 blocs. Les schématiques utilisent le moteur de structures vanilla (palette + block entities).
+**Animations** (ligne *Animation*, cliquer pour faire défiler) : `Dissolution aléatoire` · `Couche par couche (montée)` · `Couche par couche (descente)` · `Onde depuis le centre` · `Onde vers le centre` · `Instantané`. Seuls les blocs **qui changent réellement** sont animés (~3 s, avec particules et son).
+
+> 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié).
+> 💧 **L'eau est ignorée** : elle n'est ni mémorisée ni reposée (la mer/les rivières restent intactes). Les **entités** ne sont pas capturées (sinon chaque bascule en dupliquerait).
+> 📦 Volume max : **1 000 000 de blocs**. La pose est étalée dans le temps, mais la **capture est synchrone** : sur une très grosse zone, le serveur marque une pause d'une seconde ou deux.
 
 #### 🗳️ Élections (`/admin → Élections`)
 - **Créer une élection** : nom + durée (min **1 min**, défaut **24 h**), puis ajout/retrait des **candidats** (libre avant le lancement).

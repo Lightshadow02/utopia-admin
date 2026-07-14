@@ -197,6 +197,16 @@ public final class StructureMenus {
                     openStruct(sp, name);
                 }));
         rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Animation", ChatFormatting.GRAY),
+                Icons.label(st.anim.label(), ChatFormatting.LIGHT_PURPLE),
+                Icons.label("Changer", ChatFormatting.YELLOW),
+                sp -> {
+                    st.anim = st.anim.next();
+                    StructureData.get(sp.server).setDirty();
+                    sp.sendSystemMessage(Messages.info("Animation : " + st.anim.label()));
+                    openStruct(sp, name);
+                }));
+        rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Etat 1", ChatFormatting.GRAY),
                 Icons.label(st.hasState(1) ? "defini" : "manquant",
                         st.hasState(1) ? ChatFormatting.GREEN : ChatFormatting.RED),

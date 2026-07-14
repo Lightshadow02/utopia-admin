@@ -30,6 +30,32 @@ public final class StructureData extends SavedData {
     public static final SavedData.Factory<StructureData> FACTORY =
             new SavedData.Factory<>(StructureData::new, StructureData::load, null);
 
+    /** Style d'animation de la bascule d'etat. */
+    public enum Anim {
+        RANDOM("Dissolution aleatoire"),
+        BOTTOM_UP("Couche par couche (montee)"),
+        TOP_DOWN("Couche par couche (descente)"),
+        CENTER_OUT("Onde depuis le centre"),
+        OUTSIDE_IN("Onde vers le centre"),
+        INSTANT("Instantane");
+
+        private final String label;
+
+        Anim(String label) {
+            this.label = label;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        /** Style suivant (le menu fait defiler les styles). */
+        public Anim next() {
+            Anim[] all = values();
+            return all[(ordinal() + 1) % all.length];
+        }
+    }
+
     /** Une structure : sa zone, ses deux etats et son mode de bascule. */
     public static final class Struct {
         public final String name;
@@ -40,6 +66,7 @@ public final class StructureData extends SavedData {
         public CompoundTag stateB;  // schematique de l'etat 2
         public boolean auto;        // true = bascule automatique jour/nuit
         public int current = 1;     // etat actuellement pose (1 ou 2)
+        public Anim anim = Anim.RANDOM; // style d'animation de la bascule
 
         public Struct(String name) {
             this.name = name;
@@ -128,6 +155,11 @@ public final class StructureData extends SavedData {
             }
             st.auto = s.getBoolean("auto");
             st.current = s.getInt("current") == 2 ? 2 : 1;
+            try {
+                st.anim = Anim.valueOf(s.getString("anim"));
+            } catch (IllegalArgumentException ignored) {
+                st.anim = Anim.RANDOM;
+            }
             data.structures.put(key(name), st);
         }
         return data;
@@ -154,6 +186,7 @@ public final class StructureData extends SavedData {
             }
             s.putBoolean("auto", st.auto);
             s.putInt("current", st.current);
+            s.putString("anim", st.anim.name());
             list.add(s);
         }
         tag.put("structures", list);

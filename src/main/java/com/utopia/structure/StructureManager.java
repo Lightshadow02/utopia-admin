@@ -2,6 +2,7 @@ package com.utopia.structure;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
@@ -43,8 +45,22 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  */
 public final class StructureManager {
 
-    /** Volume maximal d'une zone (securite : capture et pose sont synchrones). */
-    public static final long MAX_VOLUME = 200_000L;
+    /**
+     * Volume maximal d'une zone. La pose est etalee dans le temps, mais la <b>capture</b> reste
+     * synchrone : au-dela, on gele le serveur une seconde ou deux et le schematique devient lourd.
+     */
+    public static final long MAX_VOLUME = 1_000_000L;
+
+    /**
+     * Drapeaux de pose des blocs. On met a jour les clients SANS notifier les voisins
+     * ({@code UPDATE_KNOWN_SHAPE}) et en supprimant les drops ({@code UPDATE_SUPPRESS_DROPS}).
+     *
+     * <p>Avec {@code UPDATE_ALL}, les voisins etaient notifies : tout ce qui a besoin d'un support
+     * (echelle, banniere, lutrin et son livre...) se decrochait et tombait au sol en items. Ici, tout
+     * vient du schematique : aucun bloc ne doit rien lacher.
+     */
+    private static final int PLACE_FLAGS =
+            Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
     /** Joueurs en train de definir une zone : coin 1 (clic gauche) / coin 2 (clic droit). */
     private static final Map<UUID, BlockPos[]> CORNERS = new ConcurrentHashMap<>();
@@ -116,7 +132,9 @@ public final class StructureManager {
             return false;
         }
         StructureTemplate template = new StructureTemplate();
-        template.fillFromWorld(level, struct.min, struct.size, true, null);
+        // - eau ignoree : les blocs d'eau ne sont ni memorises ni reposes, la mer reste intacte ;
+        // - sans entites : sinon chaque bascule en respawnerait des copies (doublons).
+        template.fillFromWorld(level, struct.min, struct.size, false, Blocks.WATER);
         struct.setState(slot, template.save(new CompoundTag()));
         StructureData.get(server).setDirty();
         return true;
@@ -136,7 +154,7 @@ public final class StructureManager {
         StructureTemplate template = new StructureTemplate();
         template.load(level.holderLookup(Registries.BLOCK), tag);
         template.placeInWorld(level, struct.min, struct.min, new StructurePlaceSettings(),
-                level.getRandom(), Block.UPDATE_ALL);
+                level.getRandom(), PLACE_FLAGS);
         struct.current = slot == 2 ? 2 : 1;
         StructureData.get(server).setDirty();
         return true;
@@ -183,6 +201,9 @@ public final class StructureManager {
      * sont modifies, dans un ordre aleatoire, etales dans le temps, avec particules et son.
      */
     public static boolean applyAnimated(MinecraftServer server, StructureData.Struct struct, int slot) {
+        if (struct.anim == StructureData.Anim.INSTANT) {
+            return apply(server, struct, slot);
+        }
         CompoundTag tag = struct.state(slot);
         if (tag == null) {
             return false;
@@ -199,10 +220,25 @@ public final class StructureManager {
         if (changes.isEmpty()) {
             return true; // le monde correspond deja a cet etat
         }
-        Collections.shuffle(changes);
+        order(changes, struct);
         int perTick = Math.max(1, Math.min(MAX_PER_TICK, (changes.size() + ANIM_TICKS - 1) / ANIM_TICKS));
         TRANSITIONS.add(new Transition(level, struct, changes, perTick));
         return true;
+    }
+
+    /** Trie les blocs a poser selon le style d'animation de la structure. */
+    private static void order(List<Change> changes, StructureData.Struct struct) {
+        switch (struct.anim) {
+            case BOTTOM_UP -> changes.sort(Comparator.comparingInt(c -> c.pos().getY()));
+            case TOP_DOWN -> changes.sort(Comparator.comparingInt((Change c) -> c.pos().getY()).reversed());
+            case CENTER_OUT -> changes.sort(Comparator.comparingDouble(c -> c.pos().distSqr(center(struct))));
+            case OUTSIDE_IN -> changes.sort(Comparator.comparingDouble((Change c) -> c.pos().distSqr(center(struct))).reversed());
+            default -> Collections.shuffle(changes); // RANDOM : dissolution
+        }
+    }
+
+    private static BlockPos center(StructureData.Struct struct) {
+        return struct.min.offset(struct.size.getX() / 2, struct.size.getY() / 2, struct.size.getZ() / 2);
     }
 
     /** A appeler chaque tick : avance les transitions en cours. */
@@ -223,7 +259,7 @@ public final class StructureManager {
     private static void applyChange(ServerLevel level, Change c, int index) {
         BlockState old = level.getBlockState(c.pos());
         BlockState fx = old.isAir() ? c.state() : old;
-        level.setBlock(c.pos(), c.state(), Block.UPDATE_ALL);
+        level.setBlock(c.pos(), c.state(), PLACE_FLAGS);
         if (c.nbt() != null) {
             BlockEntity be = level.getBlockEntity(c.pos());
             if (be != null) {
