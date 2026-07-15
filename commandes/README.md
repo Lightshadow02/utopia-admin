@@ -151,8 +151,12 @@ Changement manuel via la ligne **État actuel** :
 
 > ⏰ Le mode **Auto** suit le cycle jour/nuit et n'utilise donc que les **états 1 (jour) et 2 (nuit)**. Les états **3 à 5** se pilotent à la main (menu, ou bouton Suivant).
 
-**Blocs concernés** (ligne *Blocs concernés* → **Filtrer**) : par défaut **toute la zone** change. En ajoutant des blocs (**bloc en main** → Ajouter), **seuls ceux-là** changent — le reste de la construction n'est pas touché.
-> 💡 Cas d'usage : ne filtrer que les **lanternes** → elles s'allument la nuit et s'éteignent le jour, sans reposer le bâtiment. **Tout vider** = retour au comportement normal.
+**Blocs concernés** (ligne *Blocs concernés* → **Filtrer**) : par défaut **toute la zone** change. En ajoutant des blocs, **seuls ceux-là** changent — le reste de la construction n'est pas touché. Deux façons d'ajouter : **Bloc en main**, ou **Bloc visé** (le bloc que tu regardes — pratique pour un bloc **sans item**, ou dont l'item ne correspond pas au bloc posé). **Tout vider** = retour au comportement normal.
+
+> 💡 Cas d'usage : ne filtrer que les **lanternes** → elles s'allument la nuit et s'éteignent le jour, **sans reposer le bâtiment** (et la bascule est quasi instantanée, même sur une énorme zone).
+> 🔧 Le filtre travaille sur l'**identifiant de bloc**, donc les blocs **de mods** marchent pareil :
+> - le mod utilise **un seul bloc** avec une propriété (`lit=true/false`) → ajoute-le **une fois**, les deux états sont couverts ;
+> - le mod utilise **deux blocs distincts** (`..._on` / `..._off`) → **un seul suffit** (un changement passe dès qu'un bloc filtré est concerné **d'un côté ou de l'autre**), mais tu peux ajouter les deux.
 
 **Animations** (ligne *Animation*, cliquer pour faire défiler) : `Dissolution aléatoire` · `Couche par couche (montée)` · `Couche par couche (descente)` · `Onde depuis le centre` · `Onde vers le centre` · `Instantané`. Seuls les blocs **qui changent réellement** sont animés (~3 s, avec particules et son).
 

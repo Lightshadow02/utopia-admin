@@ -304,7 +304,7 @@ public final class StructureMenus {
         }
 
         List<OwoMenuServer.PanelAction> footer = List.of(
-                new OwoMenuServer.PanelAction(Icons.label("Ajouter (bloc en main)", ChatFormatting.GREEN),
+                new OwoMenuServer.PanelAction(Icons.label("Bloc en main", ChatFormatting.GREEN),
                         sp -> {
                             ItemStack held = sp.getMainHandItem();
                             if (!(held.getItem() instanceof net.minecraft.world.item.BlockItem bi)) {
@@ -312,16 +312,26 @@ public final class StructureMenus {
                                 openFilter(sp, name);
                                 return;
                             }
-                            String id = StructureManager.blockId(bi.getBlock().defaultBlockState());
-                            if (st.blockFilter.contains(id)) {
-                                sp.sendSystemMessage(Messages.warn(id + " est deja dans le filtre."));
-                            } else {
-                                st.blockFilter.add(id);
-                                StructureData.get(sp.server).setDirty();
-                                sp.sendSystemMessage(Messages.success("Filtre : " + id
-                                        + " (seuls ces blocs changeront)."));
+                            addToFilter(sp, st, StructureManager.blockId(bi.getBlock().defaultBlockState()), name);
+                        }),
+                // Utile pour les blocs sans item, ou dont l'item ne correspond pas au bloc pose
+                // (ex. une lanterne "eteinte" propre a un mod) : on prend l'ID reellement pose.
+                new OwoMenuServer.PanelAction(Icons.label("Bloc vise", ChatFormatting.AQUA),
+                        sp -> {
+                            net.minecraft.world.phys.HitResult hit = sp.pick(12.0, 0.0f, false);
+                            if (!(hit instanceof net.minecraft.world.phys.BlockHitResult bhr)) {
+                                sp.sendSystemMessage(Messages.warn("Regarde un bloc, puis reessaie."));
+                                openFilter(sp, name);
+                                return;
                             }
-                            openFilter(sp, name);
+                            net.minecraft.world.level.block.state.BlockState state =
+                                    sp.level().getBlockState(bhr.getBlockPos());
+                            if (state.isAir()) {
+                                sp.sendSystemMessage(Messages.warn("Regarde un bloc, puis reessaie."));
+                                openFilter(sp, name);
+                                return;
+                            }
+                            addToFilter(sp, st, StructureManager.blockId(state), name);
                         }),
                 new OwoMenuServer.PanelAction(Icons.label("Tout vider", ChatFormatting.YELLOW),
                         sp -> {
@@ -332,6 +342,20 @@ public final class StructureMenus {
                         }));
 
         OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openFilter(sp, name), sp -> openStruct(sp, name));
+    }
+
+    /** Ajoute un identifiant de bloc au filtre (sans doublon) et rouvre l'ecran. */
+    private static void addToFilter(ServerPlayer admin, StructureData.Struct st, String id, String name) {
+        if (id.isEmpty()) {
+            admin.sendSystemMessage(Messages.warn("Bloc non identifiable."));
+        } else if (st.blockFilter.contains(id)) {
+            admin.sendSystemMessage(Messages.warn(id + " est deja dans le filtre."));
+        } else {
+            st.blockFilter.add(id);
+            StructureData.get(admin.server).setDirty();
+            admin.sendSystemMessage(Messages.success("Filtre : " + id + " (seuls ces blocs changeront)."));
+        }
+        openFilter(admin, name);
     }
 
     /**
