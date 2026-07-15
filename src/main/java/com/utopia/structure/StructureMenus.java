@@ -46,7 +46,7 @@ public final class StructureMenus {
 
         for (StructureData.Struct st : data.all()) {
             String name = st.name;
-            String state = "Etat " + st.current + "/" + st.stateCount + (st.auto ? " - auto" : " - manuel");
+            String state = "Etat " + st.current + "/" + st.stateCount + " - " + st.mode.label();
             boolean ready = st.allStatesReady();
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(ready ? Items.LODESTONE : Items.STRUCTURE_BLOCK),
                     Icons.label(name, ready ? ChatFormatting.AQUA : ChatFormatting.YELLOW),
@@ -198,21 +198,29 @@ public final class StructureMenus {
                 }));
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Mode", ChatFormatting.GRAY),
-                Icons.label(st.auto ? "Auto (jour/nuit)" : "Manuel",
-                        st.auto ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                Icons.label(st.auto ? "-> Manuel" : "-> Auto", ChatFormatting.YELLOW),
+                Icons.label(st.mode.label(),
+                        st.mode == StructureData.Mode.MANUAL ? ChatFormatting.GRAY : ChatFormatting.GREEN),
+                Icons.label("Changer", ChatFormatting.YELLOW),
                 sp -> {
-                    if (!st.auto && !(st.hasState(1) && st.hasState(2))) {
-                        sp.sendSystemMessage(Messages.warn("Definis les deux etats avant le mode auto."));
-                        openStruct(sp, name);
-                        return;
-                    }
-                    st.auto = !st.auto;
+                    st.mode = st.mode.next();
                     StructureData.get(sp.server).setDirty();
-                    sp.sendSystemMessage(Messages.success("Mode : " + (st.auto
-                            ? "AUTO (nuit = etat 2, jour = etat 1)" : "manuel")));
+                    if (st.mode == StructureData.Mode.DAY_NIGHT && !(st.hasState(1) && st.hasState(2))) {
+                        sp.sendSystemMessage(Messages.warn("Capture les etats 1 et 2 pour que le jour/nuit agisse."));
+                    } else if (st.mode == StructureData.Mode.SCHEDULE && !st.hasAnySchedule()) {
+                        sp.sendSystemMessage(Messages.warn("Regle les horaires (ligne Horaires) pour que ca agisse."));
+                    } else {
+                        sp.sendSystemMessage(Messages.success("Mode : " + st.mode.label()));
+                    }
                     openStruct(sp, name);
                 }));
+        if (st.mode == StructureData.Mode.SCHEDULE) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Horaires", ChatFormatting.GRAY),
+                    Icons.label(st.hasAnySchedule() ? "definis" : "a regler",
+                            st.hasAnySchedule() ? ChatFormatting.GREEN : ChatFormatting.RED),
+                    Icons.label("Regler", ChatFormatting.YELLOW),
+                    sp -> openSchedule(sp, name)));
+        }
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Animation", ChatFormatting.GRAY),
                 Icons.label(st.anim.label(), ChatFormatting.LIGHT_PURPLE),
@@ -342,6 +350,97 @@ public final class StructureMenus {
                         }));
 
         OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openFilter(sp, name), sp -> openStruct(sp, name));
+    }
+
+    /** Horaires du mode "Horaires precis" : une heure du monde par etat. */
+    public static void openSchedule(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        long now = admin.serverLevel().getDayTime() % 24000L;
+        Component title = Component.literal("Horaires - " + st.name)
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Heure actuelle", ChatFormatting.GRAY),
+                Icons.label(StructureManager.formatMcTime(now), ChatFormatting.AQUA),
+                null, null));
+        for (int slot = 1; slot <= st.stateCount; slot++) {
+            final int s = slot;
+            long time = st.stateTime(s);
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Etat " + s + (st.current == s ? " (actuel)" : ""),
+                            st.current == s ? ChatFormatting.AQUA : ChatFormatting.GRAY),
+                    Icons.label(StructureManager.formatMcTime(time),
+                            time >= 0 ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                    Icons.label("Regler", ChatFormatting.YELLOW),
+                    sp -> openStateTime(sp, name, s)));
+        }
+
+        OwoMenuServer.openPanel(admin, title, rows, List.of(),
+                sp -> openSchedule(sp, name), sp -> openStruct(sp, name));
+    }
+
+    /** Reglage de l'heure d'un etat, avec apercu : le bouton met le monde a cette heure pour la voir. */
+    public static void openStateTime(ServerPlayer admin, String name, int slot) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        long time = st.stateTime(slot);
+        Component title = Component.literal("Heure - etat " + slot)
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        List<Component> stats = List.of(
+                Component.literal("Declenchement : " + StructureManager.formatMcTime(time))
+                        .withStyle(s -> s.withColor(time >= 0 ? ChatFormatting.GREEN : ChatFormatting.RED)
+                                .withItalic(false)),
+                Component.literal("Heure du monde : "
+                        + StructureManager.formatMcTime(admin.serverLevel().getDayTime() % 24000L))
+                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CLOCK),
+                Icons.label("Regler l'heure", ChatFormatting.GREEN),
+                Icons.lore("Tick du monde : 0 = 06:00, 6000 = midi, 18000 = minuit", ChatFormatting.GRAY),
+                sp -> Menus.promptAmount(sp, Icons.label("Heure de l'etat " + slot + " (0 a 23999)", ChatFormatting.GOLD),
+                        List.of(Icons.lore("0 = 06:00 | 6000 = 12:00 | 12000 = 18:00 | 18000 = 00:00", ChatFormatting.GRAY),
+                                Icons.lore("L'etat se pose quand le monde atteint cette heure.", ChatFormatting.DARK_GRAY)),
+                        Icons.label("Valider", ChatFormatting.GREEN),
+                        Math.max(0, time), 0, 23999,
+                        v -> {
+                            st.setStateTime(slot, v);
+                            StructureData.get(sp.server).setDirty();
+                            sp.sendSystemMessage(Messages.success("Etat " + slot + " a "
+                                    + StructureManager.formatMcTime(v) + "."));
+                            openStateTime(sp, name, slot);
+                        })));
+        if (time >= 0) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.RECOVERY_COMPASS),
+                    Icons.label("Voir " + StructureManager.formatMcTime(time), ChatFormatting.AQUA),
+                    Icons.lore("Met le monde a cette heure pour juger du rendu", ChatFormatting.GRAY),
+                    sp -> {
+                        StructureManager.setWorldTime(sp.server, time);
+                        sp.sendSystemMessage(Messages.info("Monde regle sur "
+                                + StructureManager.formatMcTime(time) + "."));
+                        Menus.close(sp);
+                    }));
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                    Icons.label("Effacer l'heure", ChatFormatting.RED),
+                    Icons.lore("Cet etat ne sera plus declenche automatiquement", ChatFormatting.GRAY),
+                    sp -> {
+                        st.setStateTime(slot, -1);
+                        StructureData.get(sp.server).setDirty();
+                        sp.sendSystemMessage(Messages.info("Horaire de l'etat " + slot + " efface."));
+                        openStateTime(sp, name, slot);
+                    }));
+        }
+
+        OwoMenuServer.openHub(admin, title, stats, entries,
+                sp -> openStateTime(sp, name, slot), sp -> openSchedule(sp, name));
     }
 
     /** Ajoute un identifiant de bloc au filtre (sans doublon) et rouvre l'ecran. */

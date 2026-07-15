@@ -75,6 +75,28 @@ public final class StructureData extends SavedData {
     public static final int MIN_STATES = 2;
     public static final int MAX_STATES = 5;
 
+    /** Comment la structure change d'etat. */
+    public enum Mode {
+        MANUAL("Manuel"),
+        DAY_NIGHT("Auto jour/nuit"),
+        SCHEDULE("Horaires precis");
+
+        private final String label;
+
+        Mode(String label) {
+            this.label = label;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        public Mode next() {
+            Mode[] all = values();
+            return all[(ordinal() + 1) % all.length];
+        }
+    }
+
     /** Une structure : sa zone, ses etats (2 a 5) et son mode de bascule. */
     public static final class Struct {
         public final String name;
@@ -84,8 +106,10 @@ public final class StructureData extends SavedData {
         /** Schematiques des etats 1..MAX_STATES (index 0 = etat 1) ; null = pas encore capture. */
         private final CompoundTag[] states = new CompoundTag[MAX_STATES];
         public int stateCount = MIN_STATES; // nombre d'etats utilises (2 a 5)
-        public boolean auto;        // true = bascule automatique jour/nuit (etat 1 = jour, etat 2 = nuit)
-        public int current = 1;     // etat actuellement pose (1..stateCount)
+        public Mode mode = Mode.MANUAL;    // manuel, auto jour/nuit, ou horaires precis
+        public int current = 1;            // etat actuellement pose (1..stateCount)
+        /** Mode "Horaires" : heure du monde (0..23999) qui declenche chaque etat ; -1 = non defini. */
+        private final long[] stateTimes = new long[MAX_STATES];
         public Anim anim = Anim.RANDOM; // style d'animation de la bascule
 
         /**
@@ -140,6 +164,28 @@ public final class StructureData extends SavedData {
         /** Etat suivant dans le cycle (revient a 1 apres le dernier). */
         public int nextState() {
             return current >= stateCount ? 1 : current + 1;
+        }
+
+        /** Heure de declenchement de l'etat (0..23999), ou -1 si non definie. */
+        public long stateTime(int slot) {
+            return valid(slot) ? stateTimes[slot - 1] : -1L;
+        }
+
+        /** Definit l'heure de declenchement ; une valeur hors [0, 23999] efface l'horaire. */
+        public void setStateTime(int slot, long time) {
+            if (valid(slot)) {
+                stateTimes[slot - 1] = (time < 0 || time > 23999) ? -1L : time;
+            }
+        }
+
+        /** Au moins un horaire est-il defini parmi les etats utilises ? */
+        public boolean hasAnySchedule() {
+            for (int i = 1; i <= stateCount; i++) {
+                if (stateTime(i) >= 0) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /** Borne le nombre d'etats et recadre l'etat courant / celui du marchand. */
@@ -226,7 +272,19 @@ public final class StructureData extends SavedData {
             }
             st.stateCount = Math.max(MIN_STATES, Math.min(MAX_STATES,
                     s.contains("stateCount") ? s.getInt("stateCount") : MIN_STATES));
-            st.auto = s.getBoolean("auto");
+            // Mode : nouveau format, avec repli sur l'ancien booleen "auto".
+            if (s.contains("mode")) {
+                try {
+                    st.mode = Mode.valueOf(s.getString("mode"));
+                } catch (IllegalArgumentException ignored) {
+                    st.mode = Mode.MANUAL;
+                }
+            } else {
+                st.mode = s.getBoolean("auto") ? Mode.DAY_NIGHT : Mode.MANUAL;
+            }
+            for (int slot = 1; slot <= MAX_STATES; slot++) {
+                st.setStateTime(slot, s.contains("time" + slot) ? s.getLong("time" + slot) : -1L);
+            }
             st.current = Math.max(1, Math.min(st.stateCount, s.getInt("current")));
             try {
                 st.anim = Anim.valueOf(s.getString("anim"));
@@ -282,7 +340,10 @@ public final class StructureData extends SavedData {
                 }
             }
             s.putInt("stateCount", st.stateCount);
-            s.putBoolean("auto", st.auto);
+            s.putString("mode", st.mode.name());
+            for (int slot = 1; slot <= MAX_STATES; slot++) {
+                s.putLong("time" + slot, st.stateTime(slot));
+            }
             s.putInt("current", st.current);
             s.putString("anim", st.anim.name());
             ListTag filter = new ListTag();

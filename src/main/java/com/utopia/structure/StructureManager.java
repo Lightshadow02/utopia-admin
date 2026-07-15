@@ -379,18 +379,16 @@ public final class StructureManager {
     public static void tickAuto(MinecraftServer server) {
         StructureData data = StructureData.get(server);
         for (StructureData.Struct struct : data.all()) {
-            // Le mode auto suit le cycle jour/nuit : etat 1 le jour, etat 2 la nuit.
-            // Les etats 3 a 5 eventuels restent pilotes a la main.
-            if (!struct.auto || !struct.hasState(1) || !struct.hasState(2)) {
+            if (struct.mode == StructureData.Mode.MANUAL) {
                 continue;
             }
             ServerLevel level = resolveLevel(server, struct.dim);
             if (level == null || !level.isLoaded(struct.min)) {
                 continue;
             }
-            int wanted = isNight(level) ? 2 : 1;
-            if (struct.current != wanted && !isTransitioning(struct)) {
-                applyAnimated(server, struct, wanted); // dissolution aleatoire
+            int wanted = wantedState(struct, level);
+            if (wanted > 0 && struct.current != wanted && struct.hasState(wanted) && !isTransitioning(struct)) {
+                applyAnimated(server, struct, wanted);
             }
         }
     }
@@ -479,6 +477,66 @@ public final class StructureManager {
         String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
         return java.util.Base64.getEncoder()
                 .encodeToString(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Etat attendu selon le mode de la structure, ou -1 si aucun.
+     * <ul>
+     *   <li>{@code DAY_NIGHT} : etat 1 le jour, etat 2 la nuit (les etats 3+ restent manuels) ;</li>
+     *   <li>{@code SCHEDULE} : l'etat dont l'horaire est le dernier atteint (avec passage a minuit).</li>
+     * </ul>
+     */
+    private static int wantedState(StructureData.Struct struct, ServerLevel level) {
+        if (struct.mode == StructureData.Mode.DAY_NIGHT) {
+            if (!struct.hasState(1) || !struct.hasState(2)) {
+                return -1;
+            }
+            return isNight(level) ? 2 : 1;
+        }
+        if (struct.mode != StructureData.Mode.SCHEDULE || !struct.hasAnySchedule()) {
+            return -1;
+        }
+        long now = level.getDayTime() % 24000L;
+        // Le dernier horaire atteint depuis le debut du jour...
+        int best = -1;
+        long bestTime = -1L;
+        for (int i = 1; i <= struct.stateCount; i++) {
+            long t = struct.stateTime(i);
+            if (t >= 0 && t <= now && t > bestTime) {
+                bestTime = t;
+                best = i;
+            }
+        }
+        if (best != -1) {
+            return best;
+        }
+        // ... ou, si aucun n'est encore passe aujourd'hui, le dernier de la veille (passage a minuit).
+        for (int i = 1; i <= struct.stateCount; i++) {
+            long t = struct.stateTime(i);
+            if (t >= 0 && t > bestTime) {
+                bestTime = t;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /** Formate une heure du monde : "13:00 (13000)". Le tick 0 correspond a 06:00. */
+    public static String formatMcTime(long tick) {
+        if (tick < 0) {
+            return "non defini";
+        }
+        long hour = ((tick / 1000L) + 6L) % 24L;
+        long minute = (tick % 1000L) * 60L / 1000L;
+        return String.format("%02d:%02d (%d)", hour, minute, tick);
+    }
+
+    /** Regle l'heure de toutes les dimensions, comme le ferait /time set. */
+    public static void setWorldTime(MinecraftServer server, long tick) {
+        for (ServerLevel level : server.getAllLevels()) {
+            long day = level.getDayTime() / 24000L;
+            level.setDayTime(day * 24000L + Math.max(0, Math.min(23999, tick)));
+        }
     }
 
     /** Nuit minecraftienne (approximativement de 13000 a 23000). */

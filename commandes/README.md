@@ -141,7 +141,17 @@ Une **zone du monde** dont le serveur mémorise **deux états** (deux « schéma
 1. **Nouvelle structure** → active le mode zone : **clic gauche = coin 1**, **clic droit = coin 2** (boîte **rouge** en particules).
 2. Retourne dans `/admin → Structures` → **Valider et nommer** (ex. `montgolfiere`) → l'**état 1 est capturé** depuis le monde actuel.
 3. **Modifie ta construction** en jeu (ex. la montgolfière est partie), puis clique la ligne **État 2** → **Capturer**.
-4. Clic sur la structure : **Suivant** fait tourner les états, ou passe en **Auto** → **nuit = état 2**, **jour = état 1**.
+4. Clic sur la structure : **Suivant** fait tourner les états, ou change le **Mode**.
+
+**Mode** (ligne *Mode*, cliquer pour faire défiler) :
+| Mode | Comportement |
+|---|---|
+| **Manuel** | Tu changes l'état toi-même (Suivant / Choisir). |
+| **Auto jour/nuit** | 🌙 nuit = **état 2**, ☀️ jour = **état 1** (les états 3+ restent manuels). |
+| **Horaires précis** | Tu fixes **l'heure MC** de déclenchement de **chaque état**. |
+
+En mode **Horaires précis** → ligne **Horaires** → **Régler** : l'écran montre l'**heure actuelle** du monde et l'heure de chaque état. Sur un état → **Régler l'heure** (`0` = 06:00 · `6000` = midi · `12000` = 18:00 · `18000` = minuit), **Voir `13:00`** → met le monde à cette heure (comme `/time set`) **pour juger du rendu**, et **Effacer l'heure**.
+> ⏱️ L'état posé est celui dont l'horaire est le **dernier atteint** (le passage à minuit est géré). Tu peux donc enchaîner jusqu'à **5 moments** dans la journée.
 
 **Jusqu'à 5 états** (minimum 2) : ligne **Nombre d'états** → clique pour faire défiler `2 → 3 → 4 → 5 → 2`. Chaque état a sa ligne : **Capturer** (mémorise la zone telle qu'elle est) et **Poser cet état**.
 
@@ -149,7 +159,7 @@ Changement manuel via la ligne **État actuel** :
 - à **2 états** → bouton **Suivant** (simple bascule)
 - à **3 états et plus** → bouton **Choisir** → petite **liste des états** (l'actuel en vert, les non capturés grisés) → clic = on pose celui-là
 
-> ⏰ Le mode **Auto** suit le cycle jour/nuit et n'utilise donc que les **états 1 (jour) et 2 (nuit)**. Les états **3 à 5** se pilotent à la main (menu, ou bouton Suivant).
+> ⏰ Le mode **Auto jour/nuit** n'utilise que les **états 1 (jour) et 2 (nuit)**. Pour exploiter les **5 états** automatiquement, utilise le mode **Horaires précis**.
 
 **Blocs concernés** (ligne *Blocs concernés* → **Filtrer**) : par défaut **toute la zone** change. En ajoutant des blocs, **seuls ceux-là** changent — le reste de la construction n'est pas touché. Deux façons d'ajouter : **Bloc en main**, ou **Bloc visé** (le bloc que tu regardes — pratique pour un bloc **sans item**, ou dont l'item ne correspond pas au bloc posé). **Tout vider** = retour au comportement normal.
 
