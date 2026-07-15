@@ -88,6 +88,13 @@ public final class StructureData extends SavedData {
         public int current = 1;     // etat actuellement pose (1..stateCount)
         public Anim anim = Anim.RANDOM; // style d'animation de la bascule
 
+        /**
+         * Filtre optionnel : si non vide, seuls les blocs de cette liste (identifiants de blocs)
+         * changent lors d'une bascule ; tout le reste de la zone est laisse intact. Permet par
+         * exemple de n'animer que les lanternes (allumees la nuit, eteintes le jour).
+         */
+        public final List<String> blockFilter = new ArrayList<>();
+
         // ---- Marchand optionnel, present uniquement dans l'un des deux etats ----
         public boolean npcEnabled;
         public int npcState = 1;            // etat dans lequel le marchand apparait
@@ -226,6 +233,10 @@ public final class StructureData extends SavedData {
             } catch (IllegalArgumentException ignored) {
                 st.anim = Anim.RANDOM;
             }
+            ListTag filter = s.getList("blockFilter", Tag.TAG_STRING);
+            for (int j = 0; j < filter.size(); j++) {
+                st.blockFilter.add(filter.getString(j));
+            }
             // Marchand
             st.npcEnabled = s.getBoolean("npcEnabled");
             st.npcState = s.getInt("npcState") == 2 ? 2 : 1;
@@ -274,6 +285,11 @@ public final class StructureData extends SavedData {
             s.putBoolean("auto", st.auto);
             s.putInt("current", st.current);
             s.putString("anim", st.anim.name());
+            ListTag filter = new ListTag();
+            for (String id : st.blockFilter) {
+                filter.add(net.minecraft.nbt.StringTag.valueOf(id));
+            }
+            s.put("blockFilter", filter);
             // Marchand
             s.putBoolean("npcEnabled", st.npcEnabled);
             s.putInt("npcState", st.npcState);

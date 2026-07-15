@@ -269,12 +269,18 @@ public final class StructureManager {
     private static void applyChange(ServerLevel level, Change c, int index) {
         BlockState old = level.getBlockState(c.pos());
         BlockState fx = old.isAir() ? c.state() : old;
-        // Un conteneur lache son contenu dans onRemove quand on le remplace (piedestal et son livre,
-        // coffres...) : UPDATE_SUPPRESS_DROPS ne couvre que les drops du bloc lui-meme. On le vide
-        // donc avant. Sans risque : le contenu est restaure depuis le NBT du schematique.
+        // Un bloc qui contient des objets les lache dans onRemove quand on le remplace (piedestal et
+        // son livre, coffres...) : UPDATE_SUPPRESS_DROPS ne couvre que les drops du bloc lui-meme.
+        // On neutralise donc la source : vider l'inventaire s'il expose Container, puis SUPPRIMER le
+        // block entity. Sans block entity, onRemove n'a plus rien a lacher, quelle que soit la facon
+        // dont le mod stocke son contenu (Container, capability, champ interne...).
+        // Sans risque : le contenu est restaure depuis le NBT du schematique.
         BlockEntity oldBe = level.getBlockEntity(c.pos());
-        if (oldBe instanceof Container container) {
-            container.clearContent();
+        if (oldBe != null) {
+            if (oldBe instanceof Container container) {
+                container.clearContent();
+            }
+            level.removeBlockEntity(c.pos());
         }
         level.setBlock(c.pos(), c.state(), PLACE_FLAGS);
         if (c.nbt() != null) {
@@ -298,6 +304,25 @@ public final class StructureManager {
                         SoundSource.BLOCKS, 0.35f, 0.8f + level.getRandom().nextFloat() * 0.4f);
             }
         }
+    }
+
+    /**
+     * Le changement est-il autorise par le filtre de la structure ? Sans filtre, tout passe. Avec un
+     * filtre, on ne garde que les changements qui <b>concernent</b> un bloc filtre, d'un cote ou de
+     * l'autre : ainsi une lanterne allumee -> eteinte (ou lanterne -> air) passe, mais le reste de la
+     * zone n'est pas touche.
+     */
+    private static boolean allowed(StructureData.Struct struct, BlockState old, BlockState target) {
+        if (struct.blockFilter.isEmpty()) {
+            return true;
+        }
+        return struct.blockFilter.contains(blockId(old)) || struct.blockFilter.contains(blockId(target));
+    }
+
+    /** Identifiant de registre d'un bloc, ex. "minecraft:lantern". */
+    public static String blockId(BlockState state) {
+        ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return id == null ? "" : id.toString();
     }
 
     /**
@@ -333,8 +358,12 @@ public final class StructureManager {
             }
             BlockPos abs = struct.min.offset(p.getInt(0), p.getInt(1), p.getInt(2));
             BlockState target = palette.get(state);
-            if (level.getBlockState(abs).equals(target)) {
+            BlockState old = level.getBlockState(abs);
+            if (old.equals(target)) {
                 continue; // deja au bon etat : on ne touche pas
+            }
+            if (!allowed(struct, old, target)) {
+                continue; // filtre actif : ce bloc n'est pas concerne par la bascule
             }
             out.add(new Change(abs, target, b.contains("nbt", Tag.TAG_COMPOUND) ? b.getCompound("nbt") : null));
         }

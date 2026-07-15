@@ -247,6 +247,12 @@ public final class StructureMenus {
                 }));
 
         rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Blocs concernes", ChatFormatting.GRAY),
+                Icons.label(st.blockFilter.isEmpty() ? "tous" : st.blockFilter.size() + " bloc(s)",
+                        st.blockFilter.isEmpty() ? ChatFormatting.GRAY : ChatFormatting.LIGHT_PURPLE),
+                Icons.label("Filtrer", ChatFormatting.YELLOW),
+                sp -> openFilter(sp, name)));
+        rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Marchand", ChatFormatting.GRAY),
                 Icons.label(st.npcEnabled ? st.npcName + " (etat " + st.npcState + ")" : "desactive",
                         st.npcEnabled ? ChatFormatting.GREEN : ChatFormatting.GRAY),
@@ -263,6 +269,69 @@ public final class StructureMenus {
                         }));
 
         OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openStruct(sp, name), StructureMenus::openList);
+    }
+
+    /**
+     * Filtre de blocs : par defaut une bascule touche tous les blocs de la zone. En ajoutant des
+     * blocs ici, seuls ceux-la changent (ex. n'animer que les lanternes : allumees la nuit, eteintes
+     * le jour), le reste de la construction restant intact.
+     */
+    public static void openFilter(ServerPlayer admin, String name) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        Component title = Component.literal("Blocs concernes - " + st.name)
+                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        for (String id : new ArrayList<>(st.blockFilter)) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(id, ChatFormatting.WHITE),
+                    Icons.label("", ChatFormatting.GRAY),
+                    Icons.label("Retirer", ChatFormatting.RED),
+                    sp -> {
+                        st.blockFilter.remove(id);
+                        StructureData.get(sp.server).setDirty();
+                        openFilter(sp, name);
+                    }));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Aucun filtre", ChatFormatting.GRAY),
+                    Icons.label("toute la zone change", ChatFormatting.DARK_GRAY), null, null));
+        }
+
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Ajouter (bloc en main)", ChatFormatting.GREEN),
+                        sp -> {
+                            ItemStack held = sp.getMainHandItem();
+                            if (!(held.getItem() instanceof net.minecraft.world.item.BlockItem bi)) {
+                                sp.sendSystemMessage(Messages.warn("Tiens un BLOC en main (ex. une lanterne)."));
+                                openFilter(sp, name);
+                                return;
+                            }
+                            String id = StructureManager.blockId(bi.getBlock().defaultBlockState());
+                            if (st.blockFilter.contains(id)) {
+                                sp.sendSystemMessage(Messages.warn(id + " est deja dans le filtre."));
+                            } else {
+                                st.blockFilter.add(id);
+                                StructureData.get(sp.server).setDirty();
+                                sp.sendSystemMessage(Messages.success("Filtre : " + id
+                                        + " (seuls ces blocs changeront)."));
+                            }
+                            openFilter(sp, name);
+                        }),
+                new OwoMenuServer.PanelAction(Icons.label("Tout vider", ChatFormatting.YELLOW),
+                        sp -> {
+                            st.blockFilter.clear();
+                            StructureData.get(sp.server).setDirty();
+                            sp.sendSystemMessage(Messages.info("Filtre vide : toute la zone change de nouveau."));
+                            openFilter(sp, name);
+                        }));
+
+        OwoMenuServer.openPanel(admin, title, rows, footer, sp -> openFilter(sp, name), sp -> openStruct(sp, name));
     }
 
     /**

@@ -151,6 +151,9 @@ Changement manuel via la ligne **État actuel** :
 
 > ⏰ Le mode **Auto** suit le cycle jour/nuit et n'utilise donc que les **états 1 (jour) et 2 (nuit)**. Les états **3 à 5** se pilotent à la main (menu, ou bouton Suivant).
 
+**Blocs concernés** (ligne *Blocs concernés* → **Filtrer**) : par défaut **toute la zone** change. En ajoutant des blocs (**bloc en main** → Ajouter), **seuls ceux-là** changent — le reste de la construction n'est pas touché.
+> 💡 Cas d'usage : ne filtrer que les **lanternes** → elles s'allument la nuit et s'éteignent le jour, sans reposer le bâtiment. **Tout vider** = retour au comportement normal.
+
 **Animations** (ligne *Animation*, cliquer pour faire défiler) : `Dissolution aléatoire` · `Couche par couche (montée)` · `Couche par couche (descente)` · `Onde depuis le centre` · `Onde vers le centre` · `Instantané`. Seuls les blocs **qui changent réellement** sont animés (~3 s, avec particules et son).
 
 **Marchand (optionnel)** — ligne *Marchand* → **Configurer** : l'active, choisis **à quel état il apparaît** (1 ou 2), place-le (**Ici** = ta position), **renomme**-le, choisis son **skin**, et **gère ses articles**.
