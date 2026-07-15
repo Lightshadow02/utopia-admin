@@ -232,7 +232,7 @@ public final class StructureMenus {
                             st.current == s ? ChatFormatting.AQUA : ChatFormatting.GRAY),
                     Icons.label(defined ? "defini" : "manquant",
                             defined ? ChatFormatting.GREEN : ChatFormatting.RED),
-                    Icons.label(defined ? "Capturer / Poser" : "Capturer", ChatFormatting.GOLD),
+                    Icons.label(defined ? "Gerer" : "Capturer", ChatFormatting.GOLD),
                     sp -> openStateMenu(sp, name, s)));
         }
         rows.add(new OwoMenuServer.PanelRow(

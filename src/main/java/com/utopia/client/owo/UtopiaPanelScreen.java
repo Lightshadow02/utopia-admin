@@ -157,21 +157,32 @@ public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
         btnCell.horizontalAlignment(HorizontalAlignment.RIGHT);
         btnCell.verticalAlignment(VerticalAlignment.CENTER);
         if (r.buttonId() >= 0) {
-            btnCell.child(textButton(r.buttonLabel(), () -> click(r.buttonId())));
+            // Le bouton est aligne a droite dans une cellule fixe : un libelle trop long deborderait
+            // VERS LA GAUCHE (il apparaissait coupe). On borne donc le texte, qui passe a la ligne.
+            btnCell.child(textButton(r.buttonLabel(), () -> click(r.buttonId()), BTN_W - 12));
         }
         row.child(btnCell);
         return row;
     }
 
-    /** Petit bouton "flat + bordure" avec survol. */
+    /** Petit bouton "flat + bordure" avec survol (libelle non borne : pied de page, navigation...). */
     private FlowLayout textButton(Component label, Runnable action) {
+        return textButton(label, action, -1);
+    }
+
+    /** Petit bouton "flat + bordure" avec survol ; {@code maxLabelWidth} &gt; 0 fait passer le texte a la ligne. */
+    private FlowLayout textButton(Component label, Runnable action, int maxLabelWidth) {
         FlowLayout b = Containers.horizontalFlow(Sizing.content(), Sizing.content());
         b.padding(Insets.of(4, 4, 6, 6));
         b.surface(OwoStyle.BTN);
         b.cursorStyle(CursorStyle.POINTER);
         b.horizontalAlignment(HorizontalAlignment.CENTER);
         b.verticalAlignment(VerticalAlignment.CENTER);
-        b.child(Components.label(label));
+        io.wispforest.owo.ui.component.LabelComponent text = Components.label(label);
+        if (maxLabelWidth > 0) {
+            text.maxWidth(maxLabelWidth);
+        }
+        b.child(text);
         b.mouseEnter().subscribe(() -> b.surface(OwoStyle.BTN_HOVER));
         b.mouseLeave().subscribe(() -> b.surface(OwoStyle.BTN));
         b.mouseDown().subscribe((mouseX, mouseY, mouseButton) -> {
