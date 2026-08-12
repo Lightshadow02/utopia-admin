@@ -3,7 +3,9 @@ package com.utopia.structure;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -157,7 +159,7 @@ public final class StructureManager {
             return false;
         }
         cancelFor(struct);
-        List<Change> changes = diff(level, struct, tag);
+        List<Change> changes = diff(level, struct, slot);
         for (int i = 0; i < changes.size(); i++) {
             applyChange(level, changes.get(i), i);
         }
@@ -222,7 +224,7 @@ public final class StructureManager {
         if (level == null) {
             return false;
         }
-        List<Change> changes = diff(level, struct, tag);
+        List<Change> changes = diff(level, struct, slot);
         cancelFor(struct);
         // L'etat est marque tout de suite : evite que la bascule auto ne relance la transition.
         struct.current = slot;
@@ -283,6 +285,13 @@ public final class StructureManager {
             level.removeBlockEntity(c.pos());
         }
         level.setBlock(c.pos(), c.state(), PLACE_FLAGS);
+        // On pose sans notifier les voisins ; pour un fluide (eau remise a la place d'un bloc immerge,
+        // ou bloc waterlogged), on planifie un tick de fluide afin qu'il se reajuste naturellement :
+        // reste source dans un lac, s'ecoule/se draine sur une riviere, au lieu d'une source figee.
+        net.minecraft.world.level.material.FluidState fluid = c.state().getFluidState();
+        if (!fluid.isEmpty()) {
+            level.scheduleTick(c.pos(), fluid.getType(), 2);
+        }
         if (c.nbt() != null) {
             BlockEntity be = level.getBlockEntity(c.pos());
             if (be != null) {
@@ -330,7 +339,8 @@ public final class StructureManager {
      * StructureTemplate (format vanilla : "palette" + "blocks"), ce qui permet de poser dans notre
      * propre ordre au lieu du placement instantane.
      */
-    private static List<Change> diff(ServerLevel level, StructureData.Struct struct, CompoundTag tag) {
+    private static List<Change> diff(ServerLevel level, StructureData.Struct struct, int targetSlot) {
+        CompoundTag tag = struct.state(targetSlot);
         HolderGetter<Block> lookup = level.holderLookup(Registries.BLOCK);
         ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
         if (paletteTag.isEmpty() && tag.contains("palettes", Tag.TAG_LIST)) {
@@ -346,6 +356,7 @@ public final class StructureManager {
 
         ListTag blocksTag = tag.getList("blocks", Tag.TAG_COMPOUND);
         List<Change> out = new ArrayList<>();
+        Set<BlockPos> targetPositions = new HashSet<>(Math.max(16, blocksTag.size()));
         for (int i = 0; i < blocksTag.size(); i++) {
             CompoundTag b = blocksTag.getCompound(i);
             int state = b.getInt("state");
@@ -357,6 +368,7 @@ public final class StructureManager {
                 continue;
             }
             BlockPos abs = struct.min.offset(p.getInt(0), p.getInt(1), p.getInt(2));
+            targetPositions.add(abs);
             BlockState target = palette.get(state);
             BlockState old = level.getBlockState(abs);
             if (old.equals(target)) {
@@ -366,6 +378,36 @@ public final class StructureManager {
                 continue; // filtre actif : ce bloc n'est pas concerne par la bascule
             }
             out.add(new Change(abs, target, b.contains("nbt", Tag.TAG_COMPOUND) ? b.getCompound("nbt") : null));
+        }
+
+        // Positions presentes dans un AUTRE etat mais absentes de la cible : l'eau etant ignoree a la
+        // capture, une position qui devient de l'eau dans la cible n'y est pas enregistree. Sans ce
+        // rattrapage, un bloc immerge (pont sous l'eau...) ne disparaissait jamais a la bascule. On le
+        // remet donc en eau. (L'eau ambiante, absente de tous les etats, n'est jamais touchee.)
+        BlockState water = Blocks.WATER.defaultBlockState();
+        Set<BlockPos> becameWater = new HashSet<>();
+        // Borne par stateCount : on ignore les etats orphelins (au-dela du nombre d'etats utilise),
+        // qui pourraient sinon forcer de l'eau sur des positions hors du cycle.
+        for (int slot = 1; slot <= struct.stateCount; slot++) {
+            if (slot == targetSlot || !struct.hasState(slot)) {
+                continue;
+            }
+            ListTag others = struct.state(slot).getList("blocks", Tag.TAG_COMPOUND);
+            for (int i = 0; i < others.size(); i++) {
+                ListTag p = others.getCompound(i).getList("pos", Tag.TAG_INT);
+                if (p.size() < 3) {
+                    continue;
+                }
+                BlockPos abs = struct.min.offset(p.getInt(0), p.getInt(1), p.getInt(2));
+                if (targetPositions.contains(abs) || !becameWater.add(abs)) {
+                    continue; // deja gere par la cible, ou deja traite
+                }
+                BlockState old = level.getBlockState(abs);
+                if (old.equals(water) || !allowed(struct, old, water)) {
+                    continue;
+                }
+                out.add(new Change(abs, water, null));
+            }
         }
         return out;
     }
