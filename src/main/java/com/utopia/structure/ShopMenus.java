@@ -49,6 +49,16 @@ public final class ShopMenus {
                                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        // Marchand mongol : rachat des items programmes du jour (quota global au serveur).
+        if (st.npcMongol) {
+            int remaining = MongolManager.remaining(player.server);
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.CHEST),
+                    Icons.label("Lui vendre des items", ChatFormatting.GREEN),
+                    Icons.lore("1 item = " + MongolManager.UNIT_PRICE + " Utopiece - quota restant "
+                            + remaining + " / " + MongolManager.DAILY_QUOTA,
+                            remaining > 0 ? ChatFormatting.GRAY : ChatFormatting.RED),
+                    sp -> MongolMenus.openSell(sp, structName)));
+        }
         for (int i = 0; i < st.trades.size(); i++) {
             final int idx = i;
             StructureData.Trade t = st.trades.get(i);

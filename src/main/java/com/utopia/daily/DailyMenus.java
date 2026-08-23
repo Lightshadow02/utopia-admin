@@ -527,7 +527,7 @@ public final class DailyMenus {
                 DailyMenus::openAdminMenu);
     }
 
-    private static void openItemsEditor(ServerPlayer admin, Component title, List<? extends String> currentSpecs,
+    public static void openItemsEditor(ServerPlayer admin, Component title, List<? extends String> currentSpecs,
                                         Consumer<List<String>> onSave, Consumer<ServerPlayer> reopen) {
         UtopiaGui gui = new UtopiaGui(6, title);
 

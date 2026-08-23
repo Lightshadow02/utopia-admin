@@ -89,6 +89,12 @@ public class ShopNpc extends LivingEntity implements SkinNpc {
         this.setCustomNameVisible(true); // le nom du marchand est utile au joueur
     }
 
+    @Override
+    public void tick() {
+        super.tick();
+        NpcLook.faceNearestPlayer(this); // suit du regard le joueur le plus proche
+    }
+
     // -------- Interaction : ouvre la boutique --------
 
     @Override

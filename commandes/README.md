@@ -177,6 +177,13 @@ Changement manuel via la ligne **État actuel** :
 - **Stock illimité** (boutique serveur). Les joueurs font **clic droit** sur le marchand → menu d'achat/revente en **Utopièces**.
 - Il **apparaît/disparaît tout seul** selon l'état courant de la structure.
 
+**🐎 Rachat mongol** (ligne *Rachat mongol* → **Basculer**) : le marchand rachète en plus une liste d'items **programmée à l'avance**, à **1 item = 1 Utopièce**.
+- **Programme (mongol) → Calendrier** : même système que le Daily — un clic sur un jour ouvre l'éditeur d'items (dépose les items, clic pour retirer). On peut donc tout planifier des semaines à l'avance, sans intervention quotidienne.
+- **Quota : 1 000 items par jour, GLOBAL au serveur** (pas par joueur) — toutes les ventes s'additionnent. Remise à zéro automatique **à minuit** (heure du serveur).
+- Le menu joueur affiche les items acceptés, le prix, et le **quota restant** (*ex. « Quota restant aujourd'hui : 637 / 1 000 items »*).
+- Quand le quota est atteint, un message est diffusé à tous : *« Le marchand mongol a rempli ses réserves pour aujourd'hui ! … »* (et un message de réouverture le lendemain).
+- Programme stocké dans `config/utopia_admin/mongol_calendar.json`.
+
 > 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié).
 > 💧 **L'eau est ignorée** : elle n'est ni mémorisée ni reposée (la mer/les rivières restent intactes). Les **entités** ne sont pas capturées (sinon chaque bascule en dupliquerait).
 > 📦 Volume max : **5 000 000 de blocs**. Une grosse structure n'est pas refusée : elle **s'anime simplement plus longtemps** (débit plafonné à 120 blocs/tick → TPS stable). Seule la **capture** est synchrone : sur une zone énorme, le serveur marque une pause d'une seconde ou deux au moment du « Capturer ».

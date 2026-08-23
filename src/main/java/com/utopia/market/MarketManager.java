@@ -271,11 +271,12 @@ public final class MarketManager {
 
         ServerPlayer sellerOnline = server.getPlayerList().getPlayer(seller);
         if (sellerOnline != null) {
+            // La part detruite n'est pas annoncee : du point de vue du vendeur, la retenue est une
+            // taxe de 25 % (dont la mairie ne garde qu'une partie, mais c'est un detail interne).
             sellerOnline.sendSystemMessage(Messages.success("Vente : "
                     + qty + "x " + bought.getHoverName().getString()
-                    + " a " + buyer.getGameProfile().getName() + " (+" + EconomyManager.format(sShare)
-                    + " ; mairie " + EconomyManager.format(mShare)
-                    + ", detruit " + EconomyManager.format(burnedShare(total)) + ")."));
+                    + " a " + buyer.getGameProfile().getName()
+                    + " | " + total + " Utopieces - 25% de taxe de la mairie = +" + sShare + " Utopieces"));
         }
 
         if (stall.offers.isEmpty()) {

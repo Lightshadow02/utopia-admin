@@ -287,9 +287,10 @@ public final class UtopiaEvents {
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
-        // Charge les fichiers locaux : clear-lag (JSON) et calendrier des recompenses (JSON).
+        // Charge les fichiers locaux : clear-lag (JSON) et calendriers (recompenses, marchand mongol).
         ClearLagManager.reload();
         DailyManager.loadCalendar();
+        com.utopia.structure.MongolManager.loadCalendar();
         com.utopia.util.Banner.print(event.getServer());
     }
 
@@ -376,6 +377,7 @@ public final class UtopiaEvents {
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);
             com.utopia.structure.StructureManager.syncShopNpcs(server);
+            com.utopia.structure.MongolManager.tick(server); // remise a zero du quota a minuit
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.
         com.utopia.election.ElectionManager.tick(server);

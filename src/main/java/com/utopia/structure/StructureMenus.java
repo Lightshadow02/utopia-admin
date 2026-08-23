@@ -619,6 +619,32 @@ public final class StructureMenus {
                 Icons.label(st.trades.size() + " article(s)", ChatFormatting.AQUA),
                 Icons.label("Gerer", ChatFormatting.YELLOW),
                 sp -> openTrades(sp, name)));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Rachat mongol", ChatFormatting.GRAY),
+                Icons.label(st.npcMongol ? "actif" : "inactif",
+                        st.npcMongol ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label("Basculer", ChatFormatting.YELLOW),
+                sp -> {
+                    st.npcMongol = !st.npcMongol;
+                    StructureData.get(sp.server).setDirty();
+                    sp.sendSystemMessage(st.npcMongol
+                            ? Messages.success("Rachat mongol actif : ce marchand rachete les items programmes "
+                                    + "(1 Utopiece l'unite, quota " + MongolManager.DAILY_QUOTA + "/jour).")
+                            : Messages.info("Rachat mongol desactive."));
+                    openShopAdmin(sp, name);
+                }));
+        if (st.npcMongol) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Programme (mongol)", ChatFormatting.GRAY),
+                    Icons.label(MongolManager.acceptedToday().size() + " item(s) aujourd'hui", ChatFormatting.AQUA),
+                    Icons.label("Calendrier", ChatFormatting.YELLOW),
+                    sp -> MongolMenus.openCalendar(sp, name)));
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Quota du jour", ChatFormatting.GRAY),
+                    Icons.label(MongolManager.remaining(admin.server) + " / "
+                            + MongolManager.DAILY_QUOTA + " items", ChatFormatting.GOLD),
+                    null, null));
+        }
 
         OwoMenuServer.openPanel(admin, title, rows, List.of(),
                 sp -> openShopAdmin(sp, name), sp -> openStruct(sp, name));

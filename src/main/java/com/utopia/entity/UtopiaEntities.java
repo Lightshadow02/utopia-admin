@@ -22,7 +22,7 @@ public final class UtopiaEntities {
             ENTITIES.register("stall_npc", () -> EntityType.Builder.<StallNpc>of(StallNpc::new, MobCategory.MISC)
                     .sized(0.6f, 1.8f)
                     .clientTrackingRange(8)
-                    .updateInterval(20)
+                    .updateInterval(2)
                     .build("stall_npc"));
 
     /** Marchand d'une structure (present seulement dans l'un des deux etats). */
@@ -30,7 +30,7 @@ public final class UtopiaEntities {
             ENTITIES.register("shop_npc", () -> EntityType.Builder.<ShopNpc>of(ShopNpc::new, MobCategory.MISC)
                     .sized(0.6f, 1.8f)
                     .clientTrackingRange(8)
-                    .updateInterval(20)
+                    .updateInterval(2)
                     .build("shop_npc"));
 
     private UtopiaEntities() {

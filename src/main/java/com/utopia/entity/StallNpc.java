@@ -91,6 +91,12 @@ public class StallNpc extends LivingEntity implements SkinNpc {
         this.setCustomName(null); // le nom est porte par l'hologramme du stand
     }
 
+    @Override
+    public void tick() {
+        super.tick();
+        NpcLook.faceNearestPlayer(this); // suit du regard le joueur le plus proche
+    }
+
     // -------- Interaction : remplace le clic droit sur le bloc --------
 
     @Override

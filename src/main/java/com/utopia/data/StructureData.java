@@ -127,6 +127,8 @@ public final class StructureData extends SavedData {
         public String npcSkinValue = "";    // skin (propriete "textures"), vide = Steve
         public String npcSkinSignature = "";
         public final List<Trade> trades = new ArrayList<>();
+        /** Marchand mongol : il rachete aussi les items programmes au calendrier (quota global). */
+        public boolean npcMongol;
 
         public Struct(String name) {
             this.name = name;
@@ -306,6 +308,7 @@ public final class StructureData extends SavedData {
             }
             st.npcSkinValue = s.getString("npcSkinValue");
             st.npcSkinSignature = s.getString("npcSkinSig");
+            st.npcMongol = s.getBoolean("npcMongol");
             ListTag trades = s.getList("trades", Tag.TAG_COMPOUND);
             for (int j = 0; j < trades.size(); j++) {
                 CompoundTag t = trades.getCompound(j);
@@ -362,6 +365,7 @@ public final class StructureData extends SavedData {
             s.putString("npcName", st.npcName == null ? "Marchand" : st.npcName);
             s.putString("npcSkinValue", st.npcSkinValue == null ? "" : st.npcSkinValue);
             s.putString("npcSkinSig", st.npcSkinSignature == null ? "" : st.npcSkinSignature);
+            s.putBoolean("npcMongol", st.npcMongol);
             ListTag trades = new ListTag();
             for (Trade t : st.trades) {
                 CompoundTag tt = new CompoundTag();
