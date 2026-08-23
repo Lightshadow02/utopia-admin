@@ -177,13 +177,13 @@ Changement manuel via la ligne **État actuel** :
 - **Stock illimité** (boutique serveur). Les joueurs font **clic droit** sur le marchand → menu d'achat/revente en **Utopièces**.
 - Il **apparaît/disparaît tout seul** selon l'état courant de la structure.
 
-**🐎 Rachat mongol** (ligne *Rachat mongol* → **Basculer**) : le marchand rachète en plus une liste d'items **programmée à l'avance**, à **1 item = 1 Utopièce**.
-- **Programme (mongol) → Calendrier** : même système que le Daily — un clic sur un jour ouvre l'éditeur d'items (dépose les items, clic pour retirer). On peut donc tout planifier des semaines à l'avance, sans intervention quotidienne.
+**🐎 Rachat programmé** (ligne *Rachat programmé* → **Basculer**) : le marchand rachète en plus une liste d'items **programmée à l'avance**, à **1 item = 1 Utopièce**.
+- **Programme d'achat → Calendrier** : même système que le Daily — un clic sur un jour ouvre l'éditeur d'items (dépose les items, clic pour retirer). On peut donc tout planifier des semaines à l'avance, sans intervention quotidienne.
 - **Deux quotas, remis à zéro à minuit** (heure du serveur) :
   - 🧍 **Place quotidienne : 200 items par joueur** — toujours garantie, elle **ne touche pas** la réserve du serveur. Chacun peut donc vendre ses 200 items quoi qu'aient fait les autres.
   - 🏪 **Réserve du serveur : 1 000 items**, entamée **uniquement par les dépassements** (au-delà des 200 de chacun).
 - Le menu joueur affiche les items acceptés, le prix, **sa place quotidienne** et la **réserve restante**.
-- Quand la réserve est vide, message à tous : *« Le marchand mongol a rempli ses réserves pour aujourd'hui ! Impossible de dépasser vos 200 de place quotidienne avant minuit. »* (et un message de réouverture le lendemain).
+- Quand la réserve est vide, message à tous : *« \<nom du marchand\> a rempli ses réserves pour aujourd'hui ! Impossible de dépasser vos 200 de place quotidienne avant minuit. »* (et un message de réouverture le lendemain).
 - Programme stocké dans `config/utopia_admin/mongol_calendar.json`.
 
 > 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié).

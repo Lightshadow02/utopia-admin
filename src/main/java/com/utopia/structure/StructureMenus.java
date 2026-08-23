@@ -620,7 +620,7 @@ public final class StructureMenus {
                 Icons.label("Gerer", ChatFormatting.YELLOW),
                 sp -> openTrades(sp, name)));
         rows.add(new OwoMenuServer.PanelRow(
-                Icons.label("Rachat mongol", ChatFormatting.GRAY),
+                Icons.label("Rachat programme", ChatFormatting.GRAY),
                 Icons.label(st.npcMongol ? "actif" : "inactif",
                         st.npcMongol ? ChatFormatting.GREEN : ChatFormatting.GRAY),
                 Icons.label("Basculer", ChatFormatting.YELLOW),
@@ -628,14 +628,14 @@ public final class StructureMenus {
                     st.npcMongol = !st.npcMongol;
                     StructureData.get(sp.server).setDirty();
                     sp.sendSystemMessage(st.npcMongol
-                            ? Messages.success("Rachat mongol actif : ce marchand rachete les items programmes "
+                            ? Messages.success("Rachat programme actif : ce marchand rachete les items du calendrier "
                                     + "(1 Utopiece l'unite, quota " + MongolManager.DAILY_QUOTA + "/jour).")
-                            : Messages.info("Rachat mongol desactive."));
+                            : Messages.info("Rachat programme desactive."));
                     openShopAdmin(sp, name);
                 }));
         if (st.npcMongol) {
             rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label("Programme (mongol)", ChatFormatting.GRAY),
+                    Icons.label("Programme d'achat", ChatFormatting.GRAY),
                     Icons.label(MongolManager.acceptedToday().size() + " item(s) aujourd'hui", ChatFormatting.AQUA),
                     Icons.label("Calendrier", ChatFormatting.YELLOW),
                     sp -> MongolMenus.openCalendar(sp, name)));

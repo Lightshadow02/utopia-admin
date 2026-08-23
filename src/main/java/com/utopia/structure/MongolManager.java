@@ -133,7 +133,7 @@ public final class MongolManager {
         boolean wasFull = data.initialized() && data.announced();
         if (data.rollOver(LocalDate.now().toEpochDay()) && wasFull) {
             server.getPlayerList().broadcastSystemMessage(
-                    Component.literal("Le marchand mongol a vide ses reserves : chacun retrouve ses "
+                    Component.literal("Le marchand a vide ses reserves : chacun retrouve ses "
                                     + PERSONAL_QUOTA + " items du jour, et " + DAILY_QUOTA
                                     + " items de reserve commune sont de nouveau disponibles !")
                             .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)), false);
@@ -157,7 +157,7 @@ public final class MongolManager {
      * les {@link #PERSONAL_QUOTA} premiers items du joueur sont toujours rachetes, et seul le
      * depassement entame la reserve du serveur.
      */
-    public static Sale sell(ServerPlayer player, ItemStack model, int qty) {
+    public static Sale sell(ServerPlayer player, ItemStack model, int qty, String merchantName) {
         MinecraftServer server = player.server;
         if (model.isEmpty() || qty <= 0) {
             return new Sale(SellResult.INVALID, 0, 0, 0);
@@ -190,20 +190,24 @@ public final class MongolManager {
         data.addPersonal(player.getUUID(), removed);
         if (reserveUsed > 0) {
             data.addSold(reserveUsed);
-            announceIfFull(server);
+            announceIfFull(server, merchantName);
         }
         return new Sale(SellResult.OK, removed, paid, reserveUsed);
     }
 
-    /** Diffuse (une seule fois par jour) le message annoncant que les reserves sont pleines. */
-    private static void announceIfFull(MinecraftServer server) {
+    /**
+     * Diffuse (une seule fois par jour) le message annoncant que les reserves sont pleines. Le
+     * marchand est designe par son nom en jeu : aucun nom de code n'apparait cote joueur.
+     */
+    private static void announceIfFull(MinecraftServer server, String merchantName) {
         MongolData data = MongolData.get(server);
         if (data.sold() < DAILY_QUOTA || data.announced()) {
             return;
         }
         data.setAnnounced(true);
+        String who = (merchantName == null || merchantName.isBlank()) ? "Le marchand" : merchantName;
         server.getPlayerList().broadcastSystemMessage(
-                Component.literal("Le marchand mongol a rempli ses reserves pour aujourd'hui ! "
+                Component.literal(who + " a rempli ses reserves pour aujourd'hui ! "
                                 + "Impossible de depasser vos " + PERSONAL_QUOTA
                                 + " de place quotidienne avant minuit.")
                         .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true)), false);

@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Menus du marchand mongol : cote joueur, la liste des items rachetes aujourd'hui avec le quota
+ * Menus du rachat programme : cote joueur, la liste des items rachetes aujourd'hui avec le quota
  * restant ; cote admin, le calendrier qui programme ces items a l'avance (meme systeme que le Daily).
  */
 public final class MongolMenus {
@@ -43,9 +43,7 @@ public final class MongolMenus {
     }
 
     public static void openSell(ServerPlayer player, String structName, int page) {
-        com.utopia.data.StructureData.Struct st =
-                com.utopia.data.StructureData.get(player.server).get(structName);
-        String merchantName = (st == null || st.npcName == null) ? "Marchand" : st.npcName;
+        String merchantName = merchantName(player, structName);
         int reserve = MongolManager.remaining(player.server);
         int mine = MongolManager.personalRemaining(player);
         List<ItemStack> accepted = MongolManager.acceptedToday();
@@ -85,6 +83,7 @@ public final class MongolMenus {
     }
 
     private static void promptSell(ServerPlayer player, String structName, ItemStack model) {
+        String merchantName = merchantName(player, structName);
         int mine = MongolManager.personalRemaining(player);
         int reserve = MongolManager.remaining(player.server);
         int sellable = mine + reserve;
@@ -112,7 +111,7 @@ public final class MongolMenus {
                                 ChatFormatting.DARK_GRAY)),
                 Icons.label("Vendre", ChatFormatting.GREEN), max, 1, max,
                 qty -> {
-                    MongolManager.Sale sale = MongolManager.sell(player, model, (int) qty);
+                    MongolManager.Sale sale = MongolManager.sell(player, model, (int) qty, merchantName);
                     switch (sale.result()) {
                         case QUOTA_FULL -> player.sendSystemMessage(Messages.warn(
                                 "Reserves pleines : impossible de depasser tes "
@@ -152,7 +151,7 @@ public final class MongolMenus {
         int prevId = 50;
         int nextId = 51;
         int backId = 52;
-        UtopiaGui gui = new UtopiaGui(6, Component.literal("Marchand mongol"));
+        UtopiaGui gui = new UtopiaGui(6, Component.literal("Rachat programme"));
 
         List<OpenDailyPayload.Day> days = new ArrayList<>(daysInMonth);
         int planned = 0;
@@ -183,7 +182,7 @@ public final class MongolMenus {
         gui.button(nextId, ItemStack.EMPTY, sp -> openCalendar(sp, structName, ym.plusMonths(1)));
         gui.button(backId, ItemStack.EMPTY, sp -> StructureMenus.openShopAdmin(sp, structName));
 
-        Component title = Component.literal("Marchand mongol - " + monthName(ym) + " " + ym.getYear())
+        Component title = Component.literal("Rachat programme - " + monthName(ym) + " " + ym.getYear())
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
         Component plannedLine = Component.literal(planned + " jour(s) programme(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GREEN).withItalic(false));
@@ -210,6 +209,13 @@ public final class MongolMenus {
                             specs.size() + " item(s) programme(s) pour le " + date + "."));
                 },
                 sp -> openCalendar(sp, structName, backTo));
+    }
+
+    /** Nom affiche du marchand d'une structure (jamais un nom de code cote joueur). */
+    private static String merchantName(ServerPlayer player, String structName) {
+        com.utopia.data.StructureData.Struct st =
+                com.utopia.data.StructureData.get(player.server).get(structName);
+        return (st == null || st.npcName == null || st.npcName.isBlank()) ? "Le marchand" : st.npcName;
     }
 
     private static List<ItemStack> stacks(List<? extends String> specs) {
