@@ -46,7 +46,8 @@ public final class MongolMenus {
         com.utopia.data.StructureData.Struct st =
                 com.utopia.data.StructureData.get(player.server).get(structName);
         String merchantName = (st == null || st.npcName == null) ? "Marchand" : st.npcName;
-        int remaining = MongolManager.remaining(player.server);
+        int reserve = MongolManager.remaining(player.server);
+        int mine = MongolManager.personalRemaining(player);
         List<ItemStack> accepted = MongolManager.acceptedToday();
 
         Component title = Component.literal(merchantName)
@@ -54,9 +55,13 @@ public final class MongolMenus {
         List<Component> stats = new ArrayList<>();
         stats.add(Component.literal("Il rachete 1 item = " + MongolManager.UNIT_PRICE + " Utopiece")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
-        stats.add(Component.literal("Quota restant aujourd'hui : " + remaining
+        stats.add(Component.literal("Ta place quotidienne : " + mine
+                        + " / " + MongolManager.PERSONAL_QUOTA + " items")
+                .withStyle(s -> s.withColor(mine > 0 ? ChatFormatting.GREEN : ChatFormatting.YELLOW)
+                        .withItalic(false)));
+        stats.add(Component.literal("Reserve du serveur (au-dela) : " + reserve
                         + " / " + MongolManager.DAILY_QUOTA + " items")
-                .withStyle(s -> s.withColor(remaining > 0 ? ChatFormatting.GREEN : ChatFormatting.RED)
+                .withStyle(s -> s.withColor(reserve > 0 ? ChatFormatting.AQUA : ChatFormatting.RED)
                         .withItalic(false)));
         if (accepted.isEmpty()) {
             stats.add(Component.literal("Il ne cherche rien de particulier aujourd'hui.")
@@ -80,10 +85,13 @@ public final class MongolMenus {
     }
 
     private static void promptSell(ServerPlayer player, String structName, ItemStack model) {
-        int remaining = MongolManager.remaining(player.server);
-        if (remaining <= 0) {
-            player.sendSystemMessage(Messages.warn(
-                    "Le marchand a rempli ses reserves pour aujourd'hui : reviens apres minuit."));
+        int mine = MongolManager.personalRemaining(player);
+        int reserve = MongolManager.remaining(player.server);
+        int sellable = mine + reserve;
+        if (sellable <= 0) {
+            player.sendSystemMessage(Messages.warn("Tu as utilise tes " + MongolManager.PERSONAL_QUOTA
+                    + " de place quotidienne et les reserves du marchand sont pleines : "
+                    + "impossible de depasser avant minuit."));
             openSell(player, structName);
             return;
         }
@@ -93,25 +101,34 @@ public final class MongolMenus {
             openSell(player, structName);
             return;
         }
-        int max = Math.min(owned, remaining);
+        int max = Math.min(owned, sellable);
         String label = model.getHoverName().getString();
         Menus.promptAmount(player, Icons.label("Vendre : " + label, ChatFormatting.GOLD),
                 List.of(Icons.lore("Le marchand paie " + MongolManager.UNIT_PRICE + " Utopiece par item",
                                 ChatFormatting.GRAY),
-                        Icons.lore("Tu en possedes " + owned + " - quota restant " + remaining,
+                        Icons.lore("Tu en possedes " + owned + " - ta place quotidienne : " + mine,
+                                ChatFormatting.DARK_GRAY),
+                        Icons.lore("Au-dela, la reserve du serveur est entamee (" + reserve + " restants)",
                                 ChatFormatting.DARK_GRAY)),
                 Icons.label("Vendre", ChatFormatting.GREEN), max, 1, max,
                 qty -> {
                     MongolManager.Sale sale = MongolManager.sell(player, model, (int) qty);
                     switch (sale.result()) {
                         case QUOTA_FULL -> player.sendSystemMessage(Messages.warn(
-                                "Quota atteint : le marchand n'achete plus rien avant minuit."));
+                                "Reserves pleines : impossible de depasser tes "
+                                        + MongolManager.PERSONAL_QUOTA + " de place quotidienne avant minuit."));
                         case NOT_ACCEPTED -> player.sendSystemMessage(Messages.warn(
                                 "Le marchand ne veut plus de cet objet aujourd'hui."));
                         case NONE_OWNED -> player.sendSystemMessage(Messages.warn("Tu n'as pas cet objet."));
                         case INVALID -> player.sendSystemMessage(Messages.warn("Vente impossible."));
-                        default -> player.sendSystemMessage(Messages.success("Vendu : " + sale.sold() + "x "
-                                + label + " pour " + sale.paid() + " Utopieces."));
+                        default -> {
+                            player.sendSystemMessage(Messages.success("Vendu : " + sale.sold() + "x "
+                                    + label + " pour " + sale.paid() + " Utopieces."));
+                            if (sale.sold() < qty) {
+                                player.sendSystemMessage(Messages.warn("Le reste n'a pas pu etre vendu : "
+                                        + "place quotidienne et reserve du marchand epuisees."));
+                            }
+                        }
                     }
                     openSell(player, structName);
                 });

@@ -26,7 +26,15 @@ import net.neoforged.fml.loading.FMLPaths;
  */
 public final class MongolManager {
 
-    /** Nombre maximal d'items rachetes par jour, toutes ventes et tous joueurs confondus. */
+    /**
+     * Place quotidienne de chaque joueur : ces items ne touchent pas la reserve du serveur. Chacun
+     * peut donc toujours vendre ses 200 premiers items, quoi qu'aient fait les autres.
+     */
+    public static final int PERSONAL_QUOTA = 200;
+    /**
+     * Reserve commune : elle n'est entamee que par les <b>depassements</b> de la place quotidienne.
+     * Une fois vide, plus personne ne peut vendre au-dela de ses 200 items du jour.
+     */
     public static final int DAILY_QUOTA = 1000;
     /** Prix paye par item. */
     public static final int UNIT_PRICE = 1;
@@ -89,9 +97,29 @@ public final class MongolManager {
         return data.sold();
     }
 
-    /** Items que le marchand peut encore racheter aujourd'hui. */
+    /** Reserve commune restante (elle ne sert qu'aux depassements de place quotidienne). */
     public static int remaining(MinecraftServer server) {
         return Math.max(0, DAILY_QUOTA - soldToday(server));
+    }
+
+    /** Items deja vendus aujourd'hui par ce joueur (place quotidienne + depassements). */
+    public static int personalSold(ServerPlayer player) {
+        MongolData data = MongolData.get(player.server);
+        data.rollOver(LocalDate.now().toEpochDay());
+        return data.personalSold(player.getUUID());
+    }
+
+    /** Place quotidienne restante de ce joueur (sur {@link #PERSONAL_QUOTA}). */
+    public static int personalRemaining(ServerPlayer player) {
+        return Math.max(0, PERSONAL_QUOTA - personalSold(player));
+    }
+
+    /**
+     * Nombre d'items que ce joueur peut encore vendre maintenant : sa place quotidienne restante,
+     * plus ce qu'il reste dans la reserve commune une fois cette place epuisee.
+     */
+    public static int sellableFor(ServerPlayer player) {
+        return personalRemaining(player) + remaining(player.server);
     }
 
     /**
@@ -105,8 +133,9 @@ public final class MongolManager {
         boolean wasFull = data.initialized() && data.announced();
         if (data.rollOver(LocalDate.now().toEpochDay()) && wasFull) {
             server.getPlayerList().broadcastSystemMessage(
-                    Component.literal("Le marchand mongol a vide ses reserves : il rachete de nouveau "
-                                    + DAILY_QUOTA + " items aujourd'hui !")
+                    Component.literal("Le marchand mongol a vide ses reserves : chacun retrouve ses "
+                                    + PERSONAL_QUOTA + " items du jour, et " + DAILY_QUOTA
+                                    + " items de reserve commune sont de nouveau disponibles !")
                             .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)), false);
         }
     }
@@ -115,40 +144,55 @@ public final class MongolManager {
 
     public enum SellResult { OK, NOT_ACCEPTED, QUOTA_FULL, NONE_OWNED, INVALID }
 
-    /** Resultat detaille d'une vente : ce qui a ete pris et ce qui a ete paye. */
-    public record Sale(SellResult result, int sold, long paid) {
+    /**
+     * Resultat detaille d'une vente : combien a ete pris, combien a ete paye, et quelle part est
+     * sortie de la reserve commune (le reste venant de la place quotidienne du joueur).
+     */
+    public record Sale(SellResult result, int sold, long paid, int fromReserve) {
     }
 
     /**
      * Vend jusqu'a {@code qty} exemplaires de {@code model} au marchand. La quantite reellement prise
-     * est bornee par ce que le joueur possede et par le quota restant.
+     * est bornee par ce que le joueur possede, par sa place quotidienne, puis par la reserve commune :
+     * les {@link #PERSONAL_QUOTA} premiers items du joueur sont toujours rachetes, et seul le
+     * depassement entame la reserve du serveur.
      */
     public static Sale sell(ServerPlayer player, ItemStack model, int qty) {
         MinecraftServer server = player.server;
         if (model.isEmpty() || qty <= 0) {
-            return new Sale(SellResult.INVALID, 0, 0);
+            return new Sale(SellResult.INVALID, 0, 0, 0);
         }
         if (!accepts(model)) {
-            return new Sale(SellResult.NOT_ACCEPTED, 0, 0);
-        }
-        int left = remaining(server);
-        if (left <= 0) {
-            return new Sale(SellResult.QUOTA_FULL, 0, 0);
+            return new Sale(SellResult.NOT_ACCEPTED, 0, 0, 0);
         }
         int owned = count(player, model);
         if (owned <= 0) {
-            return new Sale(SellResult.NONE_OWNED, 0, 0);
+            return new Sale(SellResult.NONE_OWNED, 0, 0, 0);
         }
-        int take = Math.min(Math.min(qty, owned), left);
+        int wanted = Math.min(qty, owned);
+        int fromPersonal = Math.min(wanted, personalRemaining(player));
+        int overflow = wanted - fromPersonal;
+        int fromReserve = Math.min(overflow, remaining(server));
+        int take = fromPersonal + fromReserve;
+        if (take <= 0) {
+            // Place quotidienne epuisee ET reserve commune vide : plus rien n'est rachetable.
+            return new Sale(SellResult.QUOTA_FULL, 0, 0, 0);
+        }
         int removed = remove(player, model, take);
         if (removed <= 0) {
-            return new Sale(SellResult.NONE_OWNED, 0, 0);
+            return new Sale(SellResult.NONE_OWNED, 0, 0, 0);
         }
+        // Si l'inventaire a bouge entre-temps, on impute d'abord a la place quotidienne.
+        int reserveUsed = Math.max(0, removed - fromPersonal);
         long paid = (long) removed * UNIT_PRICE;
         EconomyManager.add(server, player.getUUID(), paid);
-        MongolData.get(server).addSold(removed);
-        announceIfFull(server);
-        return new Sale(SellResult.OK, removed, paid);
+        MongolData data = MongolData.get(server);
+        data.addPersonal(player.getUUID(), removed);
+        if (reserveUsed > 0) {
+            data.addSold(reserveUsed);
+            announceIfFull(server);
+        }
+        return new Sale(SellResult.OK, removed, paid, reserveUsed);
     }
 
     /** Diffuse (une seule fois par jour) le message annoncant que les reserves sont pleines. */
@@ -160,7 +204,8 @@ public final class MongolManager {
         data.setAnnounced(true);
         server.getPlayerList().broadcastSystemMessage(
                 Component.literal("Le marchand mongol a rempli ses reserves pour aujourd'hui ! "
-                                + "Son quota est atteint : il n'acceptera plus aucun item avant minuit.")
+                                + "Impossible de depasser vos " + PERSONAL_QUOTA
+                                + " de place quotidienne avant minuit.")
                         .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true)), false);
     }
 

@@ -18,10 +18,12 @@ public final class MongolData extends SavedData {
 
     /** Jour (epoch day) auquel se rapporte le compteur. */
     private long day;
-    /** Nombre d'items achetes par le marchand aujourd'hui. */
+    /** Items pris sur la RESERVE GLOBALE aujourd'hui (uniquement les depassements de quota personnel). */
     private int sold;
     /** Le message "reserves pleines" a-t-il deja ete diffuse aujourd'hui ? */
     private boolean announced;
+    /** Items vendus aujourd'hui par joueur (toutes ventes confondues, quota personnel inclus). */
+    private final java.util.Map<java.util.UUID, Integer> personal = new java.util.HashMap<>();
 
     public MongolData() {
     }
@@ -43,8 +45,19 @@ public final class MongolData extends SavedData {
         day = today;
         sold = 0;
         announced = false;
+        personal.clear(); // chaque joueur retrouve sa place quotidienne
         setDirty();
         return true;
+    }
+
+    /** Items vendus aujourd'hui par ce joueur (quota personnel + depassements). */
+    public int personalSold(java.util.UUID playerId) {
+        return personal.getOrDefault(playerId, 0);
+    }
+
+    public void addPersonal(java.util.UUID playerId, int count) {
+        personal.merge(playerId, count, Integer::sum);
+        setDirty();
     }
 
     public int sold() {
@@ -72,6 +85,15 @@ public final class MongolData extends SavedData {
         data.day = tag.getLong("day");
         data.sold = tag.getInt("sold");
         data.announced = tag.getBoolean("announced");
+        net.minecraft.nbt.ListTag list = tag.getList("personal", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag e = list.getCompound(i);
+            try {
+                data.personal.put(java.util.UUID.fromString(e.getString("uuid")), e.getInt("count"));
+            } catch (IllegalArgumentException ignored) {
+                // uuid corrompu
+            }
+        }
         return data;
     }
 
@@ -80,6 +102,14 @@ public final class MongolData extends SavedData {
         tag.putLong("day", day);
         tag.putInt("sold", sold);
         tag.putBoolean("announced", announced);
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (java.util.Map.Entry<java.util.UUID, Integer> e : personal.entrySet()) {
+            CompoundTag t = new CompoundTag();
+            t.putString("uuid", e.getKey().toString());
+            t.putInt("count", e.getValue());
+            list.add(t);
+        }
+        tag.put("personal", list);
         return tag;
     }
 }

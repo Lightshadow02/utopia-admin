@@ -179,9 +179,11 @@ Changement manuel via la ligne **État actuel** :
 
 **🐎 Rachat mongol** (ligne *Rachat mongol* → **Basculer**) : le marchand rachète en plus une liste d'items **programmée à l'avance**, à **1 item = 1 Utopièce**.
 - **Programme (mongol) → Calendrier** : même système que le Daily — un clic sur un jour ouvre l'éditeur d'items (dépose les items, clic pour retirer). On peut donc tout planifier des semaines à l'avance, sans intervention quotidienne.
-- **Quota : 1 000 items par jour, GLOBAL au serveur** (pas par joueur) — toutes les ventes s'additionnent. Remise à zéro automatique **à minuit** (heure du serveur).
-- Le menu joueur affiche les items acceptés, le prix, et le **quota restant** (*ex. « Quota restant aujourd'hui : 637 / 1 000 items »*).
-- Quand le quota est atteint, un message est diffusé à tous : *« Le marchand mongol a rempli ses réserves pour aujourd'hui ! … »* (et un message de réouverture le lendemain).
+- **Deux quotas, remis à zéro à minuit** (heure du serveur) :
+  - 🧍 **Place quotidienne : 200 items par joueur** — toujours garantie, elle **ne touche pas** la réserve du serveur. Chacun peut donc vendre ses 200 items quoi qu'aient fait les autres.
+  - 🏪 **Réserve du serveur : 1 000 items**, entamée **uniquement par les dépassements** (au-delà des 200 de chacun).
+- Le menu joueur affiche les items acceptés, le prix, **sa place quotidienne** et la **réserve restante**.
+- Quand la réserve est vide, message à tous : *« Le marchand mongol a rempli ses réserves pour aujourd'hui ! Impossible de dépasser vos 200 de place quotidienne avant minuit. »* (et un message de réouverture le lendemain).
 - Programme stocké dans `config/utopia_admin/mongol_calendar.json`.
 
 > 🔎 **Voir** affiche la zone en rouge. **Supprimer** retire la structure du mod (le monde n'est pas modifié).
