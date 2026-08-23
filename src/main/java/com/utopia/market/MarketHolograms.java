@@ -264,7 +264,8 @@ public final class MarketHolograms {
             sig.append(BuiltInRegistries.ITEM.getKey(o.stack.getItem())).append('x').append(o.stack.getCount());
             // Seulement l'objet flottant : pas de texte sur les emplacements (le prix est dans le menu).
             // Sans emplacement defini, l'objet passe au-dessus du PNJ (qui occupe le bloc du stand).
-            double itemY = sp.getY() + (hasSpots ? 1.15 : NPC_TOP + 0.15);
+            // +1.45 : l'objet flotte nettement au-dessus du comptoir au lieu d'y etre a moitie enfonce.
+            double itemY = sp.getY() + (hasSpots ? 1.45 : NPC_TOP + 0.15);
             l.items.add(new ItemSpot(j, cx, itemY, cz, o.stack.copyWithCount(1)));
         }
         l.sig = sig.toString();
