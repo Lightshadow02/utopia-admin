@@ -610,8 +610,7 @@ public final class StructureMenus {
                         })));
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Skin", ChatFormatting.GRAY),
-                Icons.label(st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Steve" : "personnalise",
-                        ChatFormatting.AQUA),
+                Icons.label(skinLabel(st), ChatFormatting.AQUA),
                 Icons.label("Changer", ChatFormatting.YELLOW),
                 sp -> openSkinMenu(sp, name)));
         rows.add(new OwoMenuServer.PanelRow(
@@ -659,8 +658,7 @@ public final class StructureMenus {
         }
         Component title = Component.literal("Skin - " + st.npcName)
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
-        List<Component> stats = List.of(Component.literal(
-                st.npcSkinValue == null || st.npcSkinValue.isEmpty() ? "Actuel : Steve" : "Actuel : personnalise")
+        List<Component> stats = List.of(Component.literal("Actuel : " + skinLabel(st))
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
@@ -685,6 +683,11 @@ public final class StructureMenus {
                     }
                     openSkinMenu(sp, name);
                 }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.PLAYER_HEAD),
+                Icons.label("Choisir dans le pack", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore(com.utopia.entity.NpcSkins.all().size()
+                        + " skins fournis - apercu en direct sur le PNJ", ChatFormatting.GRAY),
+                sp -> openSkinPack(sp, name, "", 0, st.npcSkinValue)));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.PAINTING),
                 Icons.label("Depuis une URL", ChatFormatting.AQUA),
                 Icons.lore("URL textures.minecraft.net (ou juste le hash)", ChatFormatting.GRAY),
@@ -717,6 +720,83 @@ public final class StructureMenus {
 
         OwoMenuServer.openHub(admin, title, stats, entries,
                 sp -> openSkinMenu(sp, name), sp -> openShopAdmin(sp, name));
+    }
+
+    /**
+     * Selecteur de skin dans le pack embarque, avec <b>apercu en direct</b> : un clic applique
+     * aussitot le skin sur le PNJ present dans le monde, donc l'admin voit le rendu reel avant de
+     * valider. "Annuler" remet le skin d'origine.
+     *
+     * @param query    filtre de recherche courant ("" = tout le pack)
+     * @param original skin porte avant d'entrer dans ce menu, restaure par "Annuler"
+     */
+    public static void openSkinPack(ServerPlayer admin, String name, String query, int page, String original) {
+        StructureData.Struct st = StructureData.get(admin.server).get(name);
+        if (st == null) {
+            openList(admin);
+            return;
+        }
+        List<String> found = com.utopia.entity.NpcSkins.search(query);
+        String currentName = com.utopia.entity.NpcSkins.nameOf(st.npcSkinValue);
+
+        Component title = Component.literal("Skins - " + st.npcName)
+                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal(query.isBlank()
+                        ? found.size() + " skins disponibles"
+                        : found.size() + " resultat(s) pour \"" + query + "\"")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+        stats.add(Component.literal(currentName == null
+                        ? "Clique un skin : il s'applique aussitot sur le PNJ."
+                        : "Actuel : " + com.utopia.entity.NpcSkins.label(currentName))
+                .withStyle(s -> s.withColor(currentName == null ? ChatFormatting.DARK_GRAY : ChatFormatting.GREEN)
+                        .withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
+                Icons.label("Rechercher...", ChatFormatting.YELLOW),
+                Icons.lore(query.isBlank() ? "Filtrer par nom" : "Filtre : " + query, ChatFormatting.GRAY),
+                sp -> Menus.promptText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
+                        List.of(Icons.lore("Laisse vide pour tout afficher", ChatFormatting.GRAY)),
+                        Icons.label("Chercher", ChatFormatting.GREEN), query, 32,
+                        q -> openSkinPack(sp, name, q == null ? "" : q, 0, original))));
+        for (String skin : found) {
+            boolean isCurrent = skin.equals(currentName);
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(isCurrent ? Items.LIME_DYE : Items.PLAYER_HEAD),
+                    Icons.label(com.utopia.entity.NpcSkins.label(skin),
+                            isCurrent ? ChatFormatting.GREEN : ChatFormatting.WHITE),
+                    Icons.lore(isCurrent ? "Skin actuel" : "Clic : essayer sur le PNJ", ChatFormatting.GRAY),
+                    sp -> {
+                        st.npcSkinValue = com.utopia.entity.NpcSkins.value(skin);
+                        st.npcSkinSignature = "";
+                        applySkin(sp, st, "Apercu : " + com.utopia.entity.NpcSkins.label(skin)
+                                + " (regarde le PNJ, puis valide).");
+                        openSkinPack(sp, name, query, page, original);
+                    }));
+        }
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                Icons.label("Annuler", ChatFormatting.RED),
+                Icons.lore("Revenir au skin d'avant", ChatFormatting.GRAY),
+                sp -> {
+                    st.npcSkinValue = original == null ? "" : original;
+                    st.npcSkinSignature = "";
+                    applySkin(sp, st, "Skin d'origine restaure.");
+                    openSkinMenu(sp, name);
+                }));
+
+        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, 12,
+                (sp, p) -> openSkinPack(sp, name, query, p, original),
+                sp -> openSkinMenu(sp, name)); // Retour = on garde le skin essaye
+    }
+
+    /** Libelle du skin courant : nom du pack, "personnalise" (URL/joueur) ou "Steve". */
+    private static String skinLabel(StructureData.Struct st) {
+        if (st.npcSkinValue == null || st.npcSkinValue.isEmpty()) {
+            return "Steve";
+        }
+        String packed = com.utopia.entity.NpcSkins.nameOf(st.npcSkinValue);
+        return packed == null ? "personnalise" : com.utopia.entity.NpcSkins.label(packed);
     }
 
     /** Persiste le skin et rafraichit le marchand en jeu. */

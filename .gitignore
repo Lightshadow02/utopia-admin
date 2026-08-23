@@ -53,5 +53,11 @@ repo/
 # Fichiers audio embarques dans le jar au build, mais jamais committes (prives)
 /src/main/resources/assets/utopia_admin/sounds/music/
 
+### Pack de skins PNJ (tiers) : embarque dans le jar au build, jamais redistribue sur GitHub ###
+/skin/
+/src/main/resources/assets/utopia_admin/textures/entity/npc/
+# Index genere automatiquement au build a partir du dossier ci-dessus
+/src/main/resources/assets/utopia_admin/npc_skins.txt
+
 ### META-INF parasite a la racine (l'access transformer dans src/ reste suivi) ###
 /META-INF/

@@ -139,7 +139,27 @@ dependencies {
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 // When "copyIdeResources" is enabled, this will also run before the game launches in IDE environments.
 // See https://docs.gradle.org/current/dsl/org.gradle.language.jvm.tasks.ProcessResources.html
+// Index des skins de PNJ : liste les textures presentes dans assets/.../textures/entity/npc.
+// Le serveur ne peut pas parcourir les assets du client, il lit donc ce fichier genere au build.
+tasks.register('generateNpcSkinIndex') {
+    var skinDir = file("src/main/resources/assets/${mod_id}/textures/entity/npc")
+    var indexFile = file("src/main/resources/assets/${mod_id}/npc_skins.txt")
+    inputs.dir(skinDir).optional()
+    outputs.file(indexFile)
+    doLast {
+        var names = skinDir.exists()
+                ? skinDir.listFiles({ f -> f.name.endsWith('.png') } as FileFilter)
+                        .collect { it.name.replaceAll(/\.png$/, '') }
+                        .sort()
+                : []
+        indexFile.parentFile.mkdirs()
+        indexFile.text = names.join('\n')
+        logger.lifecycle("[Utopia] ${names.size()} skin(s) de PNJ indexes.")
+    }
+}
+
 tasks.withType(ProcessResources).configureEach {
+    dependsOn 'generateNpcSkinIndex'
     var replaceProperties = [
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,

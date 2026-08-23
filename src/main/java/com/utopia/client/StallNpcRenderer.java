@@ -51,6 +51,11 @@ public class StallNpcRenderer<T extends LivingEntity & SkinNpc>
         if (value == null || value.isEmpty()) {
             return DefaultPlayerSkin.getDefaultTexture(); // pas de skin defini -> Steve
         }
+        // Skin du pack embarque : la texture est dans le mod, aucun telechargement necessaire.
+        ResourceLocation packed = com.utopia.entity.NpcSkins.texture(value);
+        if (packed != null) {
+            return packed;
+        }
         String name = entity.ownerName();
         GameProfile profile = new GameProfile(
                 UUID.nameUUIDFromBytes(("utopia_npc:" + name).getBytes(StandardCharsets.UTF_8)),
