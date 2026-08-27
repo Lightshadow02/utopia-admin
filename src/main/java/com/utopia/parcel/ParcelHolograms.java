@@ -39,7 +39,7 @@ public final class ParcelHolograms {
     private static final double LINE_GAP = 0.28;
 
     private static final DustParticleOptions ORANGE = new DustParticleOptions(new Vector3f(1.0F, 0.55F, 0.0F), 1.0F);
-    private static final DustParticleOptions YELLOW = new DustParticleOptions(new Vector3f(1.0F, 0.95F, 0.1F), 1.3F);
+    private static final DustParticleOptions ORANGE_BRIGHT = new DustParticleOptions(new Vector3f(1.0F, 0.72F, 0.25F), 1.3F);
     // Couleurs de contour selon le type de parcelle.
     private static final DustParticleOptions BLUE = new DustParticleOptions(new Vector3f(0.15F, 0.45F, 1.0F), 1.0F);
     private static final DustParticleOptions BLUE_BRIGHT = new DustParticleOptions(new Vector3f(0.5F, 0.75F, 1.0F), 1.3F);
@@ -141,15 +141,15 @@ public final class ParcelHolograms {
     }
 
     private static void drawOutline(ServerLevel level, ServerPlayer player, Parcel parcel) {
-        // Bleu = Habitation, Jaune = Commerce, Rouge = zone Admin.
+        // Bleu = Habitation, Orange = Commerce, Rouge = zone Admin.
         DustParticleOptions edgeColor;
         DustParticleOptions cornerColor;
         if (parcel.isAdmin()) {
             edgeColor = RED;
             cornerColor = RED;
         } else if (parcel.type() == Parcel.Type.COMMERCE) {
-            edgeColor = YELLOW;
-            cornerColor = ORANGE;
+            edgeColor = ORANGE;
+            cornerColor = ORANGE_BRIGHT;
         } else {
             edgeColor = BLUE;
             cornerColor = BLUE_BRIGHT;
@@ -262,7 +262,7 @@ public final class ParcelHolograms {
                 Component.literal("ID: " + p.id()).withStyle(ChatFormatting.YELLOW),
                 Component.literal("A VENDRE").withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)),
                 Component.literal("[" + p.type().label() + "]")
-                        .withStyle(p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                        .withStyle(p.type().color()),
                 Component.literal(seller).withStyle(p.isOwned() ? ChatFormatting.AQUA : ChatFormatting.GRAY),
                 Component.literal(EconomyManager.format(p.price())).withStyle(ChatFormatting.GOLD));
     }

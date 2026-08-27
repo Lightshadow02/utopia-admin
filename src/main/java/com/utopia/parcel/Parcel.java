@@ -15,7 +15,11 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class Parcel {
 
-    /** Categorie d'une parcelle (couleur du contour + item exige a l'achat). */
+    /**
+     * Categorie d'une parcelle : elle decide de la couleur (contour, icone, libelles) et de l'item
+     * exige a l'achat. La convention est la meme partout : <b>bleu pour l'habitation, orange pour le
+     * commerce</b>, rouge etant reserve aux zones administratives.
+     */
     public enum Type {
         HABITATION,
         COMMERCE;
@@ -31,6 +35,18 @@ public final class Parcel {
 
         public String label() {
             return this == COMMERCE ? "Commerce" : "Habitation";
+        }
+
+        /** Couleur de la categorie dans les menus et les hologrammes. */
+        public net.minecraft.ChatFormatting color() {
+            return this == COMMERCE ? net.minecraft.ChatFormatting.GOLD : net.minecraft.ChatFormatting.BLUE;
+        }
+
+        /** Laine servant d'icone dans les listes. */
+        public net.minecraft.world.item.Item wool() {
+            return this == COMMERCE
+                    ? net.minecraft.world.item.Items.ORANGE_WOOL
+                    : net.minecraft.world.item.Items.BLUE_WOOL;
         }
     }
 

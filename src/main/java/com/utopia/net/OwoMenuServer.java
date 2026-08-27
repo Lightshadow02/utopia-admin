@@ -104,12 +104,25 @@ public final class OwoMenuServer {
                                     List<HubEntry> all, int page, int pageSize,
                                     java.util.function.BiConsumer<ServerPlayer, Integer> reopen,
                                     Consumer<ServerPlayer> onBack) {
+        openHubPaged(player, title, stats, List.of(), all, page, pageSize, reopen, onBack);
+    }
+
+    /**
+     * Variante : {@code pinned} regroupe des entrees affichees en tete de <b>chaque</b> page et
+     * exclues de la pagination (un bouton de recherche, par exemple, doit rester atteignable meme
+     * page 3).
+     */
+    public static void openHubPaged(ServerPlayer player, Component title, List<Component> stats,
+                                    List<HubEntry> pinned, List<HubEntry> all, int page, int pageSize,
+                                    java.util.function.BiConsumer<ServerPlayer, Integer> reopen,
+                                    Consumer<ServerPlayer> onBack) {
         int totalPages = Math.max(1, (all.size() + pageSize - 1) / pageSize);
         final int cur = Math.max(0, Math.min(page, totalPages - 1));
         int from = cur * pageSize;
         int to = Math.min(all.size(), from + pageSize);
 
-        List<HubEntry> shown = new ArrayList<>(all.subList(from, to));
+        List<HubEntry> shown = new ArrayList<>(pinned);
+        shown.addAll(all.subList(from, to));
         Component shownTitle = title;
         if (totalPages > 1) {
             final int pages = totalPages;

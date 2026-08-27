@@ -344,6 +344,8 @@ public final class UtopiaEvents {
             }
             // Oublie un eventuel menu owo encore ouvert (declenche son rappel de fermeture).
             com.utopia.net.OwoMenuServer.clear(sp);
+            // Les criteres de recherche de parcelles ne survivent pas a la session.
+            com.utopia.parcel.ParcelFilter.forget(sp.getUUID());
         }
     }
 

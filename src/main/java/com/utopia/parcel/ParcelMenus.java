@@ -53,9 +53,9 @@ public final class ParcelMenus {
         return ParcelData.get(server).get(id);
     }
 
-    /** Icone (laine bleue/jaune) selon le type de parcelle. */
+    /** Icone selon la categorie : laine bleue pour l'habitation, orange pour le commerce. */
     private static net.minecraft.world.level.ItemLike typeIcon(Parcel p) {
-        return p.type() == Parcel.Type.COMMERCE ? Items.YELLOW_WOOL : Items.BLUE_WOOL;
+        return p.isAdmin() ? Items.RED_WOOL : p.type().wool();
     }
 
     /** Ligne de lore "Requis : <item>" pour l'achat, ou une ligne vide si aucun item exige. */
@@ -132,7 +132,7 @@ public final class ParcelMenus {
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Type", ChatFormatting.GRAY),
-                Icons.label(p.type().label(), p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                Icons.label(p.type().label(), p.type().color()),
                 null, null));
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("En vente", ChatFormatting.GRAY),
@@ -197,6 +197,10 @@ public final class ParcelMenus {
                     }
                     com.utopia.gui.Menus.close(sp);
                 }));
+        if (total > 1) {
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Rechercher", ChatFormatting.DARK_AQUA),
+                    sp -> openMyParcelsList(sp, 0)));
+        }
         // Navigation entre parcelles : fleches dans l'en-tete, de part et d'autre du titre.
         Consumer<ServerPlayer> onPrev = total > 1 ? sp -> openMyParcels(sp, (i - 1 + total) % total) : null;
         Consumer<ServerPlayer> onNext = total > 1 ? sp -> openMyParcels(sp, (i + 1) % total) : null;
@@ -204,6 +208,71 @@ public final class ParcelMenus {
         final int idx = i;
         OwoMenuServer.openPanel(player, title, rows, footer, true, // Vendre/Delimitations sur la rangee Retour/Fermer
                 onPrev, onNext, sp -> openMyParcels(sp, idx), com.utopia.menu.MainMenu::open);
+    }
+
+    /**
+     * Liste filtrable de ses propres parcelles : plus pratique que les fleches des qu'on en possede
+     * plusieurs. Un clic ouvre la fiche de la parcelle choisie.
+     */
+    public static void openMyParcelsList(ServerPlayer player, int page) {
+        MinecraftServer server = player.server;
+        List<Parcel> owned = new ArrayList<>(ParcelData.get(server).ownedBy(player.getUUID()));
+        // Meme tri que la fiche a fleches : les index de navigation doivent designer la meme parcelle.
+        owned.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
+        ParcelFilter filter = ParcelFilter.of(player, ParcelFilter.MINE);
+        List<Parcel> shown = filter.apply(owned);
+
+        Component title = Icons.label("Mes parcelles", ChatFormatting.GREEN);
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal(filter.active()
+                        ? shown.size() + " parcelle(s) sur " + owned.size() + " correspondent"
+                        : owned.size() + " parcelle(s) possedee(s)")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (Parcel p : shown) {
+            String pid = p.id();
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)),
+                    Icons.label("[" + p.type().label() + "] " + pid, p.type().color()),
+                    Icons.lore(p.forSale()
+                                    ? "En vente : " + EconomyManager.format(p.price())
+                                    : p.members().size() + " membre(s) - " + p.regionCount() + " region(s)",
+                            p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                    sp -> openMyParcelsFor(sp, pid)));
+        }
+        if (shown.isEmpty()) {
+            stats.add(Component.literal("Aucune parcelle ne correspond a la recherche.")
+                    .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
+        }
+
+        Consumer<ServerPlayer> reopen = sp -> openMyParcelsList(sp, 0);
+        OwoMenuServer.openHubPaged(player, title, stats,
+                List.of(filterEntry(filter, ParcelFilter.MINE, reopen),
+                        kindEntry(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
+                                ParcelFilter.MINE, reopen),
+                        kindEntry(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
+                                ParcelFilter.MINE, reopen)),
+                entries, page, ADMIN_PAGE_SIZE, ParcelMenus::openMyParcelsList,
+                com.utopia.menu.MainMenu::open);
+    }
+
+    /**
+     * Ouvre la fiche d'une parcelle possedee, resolue <b>par identifiant au moment du clic</b>. Un
+     * ecran laisse ouvert survit aux changements de proprietaire : un rang capture a l'affichage
+     * designerait la parcelle voisine si une autre a disparu entre temps, et le pied de page de la
+     * fiche porte l'action "Vendre".
+     */
+    public static void openMyParcelsFor(ServerPlayer player, String parcelId) {
+        List<Parcel> owned = new ArrayList<>(ParcelData.get(player.server).ownedBy(player.getUUID()));
+        owned.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
+        for (int i = 0; i < owned.size(); i++) {
+            if (owned.get(i).id().equalsIgnoreCase(parcelId)) {
+                openMyParcels(player, i);
+                return;
+            }
+        }
+        player.sendSystemMessage(Messages.warn("Vous ne possedez plus la parcelle " + parcelId + "."));
+        openMyParcelsList(player, 0);
     }
 
     public static void openParcelMenuFor(ServerPlayer player, String parcelId) {
@@ -223,8 +292,8 @@ public final class ParcelMenus {
         UtopiaGui gui = new UtopiaGui(3, Icons.label("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
 
         List<Component> info = new ArrayList<>();
-        info.add(Icons.lore("Categorie : " + p.type().label(),
-                p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA));
+        info.add(Icons.lore("Categorie : " + (p.isAdmin() ? "Zone administrative" : p.type().label()),
+                p.isAdmin() ? ChatFormatting.RED : p.type().color()));
         info.add(Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY));
         info.add(Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
                 p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
@@ -380,7 +449,7 @@ public final class ParcelMenus {
         var reqItem = ParcelManager.requiredBuyItem(p);
         List<Component> info = new ArrayList<>();
         info.add(Icons.lore("Type : " + p.type().label(),
-                p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA));
+                p.type().color()));
         info.add(Icons.lore("Votre solde : " + EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GRAY));
         if (reqItem != null) {
             info.add(Icons.lore("Requis : " + new ItemStack(reqItem).getHoverName().getString() + " (consomme)", ChatFormatting.LIGHT_PURPLE));
@@ -546,6 +615,167 @@ public final class ParcelMenus {
                 List.of(), entries, sp -> openAddMemberMenu(sp, parcelId), sp -> openMembersMenu(sp, parcelId));
     }
 
+
+    // ----------------------------------------------------------------------------------- recherche
+
+    /**
+     * Ecran de recherche, partage par la boutique, les parcelles d'un joueur et l'inventaire
+     * d'administration. Chaque critere se change d'un bouton qui fait defiler les valeurs ; les
+     * criteres restent poses le temps de la session, ecran par ecran.
+     */
+    public static void openFilter(ServerPlayer player, String context, Consumer<ServerPlayer> back) {
+        ParcelFilter filter = ParcelFilter.of(player, context);
+        boolean shop = ParcelFilter.SHOP.equals(context);
+        boolean mine = ParcelFilter.MINE.equals(context);
+
+        Component title = Icons.label("Recherche de parcelles", ChatFormatting.DARK_AQUA);
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Recherche", ChatFormatting.GRAY),
+                Icons.label(filter.search.isBlank() ? "tout" : "\"" + filter.search + "\"",
+                        filter.search.isBlank() ? ChatFormatting.DARK_GRAY : ChatFormatting.WHITE),
+                Icons.label(filter.search.isBlank() ? "Saisir" : "Changer", ChatFormatting.YELLOW),
+                sp -> Menus.promptFreeText(sp, Icons.label("Rechercher", ChatFormatting.DARK_AQUA),
+                        List.of(Icons.lore("Identifiant, nom ou proprietaire", ChatFormatting.GRAY),
+                                Icons.lore("Un mot suffit ; ligne suivante pour effacer",
+                                        ChatFormatting.DARK_GRAY)),
+                        Icons.label("Chercher", ChatFormatting.GREEN), filter.search, 32,
+                        text -> {
+                            filter.search = text == null ? "" : text.trim();
+                            openFilter(sp, context, back);
+                        })));
+        if (!filter.search.isBlank()) {
+            // Le champ de saisie refuse une chaine vide : sans cette ligne, un mot pose ne pourrait
+            // plus s'enlever qu'en effacant aussi tous les autres criteres.
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Effacer la recherche", ChatFormatting.GRAY),
+                    Icons.label("garde les autres criteres", ChatFormatting.DARK_GRAY),
+                    Icons.label("Effacer", ChatFormatting.YELLOW),
+                    sp -> {
+                        filter.search = "";
+                        openFilter(sp, context, back);
+                    }));
+        }
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Categorie", ChatFormatting.GRAY),
+                Icons.label(filter.kind.label(), switch (filter.kind) {
+                    case HABITATION -> Parcel.Type.HABITATION.color();
+                    case COMMERCE -> Parcel.Type.COMMERCE.color();
+                    case ADMIN -> ChatFormatting.RED;
+                    default -> ChatFormatting.WHITE;
+                }),
+                Icons.label("Suivant", ChatFormatting.YELLOW),
+                sp -> {
+                    filter.kind = ParcelFilter.next(filter.kind);
+                    // La boutique ne montre jamais de zone administrative : ce choix n'y a pas de sens.
+                    if (shop && filter.kind == ParcelFilter.Kind.ADMIN) {
+                        filter.kind = ParcelFilter.next(filter.kind);
+                    }
+                    openFilter(sp, context, back);
+                }));
+        if (!shop) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Mise en vente", ChatFormatting.GRAY),
+                    Icons.label(filter.sale.label(),
+                            filter.sale == ParcelFilter.Sale.EN_VENTE ? ChatFormatting.GREEN : ChatFormatting.WHITE),
+                    Icons.label("Suivant", ChatFormatting.YELLOW),
+                    sp -> {
+                        filter.sale = ParcelFilter.next(filter.sale);
+                        openFilter(sp, context, back);
+                    }));
+        }
+        if (!mine) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Proprietaire", ChatFormatting.GRAY),
+                    Icons.label(filter.held.label(), ChatFormatting.WHITE),
+                    Icons.label("Suivant", ChatFormatting.YELLOW),
+                    sp -> {
+                        filter.held = ParcelFilter.next(filter.held);
+                        openFilter(sp, context, back);
+                    }));
+        }
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Prix maximum", ChatFormatting.GRAY),
+                Icons.label(filter.maxPrice > 0 ? EconomyManager.format(filter.maxPrice) : "sans limite",
+                        filter.maxPrice > 0 ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY),
+                Icons.label("Modifier", ChatFormatting.YELLOW),
+                sp -> Menus.promptAmount(sp, Icons.label("Prix maximum", ChatFormatting.GOLD),
+                        List.of(Icons.lore("0 = sans limite", ChatFormatting.GRAY)),
+                        Icons.label("Valider", ChatFormatting.GREEN), filter.maxPrice, 0, 1_000_000_000L,
+                        v -> {
+                            filter.maxPrice = v;
+                            openFilter(sp, context, back);
+                        })));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Tri", ChatFormatting.GRAY),
+                Icons.label(filter.sort.label(), ChatFormatting.AQUA),
+                Icons.label("Suivant", ChatFormatting.YELLOW),
+                sp -> {
+                    filter.sort = ParcelFilter.next(filter.sort);
+                    openFilter(sp, context, back);
+                }));
+
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Voir les resultats", ChatFormatting.GREEN), back),
+                new OwoMenuServer.PanelAction(Icons.label("Tout effacer", ChatFormatting.RED),
+                        sp -> {
+                            filter.reset();
+                            openFilter(sp, context, back);
+                        }));
+
+        OwoMenuServer.openPanel(player, title, rows, footer, sp -> openFilter(sp, context, back), back);
+    }
+
+    /**
+     * Bouton d'acces direct a une categorie : un clic n'affiche que celle-ci, un second clic remet
+     * tout. Bleu pour l'habitation, orange pour le commerce, comme partout ailleurs.
+     */
+    private static OwoMenuServer.HubEntry kindEntry(ParcelFilter filter, ParcelFilter.Kind kind,
+                                                    Parcel.Type type, String context,
+                                                    Consumer<ServerPlayer> back) {
+        boolean on = filter.kind == kind;
+        return new OwoMenuServer.HubEntry(new ItemStack(type.wool()),
+                Icons.label((on ? "> " : "") + kindTitle(kind), type.color()),
+                Icons.lore(on ? "Affiche - clic pour tout revoir" : "N'afficher que ces parcelles",
+                        on ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                sp -> {
+                    ParcelFilter f = ParcelFilter.of(sp, context);
+                    f.kind = f.kind == kind ? ParcelFilter.Kind.TOUTES : kind;
+                    back.accept(sp);
+                });
+    }
+
+    /** Meme bouton, en ligne de panneau (menu d'administration). */
+    private static OwoMenuServer.PanelRow kindRow(ParcelFilter filter, ParcelFilter.Kind kind,
+                                                  Parcel.Type type, String context,
+                                                  Consumer<ServerPlayer> back) {
+        boolean on = filter.kind == kind;
+        return new OwoMenuServer.PanelRow(
+                Icons.label(kindTitle(kind), type.color()),
+                Icons.label(on ? "affichees seules" : "masquees avec les autres",
+                        on ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                Icons.label(on ? "Tout revoir" : "Voir seules", ChatFormatting.YELLOW),
+                sp -> {
+                    ParcelFilter f = ParcelFilter.of(sp, context);
+                    f.kind = f.kind == kind ? ParcelFilter.Kind.TOUTES : kind;
+                    back.accept(sp);
+                });
+    }
+
+    private static String kindTitle(ParcelFilter.Kind kind) {
+        return kind == ParcelFilter.Kind.COMMERCE ? "Commerces" : "Habitations";
+    }
+
+    /** Entree "Filtrer / rechercher" placee en tete des listes. */
+    private static OwoMenuServer.HubEntry filterEntry(ParcelFilter filter, String context,
+                                                      Consumer<ServerPlayer> back) {
+        return new OwoMenuServer.HubEntry(new ItemStack(Items.SPYGLASS),
+                Icons.label("Filtrer / rechercher", filter.active() ? ChatFormatting.GREEN : ChatFormatting.YELLOW),
+                Icons.lore(filter.summary(), ChatFormatting.GRAY),
+                sp -> openFilter(sp, context, back));
+    }
+
     // ----------------------------------------------------------------------------------- shop joueur
 
     /** Liste des parcelles en vente (triees par ID). Clic gauche = acheter (confirmation), clic droit = apercu. */
@@ -555,17 +785,25 @@ public final class ParcelMenus {
 
     public static void openShop(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
-        List<Parcel> sale = new ArrayList<>(ParcelData.get(server).forSale());
-        sale.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
+        List<Parcel> offer = new ArrayList<>(ParcelData.get(server).forSale());
+        ParcelFilter filter = ParcelFilter.of(player, ParcelFilter.SHOP);
+        List<Parcel> sale = filter.apply(offer);
 
         Component title = Icons.label("Parcelles en vente", ChatFormatting.GREEN);
-        List<Component> stats = List.of(Component.literal(sale.size() + " parcelle(s) en vente")
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal(filter.active()
+                        ? sale.size() + " parcelle(s) sur " + offer.size() + " correspondent"
+                        : sale.size() + " parcelle(s) en vente")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+        if (filter.active()) {
+            stats.add(Component.literal("Filtre : " + filter.summary())
+                    .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
+        }
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (Parcel p : sale) {
             String pid = p.id();
-            ChatFormatting color = p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA;
+            ChatFormatting color = p.type().color();
             String vendor = p.isOwned() ? p.ownerName() + " (joueur)" : "Mairie";
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)),
                     Icons.label("[" + p.type().label() + "] " + pid, color),
@@ -573,8 +811,13 @@ public final class ParcelMenus {
                     sp -> openBuyConfirm(sp, pid)));
         }
 
-        OwoMenuServer.openHubPaged(player, title, stats, entries, page, ADMIN_PAGE_SIZE,
-                ParcelMenus::openShop, com.utopia.menu.MainMenu::open);
+        OwoMenuServer.openHubPaged(player, title, stats,
+                List.of(filterEntry(filter, ParcelFilter.SHOP, ParcelMenus::openShop),
+                        kindEntry(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
+                                ParcelFilter.SHOP, ParcelMenus::openShop),
+                        kindEntry(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
+                                ParcelFilter.SHOP, ParcelMenus::openShop)),
+                entries, page, ADMIN_PAGE_SIZE, ParcelMenus::openShop, com.utopia.menu.MainMenu::open);
     }
 
     // ----------------------------------------------------------------------------------- admin : toutes les parcelles
@@ -593,8 +836,9 @@ public final class ParcelMenus {
      */
     public static void openAdminAll(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
-        List<Parcel> all = new ArrayList<>(ParcelData.get(server).all());
-        all.sort(Comparator.comparing(Parcel::id, String.CASE_INSENSITIVE_ORDER));
+        List<Parcel> source = new ArrayList<>(ParcelData.get(server).all());
+        ParcelFilter filter = ParcelFilter.of(admin, ParcelFilter.ADMIN);
+        List<Parcel> all = filter.apply(source);
 
         int totalPages = Math.max(1, (all.size() + ADMIN_PAGE_SIZE - 1) / ADMIN_PAGE_SIZE);
         final int cur = Math.max(0, Math.min(page, totalPages - 1));
@@ -602,25 +846,38 @@ public final class ParcelMenus {
         int to = Math.min(all.size(), from + ADMIN_PAGE_SIZE);
 
         Component title = Icons.label("Parcelles (" + (cur + 1) + "/" + totalPages + ") - "
-                + all.size() + " au total", ChatFormatting.DARK_AQUA);
+                + (filter.active() ? all.size() + " sur " + source.size() : all.size() + " au total"),
+                ChatFormatting.DARK_AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Recherche", filter.active() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label(filter.summary(), ChatFormatting.DARK_GRAY),
+                Icons.label("Filtrer", ChatFormatting.YELLOW),
+                sp -> openFilter(sp, ParcelFilter.ADMIN, ParcelMenus::openAdminAll)));
+        rows.add(kindRow(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
+                ParcelFilter.ADMIN, ParcelMenus::openAdminAll));
+        rows.add(kindRow(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
+                ParcelFilter.ADMIN, ParcelMenus::openAdminAll));
         for (Parcel p : all.subList(from, to)) {
             String pid = p.id();
             String value = p.isAdmin() ? "protegee, hors shop"
                     : (p.isOwned() ? p.ownerName() : "Mairie")
                             + (p.forSale() ? " - " + EconomyManager.format(p.price()) : "");
             rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label((p.isAdmin() ? "[ADMIN] " : "") + pid,
-                            p.isAdmin() ? ChatFormatting.RED : ChatFormatting.AQUA),
+                    Icons.label((p.isAdmin() ? "[ADMIN] " : "[" + p.type().label() + "] ") + pid,
+                            p.isAdmin() ? ChatFormatting.RED : p.type().color()),
                     Icons.label(value, p.isAdmin() ? ChatFormatting.RED
                             : p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
                     Icons.label("Gerer", ChatFormatting.YELLOW),
                     sp -> openAdminParcel(sp, pid)));
         }
-        if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune parcelle", ChatFormatting.GRAY),
-                    Icons.label("trace au wand puis Creer", ChatFormatting.DARK_GRAY), null, null));
+        if (all.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(filter.active() ? "Aucun resultat" : "Aucune parcelle",
+                            filter.active() ? ChatFormatting.RED : ChatFormatting.GRAY),
+                    Icons.label(filter.active() ? "elargissez la recherche" : "trace au wand puis Creer",
+                            ChatFormatting.DARK_GRAY), null, null));
         }
 
         // Actions : outil de trace + creation par type (trace d'abord la zone au wand).
@@ -631,9 +888,9 @@ public final class ParcelMenus {
                             sp.sendSystemMessage(Messages.success("Wand parcelle recu. Clic droit au sol pour tracer."));
                             Menus.close(sp);
                         }),
-                new OwoMenuServer.PanelAction(Icons.label("+ Habitation", ChatFormatting.AQUA),
+                new OwoMenuServer.PanelAction(Icons.label("+ Habitation", Parcel.Type.HABITATION.color()),
                         sp -> promptCreate(sp, "Habitation", false, Parcel.Type.HABITATION)),
-                new OwoMenuServer.PanelAction(Icons.label("+ Commerce", ChatFormatting.YELLOW),
+                new OwoMenuServer.PanelAction(Icons.label("+ Commerce", Parcel.Type.COMMERCE.color()),
                         sp -> promptCreate(sp, "Commerce", false, Parcel.Type.COMMERCE)),
                 new OwoMenuServer.PanelAction(Icons.label("+ Admin", ChatFormatting.RED),
                         sp -> promptCreate(sp, "Admin", true, null)));
@@ -688,7 +945,7 @@ public final class ParcelMenus {
 
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Categorie", ChatFormatting.GRAY),
-                Icons.label(p.type().label(), p.type() == Parcel.Type.COMMERCE ? ChatFormatting.YELLOW : ChatFormatting.AQUA),
+                Icons.label(p.type().label(), p.type().color()),
                 Icons.label("Modifier", ChatFormatting.YELLOW),
                 sp -> openConfirm(sp, Icons.label("Passer en " + other.label() + " ?", ChatFormatting.GOLD),
                         List.of(Icons.lore(p.type().label() + " -> " + other.label(), ChatFormatting.GRAY)),
