@@ -327,14 +327,45 @@ public final class OwoMenuServer {
                 MenuS2CPayload.of(new OpenAmountPayload(id, title, info, confirmLabel, defaultValue, min, max)));
     }
 
-    /** Ouvre un ecran de saisie de texte ; {@code onConfirm} recoit la chaine saisie. */
+    /** Ouvre un ecran de saisie d'identifiant (sans espace) ; {@code onConfirm} recoit la chaine saisie. */
     public static void openText(ServerPlayer player, Component title, List<Component> info, Component confirmLabel,
                                 String defaultText, int maxLength, Consumer<String> onConfirm) {
+        openText(player, title, info, confirmLabel, defaultText, maxLength, false, onConfirm);
+    }
+
+    /**
+     * Variante : {@code free} autorise une phrase complete (espaces, accents, ponctuation), pour les
+     * textes lus par un humain. Le contenu recu est assaini avant d'etre remis a {@code onConfirm}.
+     */
+    public static void openText(ServerPlayer player, Component title, List<Component> info, Component confirmLabel,
+                                String defaultText, int maxLength, boolean free, Consumer<String> onConfirm) {
         int id = COUNTER.incrementAndGet();
         SESSIONS.put(player.getUUID(), new Session(id, null, null, new TextPrompt(onConfirm)));
         PacketDistributor.sendToPlayer(player,
-                MenuS2CPayload.of(new OpenTextPayload(id, title, info, confirmLabel, defaultText, maxLength)));
+                MenuS2CPayload.of(new OpenTextPayload(id, title, info, confirmLabel, defaultText, maxLength, free)));
     }
+
+    /**
+     * Assainit une saisie : le filtre du champ vit cote client, un client modifie peut donc renvoyer
+     * n'importe quoi. On retire les caracteres de controle et le code de formatage, et on borne la
+     * longueur pour qu'aucune saisie ne puisse deformer un menu ou un message.
+     */
+    private static String sanitize(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder(Math.min(raw.length(), MAX_TEXT_LENGTH));
+        for (int i = 0; i < raw.length() && out.length() < MAX_TEXT_LENGTH; i++) {
+            char c = raw.charAt(i);
+            if (c != '\u00a7' && c >= ' ' && c != '\u007f') {
+                out.append(c);
+            }
+        }
+        return out.toString().trim();
+    }
+
+    /** Longueur maximale acceptee pour une saisie, quelle que soit celle annoncee au client. */
+    private static final int MAX_TEXT_LENGTH = 128;
 
     /** Ferme l'ecran owo cote client + declenche le rappel de fermeture eventuel. */
     public static void close(ServerPlayer player) {
@@ -416,7 +447,7 @@ public final class OwoMenuServer {
             }
             TextPrompt prompt = s.text();
             SESSIONS.remove(sp.getUUID());
-            prompt.onConfirm().accept(payload.value());
+            prompt.onConfirm().accept(sanitize(payload.value()));
         });
     }
 }

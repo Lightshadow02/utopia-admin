@@ -53,6 +53,8 @@ public final class MainMenu {
         // Banque retiree du /menu : elle s'ouvre desormais par clic droit sur la carte bancaire.
         entries.add(entry(Items.CHEST, "Recompense", ChatFormatting.GOLD, "Ta recompense du jour",
                 DailyMenus::openPlayerMenu));
+        entries.add(entry(Items.WRITABLE_BOOK, "Mes devis", ChatFormatting.YELLOW, quoteSublabel(server, player),
+                com.utopia.quote.QuoteMenus::openHome));
         entries.add(entry(Items.ENDER_PEARL, "Se teleporter", ChatFormatting.LIGHT_PURPLE, "Vers un joueur (/tpa)",
                 MainMenu::openTpaPicker));
         entries.add(entry(Items.COMPASS, "Retour au spawn", ChatFormatting.AQUA, "Spawn du serveur",
@@ -76,6 +78,12 @@ public final class MainMenu {
                 }));
 
         OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open, null);
+    }
+
+    /** Sous-titre du bouton Devis : signale d'emblee ce qui attend une reponse. */
+    private static String quoteSublabel(MinecraftServer server, ServerPlayer player) {
+        int waiting = com.utopia.data.QuoteData.get(server).awaitingCount(player.getUUID());
+        return waiting > 0 ? waiting + " devis en attente de reponse" : "Rediger, envoyer, regler";
     }
 
     /** Construit une ligne de stat "label: valeur" (label gris, valeur coloree). */

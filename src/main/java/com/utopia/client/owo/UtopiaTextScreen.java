@@ -68,10 +68,15 @@ public class UtopiaTextScreen extends BaseOwoScreen<FlowLayout> {
             panel.child(Components.label(line));
         }
 
-        // Champ de saisie : identifiants (lettres/chiffres/_/-), sans espace.
-        TextBoxComponent field = Components.textBox(Sizing.fixed(150), data.defaultText());
+        // Deux usages : un identifiant (lettres/chiffres/_/-, sans espace) ou une phrase libre lue par
+        // un humain. En mode libre on refuse seulement le code de formatage et les caracteres de
+        // controle, et le champ est plus large pour qu'une phrase reste lisible.
+        boolean free = data.free();
+        TextBoxComponent field = Components.textBox(Sizing.fixed(free ? 220 : 150), data.defaultText());
         field.setMaxLength(Math.max(1, data.maxLength()));
-        field.setFilter(s -> s.isEmpty() || s.matches("[a-zA-Z0-9_\\-]+"));
+        field.setFilter(free
+                ? s -> s.isEmpty() || s.matches("[^\\u00a7\\u0000-\\u001f\\u007f]+")
+                : s -> s.isEmpty() || s.matches("[a-zA-Z0-9_\\-]+"));
         panel.child((io.wispforest.owo.ui.core.Component) field);
 
         FlowLayout buttons = Containers.horizontalFlow(Sizing.content(), Sizing.content());

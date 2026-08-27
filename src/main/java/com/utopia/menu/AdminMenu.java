@@ -96,6 +96,10 @@ public final class AdminMenu {
                 Icons.label("Metiers et salaires", ChatFormatting.GOLD),
                 Icons.lore("Metiers, salaires quotidiens, employes, banquiers", ChatFormatting.GRAY),
                 com.utopia.job.JobMenus::open));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                Icons.label("Devis des joueurs", ChatFormatting.YELLOW),
+                Icons.lore("Historique des devis emis et recus, taxe, validite", ChatFormatting.GRAY),
+                com.utopia.quote.QuoteMenus::openAdmin));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
                 Icons.label("Livrets d'epargne", ChatFormatting.GOLD),
                 Icons.lore("Registre des livrets, bareme des taux, suivi quotidien", ChatFormatting.GRAY),

@@ -47,6 +47,18 @@ public final class Menus {
         OwoMenuServer.openText(player, title, info, confirmLabel, defaultText, maxLength, onConfirm);
     }
 
+    /**
+     * Saisie d'une phrase libre (espaces, accents, ponctuation) : pour tout texte lu par un humain,
+     * par opposition a un identifiant.
+     */
+    public static void promptFreeText(ServerPlayer player, net.minecraft.network.chat.Component title,
+                                      java.util.List<net.minecraft.network.chat.Component> info,
+                                      net.minecraft.network.chat.Component confirmLabel,
+                                      String defaultText, int maxLength,
+                                      java.util.function.Consumer<String> onConfirm) {
+        OwoMenuServer.openText(player, title, info, confirmLabel, defaultText, maxLength, true, onConfirm);
+    }
+
     /** Ferme le menu courant du joueur (conteneur vanilla de l'editeur, ou ecran owo). */
     public static void close(ServerPlayer player) {
         if (player.containerMenu instanceof UtopiaMenu) {

@@ -12,9 +12,15 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-/** S2C : ouvre un ecran de saisie de texte (champ a remplir) cote client. */
+/**
+ * S2C : ouvre un ecran de saisie de texte (champ a remplir) cote client.
+ *
+ * <p>{@code free} distingue les deux usages : un identifiant (lettres, chiffres, {@code _} et
+ * {@code -}, sans espace) ou une phrase libre, accents et ponctuation compris, pour tout ce qui est
+ * lu par un humain (objet d'un devis, designation d'une ligne, message).
+ */
 public record OpenTextPayload(int sessionId, Component title, List<Component> info, Component confirmLabel,
-                              String defaultText, int maxLength) implements CustomPacketPayload {
+                              String defaultText, int maxLength, boolean free) implements CustomPacketPayload {
 
     public static final Type<OpenTextPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(UtopiaMod.MODID, "open_text"));
@@ -32,6 +38,7 @@ public record OpenTextPayload(int sessionId, Component title, List<Component> in
         ComponentSerialization.STREAM_CODEC.encode(buf, p.confirmLabel);
         buf.writeUtf(p.defaultText);
         buf.writeVarInt(p.maxLength);
+        buf.writeBoolean(p.free);
     }
 
     private static OpenTextPayload decode(RegistryFriendlyByteBuf buf) {
@@ -41,7 +48,8 @@ public record OpenTextPayload(int sessionId, Component title, List<Component> in
         Component confirmLabel = ComponentSerialization.STREAM_CODEC.decode(buf);
         String defaultText = buf.readUtf();
         int maxLength = buf.readVarInt();
-        return new OpenTextPayload(sessionId, title, info, confirmLabel, defaultText, maxLength);
+        boolean free = buf.readBoolean();
+        return new OpenTextPayload(sessionId, title, info, confirmLabel, defaultText, maxLength, free);
     }
 
     @Override
