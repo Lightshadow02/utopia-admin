@@ -131,6 +131,74 @@ public final class OwoMenuServer {
         openHub(player, shownTitle, stats, shown, sp -> reopen.accept(sp, cur), onBack);
     }
 
+    /**
+     * Constructeur d'un ecran de progression : on empile des barres (icone, libelle, valeurs, couleur)
+     * et des actions de pied de page, puis on ouvre l'ecran via
+     * {@link #openProgress(ServerPlayer, Component, List, ProgressBuilder, Consumer, Consumer)}.
+     */
+    public static final class ProgressBuilder {
+        private record BarSpec(ItemStack icon, Component label, int current, int required, boolean done,
+                               boolean big, int color, Component button, Consumer<ServerPlayer> action) {
+        }
+
+        private final List<BarSpec> bars = new ArrayList<>();
+        private final List<PanelAction> actions = new ArrayList<>();
+
+        /** Ajoute une barre ; {@code button}/{@code action} peuvent etre nuls (ligne non cliquable). */
+        public ProgressBuilder bar(ItemStack icon, Component label, int current, int required, boolean done,
+                                   boolean big, int color, Component button, Consumer<ServerPlayer> action) {
+            bars.add(new BarSpec(icon, label, current, required, done, big, color, button, action));
+            return this;
+        }
+
+        /** Ajoute un bouton de pied de page. */
+        public ProgressBuilder action(Component label, Consumer<ServerPlayer> action) {
+            actions.add(new PanelAction(label, action));
+            return this;
+        }
+    }
+
+    /** Ouvre un ecran de progression (barres graphiques) construit par un {@link ProgressBuilder}. */
+    public static void openProgress(ServerPlayer player, Component title, List<Component> intro,
+                                    ProgressBuilder builder, Consumer<ServerPlayer> onRefresh,
+                                    Consumer<ServerPlayer> onBack) {
+        int id = COUNTER.incrementAndGet();
+        UtopiaGui gui = new UtopiaGui(6, title); // porte les actions (54 slots)
+
+        List<OpenProgressPayload.Bar> netBars = new ArrayList<>(builder.bars.size());
+        int idCounter = 0;
+        for (ProgressBuilder.BarSpec spec : builder.bars) {
+            int actionId = -1;
+            if (spec.action() != null && idCounter < MAX_ACTION_SLOTS - 2) {
+                actionId = idCounter++;
+                gui.button(actionId, ItemStack.EMPTY, spec.action());
+            }
+            netBars.add(new OpenProgressPayload.Bar(spec.icon(), spec.label(), spec.current(), spec.required(),
+                    spec.done(), spec.big(), spec.color(), actionId,
+                    spec.button() == null ? Component.empty() : spec.button()));
+        }
+        List<OpenProgressPayload.Action> netActions = new ArrayList<>(builder.actions.size());
+        for (PanelAction action : builder.actions) {
+            int aid = idCounter++;
+            gui.button(aid, ItemStack.EMPTY, action.action());
+            netActions.add(new OpenProgressPayload.Action(aid, action.label()));
+        }
+        int refreshId = -1;
+        if (onRefresh != null) {
+            refreshId = idCounter++;
+            gui.button(refreshId, ItemStack.EMPTY, onRefresh);
+        }
+        int backId = -1;
+        if (onBack != null) {
+            backId = idCounter++;
+            gui.button(backId, ItemStack.EMPTY, onBack);
+        }
+
+        SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
+        PacketDistributor.sendToPlayer(player, MenuS2CPayload.of(
+                new OpenProgressPayload(id, title, intro, netBars, netActions, refreshId, backId)));
+    }
+
     public static void openHub(ServerPlayer player, Component title, List<Component> stats,
                                List<HubEntry> entries, Consumer<ServerPlayer> onRefresh,
                                Consumer<ServerPlayer> onBack) {

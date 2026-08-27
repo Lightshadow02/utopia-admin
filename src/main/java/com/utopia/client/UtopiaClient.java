@@ -42,6 +42,12 @@ public final class UtopiaClient {
         // Marchand : son nom est affiche au-dessus de lui.
         event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.SHOP_NPC.get(),
                 ctx -> new StallNpcRenderer<com.utopia.entity.ShopNpc>(ctx, true));
+        // Capitaine Transit : son nom est affiche au-dessus de lui.
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.TRANSIT_NPC.get(),
+                ctx -> new StallNpcRenderer<com.utopia.entity.TransitNpc>(ctx, true));
+        // Chantier : le nom du PNJ est affiche, le Top 3 est un hologramme au-dessus.
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.CHANTIER_NPC.get(),
+                ctx -> new StallNpcRenderer<com.utopia.entity.ChantierNpc>(ctx, true));
     }
 
     /** POC : /utopiaui ouvre l'ecran owo-ui de demonstration cote client. */

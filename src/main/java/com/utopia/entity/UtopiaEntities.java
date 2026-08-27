@@ -33,6 +33,22 @@ public final class UtopiaEntities {
                     .updateInterval(2)
                     .build("shop_npc"));
 
+    /** Capitaine Transit : embarquement entre Utopia et le continent de ressources. */
+    public static final DeferredHolder<EntityType<?>, EntityType<TransitNpc>> TRANSIT_NPC =
+            ENTITIES.register("transit_npc", () -> EntityType.Builder.<TransitNpc>of(TransitNpc::new, MobCategory.MISC)
+                    .sized(0.6f, 1.8f)
+                    .clientTrackingRange(8)
+                    .updateInterval(2)
+                    .build("transit_npc"));
+
+    /** PNJ d'un chantier communautaire (collecte de ressources). */
+    public static final DeferredHolder<EntityType<?>, EntityType<ChantierNpc>> CHANTIER_NPC =
+            ENTITIES.register("chantier_npc", () -> EntityType.Builder.<ChantierNpc>of(ChantierNpc::new, MobCategory.MISC)
+                    .sized(0.6f, 1.8f)
+                    .clientTrackingRange(8)
+                    .updateInterval(2)
+                    .build("chantier_npc"));
+
     private UtopiaEntities() {
     }
 
@@ -44,5 +60,7 @@ public final class UtopiaEntities {
     private static void onAttributes(EntityAttributeCreationEvent event) {
         event.put(STALL_NPC.get(), LivingEntity.createLivingAttributes().build());
         event.put(SHOP_NPC.get(), LivingEntity.createLivingAttributes().build());
+        event.put(TRANSIT_NPC.get(), LivingEntity.createLivingAttributes().build());
+        event.put(CHANTIER_NPC.get(), LivingEntity.createLivingAttributes().build());
     }
 }

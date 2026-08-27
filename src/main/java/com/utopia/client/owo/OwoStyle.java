@@ -23,6 +23,68 @@ public final class OwoStyle {
     /** Couleur de la barre de defilement. */
     public static final Color SCROLLBAR = Color.ofArgb(0xFF4A5AA0);
 
+    /** Piste d'une barre de progression : creux sombre a coins arrondis. */
+    public static final Surface BAR_TRACK = rounded(0xFF0C0E16, 0xFF2B3150, 3);
+
+    /**
+     * Remplissage d'une barre de progression : un degrade vertical a coins arrondis, comme une barre
+     * de lecture. Le haut est plus clair que le bas, ce qui donne du relief.
+     */
+    public static Surface bar(int argb) {
+        int top = lighten(argb, 45);
+        return (context, component) -> {
+            int x = component.x();
+            int y = component.y();
+            int w = component.width();
+            int h = component.height();
+            if (w <= 0 || h <= 0) {
+                return;
+            }
+            // Degrade dessine ligne par ligne, puis coins arrondis reportes par-dessus le fond.
+            for (int dy = 0; dy < h; dy++) {
+                float t = h <= 1 ? 0f : (float) dy / (h - 1);
+                context.fill(x, y + dy, x + w, y + dy + 1, blend(top, argb, t));
+            }
+            roundCorners(context, x, y, w, h, 3);
+        };
+    }
+
+    /** Eclaircit une couleur ARGB de {@code amount} par canal. */
+    private static int lighten(int argb, int amount) {
+        int a = (argb >>> 24) & 0xFF;
+        int r = Math.min(255, ((argb >> 16) & 0xFF) + amount);
+        int g = Math.min(255, ((argb >> 8) & 0xFF) + amount);
+        int b = Math.min(255, (argb & 0xFF) + amount);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /** Interpolation lineaire entre deux couleurs ARGB. */
+    private static int blend(int from, int to, float t) {
+        int a = (int) (((from >>> 24) & 0xFF) + (((to >>> 24) & 0xFF) - ((from >>> 24) & 0xFF)) * t);
+        int r = (int) (((from >> 16) & 0xFF) + (((to >> 16) & 0xFF) - ((from >> 16) & 0xFF)) * t);
+        int g = (int) (((from >> 8) & 0xFF) + (((to >> 8) & 0xFF) - ((from >> 8) & 0xFF)) * t);
+        int b = (int) ((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /** Efface les quatre coins pour arrondir une zone deja peinte (transparent). */
+    private static void roundCorners(OwoUIDrawContext ctx, int x, int y, int w, int h, int radius) {
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        for (int dy = 0; dy < r; dy++) {
+            double dyc = r - dy - 0.5;
+            int cut = r - (int) Math.round(Math.sqrt(Math.max(0.0, (double) r * r - dyc * dyc)));
+            if (cut <= 0) {
+                continue;
+            }
+            int top = y + dy;
+            int bottom = y + h - 1 - dy;
+            ctx.fill(x, top, x + cut, top + 1, 0);
+            ctx.fill(x + w - cut, top, x + w, top + 1, 0);
+            ctx.fill(x, bottom, x + cut, bottom + 1, 0);
+            ctx.fill(x + w - cut, bottom, x + w, bottom + 1, 0);
+        }
+    }
+
     /** Surface a coins arrondis : un fond {@code fill} borde de {@code border}, rayon {@code radius} px. */
     public static Surface rounded(int fill, int border, int radius) {
         return (context, component) -> {

@@ -48,6 +48,11 @@ public final class OwoMenuClient {
         context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaPanelScreen(payload)));
     }
 
+    /** Ecran de progression (barres graphiques) : chantiers communautaires. */
+    public static void handleProgress(com.utopia.net.OpenProgressPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaProgressScreen(payload)));
+    }
+
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaAmountScreen(payload)));
     }

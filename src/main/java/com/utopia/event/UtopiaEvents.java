@@ -77,6 +77,7 @@ public final class UtopiaEvents {
         com.utopia.command.StaffCommand.register(dispatcher);
         com.utopia.command.MarcheCommand.register(dispatcher);
         com.utopia.command.VoteCommand.register(dispatcher);
+        com.utopia.command.JobCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -291,6 +292,7 @@ public final class UtopiaEvents {
         ClearLagManager.reload();
         DailyManager.loadCalendar();
         com.utopia.structure.MongolManager.loadCalendar();
+        com.utopia.job.JobManager.tick(event.getServer()); // rattrape un versement manque
         com.utopia.util.Banner.print(event.getServer());
     }
 
@@ -300,6 +302,8 @@ public final class UtopiaEvents {
         if (!(event.getEntity() instanceof ServerPlayer sp)) {
             return;
         }
+        // Salaires verses pendant son absence : le message n'apparait qu'une fois.
+        com.utopia.job.JobManager.onLogin(sp);
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
             MutableComponent open = Component.literal("[/daily]").withStyle(s -> s
                     .withColor(ChatFormatting.GREEN).withBold(true)
@@ -373,11 +377,17 @@ public final class UtopiaEvents {
         }
         // Structures : avancement des dissolutions en cours (chaque tick pour rester fluide).
         com.utopia.structure.StructureManager.tickTransitions();
+        // Salaires : verses a 12h (heure de Paris). Un controle toutes les ~30 s suffit.
+        if (t % 600 == 0) {
+            com.utopia.job.JobManager.tick(server);
+        }
         // Structures en mode auto : bascule jour <-> nuit + presence des marchands (toutes les ~5 s).
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);
             com.utopia.structure.StructureManager.syncShopNpcs(server);
             com.utopia.structure.MongolManager.tick(server); // remise a zero du quota a minuit
+            com.utopia.transit.TransitManager.syncNpcs(server); // capitaines a leur poste
+            com.utopia.chantier.ChantierManager.sync(server);  // PNJ + hologramme Top 3
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.
         com.utopia.election.ElectionManager.tick(server);

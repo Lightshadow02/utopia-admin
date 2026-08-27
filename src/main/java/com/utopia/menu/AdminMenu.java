@@ -92,6 +92,18 @@ public final class AdminMenu {
                 Icons.label("Elections", ChatFormatting.GOLD),
                 Icons.lore("Creer/lancer une election, hologramme des resultats, tests", ChatFormatting.GRAY),
                 com.utopia.election.ElectionMenus::openAdminMenu));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_INGOT),
+                Icons.label("Metiers et salaires", ChatFormatting.GOLD),
+                Icons.lore("Metiers, salaires quotidiens, employes, banquiers", ChatFormatting.GRAY),
+                com.utopia.job.JobMenus::open));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SCAFFOLDING),
+                Icons.label("Chantiers", ChatFormatting.GOLD),
+                Icons.lore("Collectes communautaires, PNJ, objectifs, registre", ChatFormatting.GRAY),
+                com.utopia.chantier.ChantierMenus::openAdmin));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.OAK_BOAT),
+                Icons.label("Capitaines Transit", ChatFormatting.AQUA),
+                Icons.lore("Traversees vers le continent, destinations, point de retour", ChatFormatting.GRAY),
+                com.utopia.transit.TransitMenus::openAdmin));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.STRUCTURE_BLOCK),
                 Icons.label("Structures", ChatFormatting.AQUA),
                 Icons.lore("Zones a 2 etats (bascule manuelle ou auto jour/nuit)", ChatFormatting.GRAY),
