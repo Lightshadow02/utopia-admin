@@ -68,6 +68,12 @@ public final class JobMenus {
                             job.enabled ? ChatFormatting.GRAY : ChatFormatting.RED),
                     sp -> openJob(sp, id)));
         }
+        if (com.utopia.savings.SavingsManager.canKeepRegistry(player)) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
+                    Icons.label("Livrets d'epargne", ChatFormatting.GOLD),
+                    Icons.lore("Registre des livrets, depots et retraits au comptoir", ChatFormatting.GRAY),
+                    com.utopia.savings.SavingsMenus::openRegistry));
+        }
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BOOK),
                 Icons.label("Historique", ChatFormatting.YELLOW),
                 Icons.lore("Versements et modifications", ChatFormatting.GRAY),
@@ -84,7 +90,7 @@ public final class JobMenus {
     }
 
     private static void promptCreate(ServerPlayer player) {
-        Menus.promptText(player, Icons.label("Nom du metier", ChatFormatting.GOLD),
+        Menus.promptFreeText(player, Icons.label("Nom du metier", ChatFormatting.GOLD),
                 List.of(Icons.lore("Ex : Aubergiste, Banquier, Garde...", ChatFormatting.GRAY)),
                 Icons.label("Suivant", ChatFormatting.GREEN), "", 32,
                 name -> {
@@ -152,7 +158,7 @@ public final class JobMenus {
                 Icons.label(job.name, ChatFormatting.WHITE),
                 canEdit ? Icons.label("Renommer", ChatFormatting.YELLOW) : null,
                 !canEdit ? null :
-                sp -> Menus.promptText(sp, Icons.label("Nouveau nom", ChatFormatting.GOLD), List.of(),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nouveau nom", ChatFormatting.GOLD), List.of(),
                         Icons.label("Valider", ChatFormatting.GREEN), job.name, 32,
                         n -> {
                             if (n != null && !n.isBlank()) {

@@ -377,8 +377,11 @@ public final class OwoMenuServer {
         return out.toString().trim();
     }
 
-    /** Longueur maximale acceptee pour une saisie, quelle que soit celle annoncee au client. */
-    private static final int MAX_TEXT_LENGTH = 128;
+    /**
+     * Longueur maximale acceptee pour une saisie, quelle que soit celle annoncee au client. Calee sur
+     * la plus longue saisie du mod (une URL de skin), pour ne jamais tronquer une valeur legitime.
+     */
+    private static final int MAX_TEXT_LENGTH = 256;
 
     /** Ferme l'ecran owo cote client + declenche le rappel de fermeture eventuel. */
     public static void close(ServerPlayer player) {

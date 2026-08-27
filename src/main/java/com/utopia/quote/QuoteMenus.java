@@ -206,7 +206,12 @@ public final class QuoteMenus {
                 Icons.label(quote.title, ChatFormatting.WHITE),
                 Icons.label("Modifier", ChatFormatting.YELLOW),
                 sp -> Menus.promptFreeText(sp, Icons.label("Objet du devis", ChatFormatting.GOLD),
-                        List.of(Icons.lore("Ce que vous proposez, en une phrase", ChatFormatting.GRAY)),
+                        List.of(Icons.lore("Ce que vous proposez, en une phrase", ChatFormatting.GRAY),
+                                Icons.lore("Ex : Construction d'une maison en pierre",
+                                        ChatFormatting.DARK_GRAY),
+                                Icons.lore("Ex : Livraison de 10 stacks de chene", ChatFormatting.DARK_GRAY),
+                                Icons.lore("Ex : Amenagement d'une boutique au marche",
+                                        ChatFormatting.DARK_GRAY)),
                         Icons.label("Valider", ChatFormatting.GREEN), quote.title, 48,
                         text -> {
                             if (text != null && !text.isBlank()) {
@@ -250,8 +255,16 @@ public final class QuoteMenus {
                 Icons.label("Modifier", ChatFormatting.YELLOW),
                 sp -> Menus.promptFreeText(sp, Icons.label("Conditions du devis", ChatFormatting.GOLD),
                         List.of(Icons.lore("Delai, materiaux fournis, acompte souhaite...",
-                                ChatFormatting.GRAY)),
-                        Icons.label("Valider", ChatFormatting.GREEN), quote.note, 96,
+                                        ChatFormatting.GRAY),
+                                Icons.lore("La phrase proposee est modifiable mot a mot",
+                                        ChatFormatting.DARK_GRAY)),
+                        Icons.label("Valider", ChatFormatting.GREEN),
+                        // Un modele tout pret vaut mieux qu'un champ vide : on corrige plus vite
+                        // qu'on ne redige.
+                        quote.note.isBlank()
+                                ? "Materiaux fournis par mes soins, livraison sous 3 jours"
+                                : quote.note,
+                        96,
                         text -> {
                             quote.note = text == null ? "" : text;
                             QuoteData.get(sp.server).setDirty();
@@ -327,26 +340,43 @@ public final class QuoteMenus {
     }
 
     private static void promptNewLine(ServerPlayer player, String id) {
-        Menus.promptFreeText(player, Icons.label("Designation", ChatFormatting.GOLD),
-                List.of(Icons.lore("Ce que couvre cette ligne", ChatFormatting.GRAY)),
-                Icons.label("Suivant", ChatFormatting.GREEN), "", 48,
+        QuoteData.Quote quote = QuoteData.get(player.server).quote(id);
+        long runningTotal = quote == null ? 0 : quote.total();
+        int lineNumber = quote == null ? 1 : quote.lines.size() + 1;
+        Menus.promptFreeText(player, Icons.label("Ligne " + lineNumber + " - designation",
+                        ChatFormatting.GOLD),
+                List.of(Icons.lore("Ce que couvre cette ligne, facturee a l'unite",
+                                ChatFormatting.GRAY),
+                        Icons.lore("Ex : Main d'oeuvre (par heure)", ChatFormatting.DARK_GRAY),
+                        Icons.lore("Ex : Bloc de pierre taillee", ChatFormatting.DARK_GRAY),
+                        Icons.lore("Ex : Deplacement sur le chantier", ChatFormatting.DARK_GRAY)),
+                Icons.label("Suivant", ChatFormatting.GREEN), "Main d'oeuvre", 48,
                 label -> {
                     if (label == null || label.isBlank()) {
                         openLines(player, id, 0);
                         return;
                     }
-                    Menus.promptAmount(player, Icons.label("Quantite", ChatFormatting.GOLD), List.of(),
+                    Menus.promptAmount(player, Icons.label("Quantite - " + label, ChatFormatting.GOLD),
+                            List.of(Icons.lore("Combien d'unites de \"" + label + "\"",
+                                            ChatFormatting.GRAY),
+                                    Icons.lore("Le total de la ligne sera quantite x prix unitaire",
+                                            ChatFormatting.DARK_GRAY)),
                             Icons.label("Suivant", ChatFormatting.GREEN), 1, 1, 9_999,
                             qty -> Menus.promptAmount(player,
-                                    Icons.label("Prix unitaire", ChatFormatting.GOLD),
-                                    List.of(Icons.lore("En Utopieces", ChatFormatting.GRAY)),
+                                    Icons.label("Prix unitaire - " + label, ChatFormatting.GOLD),
+                                    List.of(Icons.lore("Prix d'une seule unite, en Utopieces",
+                                                    ChatFormatting.GRAY),
+                                            Icons.lore("Cette ligne comptera " + qty + " x le prix saisi",
+                                                    ChatFormatting.DARK_GRAY),
+                                            Icons.lore("Total du devis avant cette ligne : "
+                                                    + runningTotal + " Utopieces", ChatFormatting.DARK_GRAY)),
                                     Icons.label("Ajouter", ChatFormatting.GREEN), 100, 0, 1_000_000_000L,
                                     price -> {
                                         QuoteData d = QuoteData.get(player.server);
-                                        QuoteData.Quote quote = d.quote(id);
-                                        if (quote != null && quote.status == QuoteData.Status.BROUILLON
-                                                && quote.lines.size() < QuoteData.MAX_LINES) {
-                                            quote.lines.add(new QuoteData.Line(label, (int) qty, price));
+                                        QuoteData.Quote fresh = d.quote(id);
+                                        if (fresh != null && fresh.status == QuoteData.Status.BROUILLON
+                                                && fresh.lines.size() < QuoteData.MAX_LINES) {
+                                            fresh.lines.add(new QuoteData.Line(label, (int) qty, price));
                                             d.setDirty();
                                         }
                                         openLines(player, id, 0);

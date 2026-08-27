@@ -127,8 +127,11 @@ public final class TransitManager {
      */
     private static boolean isSafe(ServerLevel level, TransitData.Point point) {
         BlockPos feet = BlockPos.containing(point.x, point.y, point.z);
+        // Un quai se trouve presque toujours dans une zone ou personne ne se tient : on la charge
+        // avant de juger, sinon la traversee echouerait pour la seule raison que le continent dort.
+        level.getChunk(feet.getX() >> 4, feet.getZ() >> 4);
         if (!level.isLoaded(feet)) {
-            return false; // zone non chargee : on ne peut rien garantir
+            return false; // chargement impossible : on ne peut rien garantir
         }
         BlockPos head = feet.above();
         BlockPos ground = feet.below();
@@ -154,10 +157,8 @@ public final class TransitManager {
      * si le quai n'est pas praticable.
      */
     public static BoardResult board(ServerPlayer player, TransitData.Point point, String where) {
-        BoardResult check = check(player.server, point);
-        if (check != BoardResult.OK) {
-            return check;
-        }
+        // Les refus bon marche d'abord : verifier le quai charge son chunk, un travail bien trop
+        // lourd pour le declencher a chaque clic sur un bouton qu'on va de toute facon refuser.
         if (player.isPassenger() || player.isVehicle() || hasLeashed(player)) {
             return BoardResult.MOUNTED;
         }
@@ -167,6 +168,10 @@ public final class TransitManager {
         Long last = LAST_TRIP.get(player.getUUID());
         if (last != null && System.currentTimeMillis() - last < COOLDOWN_MS) {
             return BoardResult.TOO_SOON;
+        }
+        BoardResult check = check(player.server, point);
+        if (check != BoardResult.OK) {
+            return check;
         }
         BOARDINGS.add(new Boarding(player.getUUID(), point, where, BOARDING_TICKS));
         player.serverLevel().playSound(null, player.blockPosition(),

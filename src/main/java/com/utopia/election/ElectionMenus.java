@@ -117,7 +117,7 @@ public final class ElectionMenus {
     }
 
     private static void promptCreate(ServerPlayer player) {
-        Menus.promptText(player, Icons.label("Nom de l'election", ChatFormatting.GOLD),
+        Menus.promptFreeText(player, Icons.label("Nom de l'election", ChatFormatting.GOLD),
                 List.of(Icons.lore("Ex : Election du Maire d'Aria", ChatFormatting.GRAY)),
                 Icons.label("Suivant", ChatFormatting.GREEN), "", 48,
                 name -> {
@@ -209,7 +209,7 @@ public final class ElectionMenus {
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
                 Icons.label("Nom personnalise...", ChatFormatting.AQUA),
                 Icons.lore("Candidat fictif (entite, faction...)", ChatFormatting.GRAY),
-                sp -> Menus.promptText(sp, Icons.label("Nom du candidat", ChatFormatting.GOLD), List.of(),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nom du candidat", ChatFormatting.GOLD), List.of(),
                         Icons.label("Ajouter", ChatFormatting.GREEN), "", 32,
                         cn -> {
                             if (!ElectionManager.addCandidate(sp.server, cn)) {

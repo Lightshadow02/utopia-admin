@@ -127,13 +127,51 @@ public final class JobManager {
             data.setLastPaidDay(player, today());
         }
         data.log(by + " a attribue le metier \"" + job.name + "\" a " + playerName);
+        tell(server, data, player, Component.literal("Vous etes embauche comme ")
+                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(false))
+                .append(Component.literal(job.name)
+                        .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true)))
+                .append(Component.literal(job.salary > 0
+                                ? " : " + job.salary + " Utopieces vous seront versees chaque jour a 12h."
+                                : ". Aucun salaire n'est attache a ce metier pour l'instant.")
+                        .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(false))));
     }
 
     public static void unassign(MinecraftServer server, UUID player, JobData.Job job, String by) {
         JobData data = JobData.get(server);
         data.unassign(player, job.id);
         data.log(by + " a retire le metier \"" + job.name + "\" a " + data.nameOf(player));
+        tell(server, data, player, Component.literal("Vous n'exercez plus le metier ")
+                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(false))
+                .append(Component.literal(job.name)
+                        .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true)))
+                .append(Component.literal(" : le salaire correspondant s'arrete.")
+                        .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(false))));
     }
+
+    /**
+     * Previent un joueur tout de suite s'il est la, a sa prochaine connexion sinon. Le prefixe
+     * marque distingue ces messages libres des notifications de salaire.
+     */
+    private static void tell(MinecraftServer server, JobData data, UUID target, Component body) {
+        Component message = Component.literal("[Banque d'Utopia] ")
+                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true))
+                .append(body);
+        ServerPlayer online = server.getPlayerList().getPlayer(target);
+        if (online != null) {
+            online.sendSystemMessage(message);
+        } else {
+            data.addPending(target, PLAIN + message.getString());
+        }
+    }
+
+    /**
+     * Marques des deux genres d'entree de la file d'attente. Ce sont des caracteres de controle :
+     * {@code OwoMenuServer.sanitize} retire de toute saisie joueur tout caractere inferieur a
+     * l'espace, aucun nom de metier ne peut donc imiter une marque et detourner un message.
+     */
+    private static final String PLAIN = String.valueOf((char) 1);
+    private static final String PAY = String.valueOf((char) 2);
 
     // ------------------------------------------------------------------ Versement
 
@@ -182,7 +220,7 @@ public final class JobManager {
         if (online != null) {
             online.sendSystemMessage(paidNow(jobs, total));
         } else {
-            data.addPending(player, jobs + "|" + total);
+            data.addPending(player, PAY + jobs + "|" + total);
         }
     }
 
@@ -226,14 +264,21 @@ public final class JobManager {
         JobData data = JobData.get(player.server);
         data.rememberName(player.getUUID(), player.getGameProfile().getName());
         for (String raw : data.takePending(player.getUUID())) {
-            int sep = raw.lastIndexOf('|');
+            if (raw.startsWith(PLAIN)) {
+                player.sendSystemMessage(Component.literal(raw.substring(PLAIN.length()))
+                        .withStyle(s -> s.withColor(ChatFormatting.YELLOW)));
+                continue;
+            }
+            // Les entrees d'avant l'introduction des marques n'en portent aucune : elles restent lisibles.
+            String body = raw.startsWith(PAY) ? raw.substring(PAY.length()) : raw;
+            int sep = body.lastIndexOf('|');
             if (sep <= 0) {
                 continue;
             }
-            String jobs = raw.substring(0, sep);
+            String jobs = body.substring(0, sep);
             long total;
             try {
-                total = Long.parseLong(raw.substring(sep + 1));
+                total = Long.parseLong(body.substring(sep + 1));
             } catch (NumberFormatException e) {
                 continue;
             }
@@ -253,12 +298,12 @@ public final class JobManager {
     }
 
     /**
-     * Peut modifier les metiers eux-memes (creer, renommer, changer un salaire, supprimer) : op et
-     * maire seulement. Le banquier embauche et licencie, mais ne fixe pas les montants : c'est le
-     * garde-fou qui l'empeche de se creer un metier tres bien paye.
+     * Peut modifier les metiers eux-memes : creer, renommer, changer un salaire, supprimer. Le
+     * banquier en fait partie, la banque tenant le registre des emplois comme celui des livrets.
+     * Chaque geste reste horodate au journal, qui sert de garde-fou.
      */
     public static boolean canEditJobs(ServerPlayer player) {
-        return player.hasPermissions(2) || MarketData.get(player.server).isMaire(player.getUUID());
+        return canManage(player);
     }
 
     /** Total verse chaque jour par la banque (utile pour l'affichage du panel). */

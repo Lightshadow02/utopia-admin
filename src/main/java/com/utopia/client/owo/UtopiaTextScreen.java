@@ -72,8 +72,12 @@ public class UtopiaTextScreen extends BaseOwoScreen<FlowLayout> {
         // un humain. En mode libre on refuse seulement le code de formatage et les caracteres de
         // controle, et le champ est plus large pour qu'une phrase reste lisible.
         boolean free = data.free();
-        TextBoxComponent field = Components.textBox(Sizing.fixed(free ? 220 : 150), data.defaultText());
+        // Le champ est cree vide puis rempli : EditBox demarre sur maxLength = 32 et setValue()
+        // tronque a cette longueur. En posant le texte avant de lever la limite, tout preremplissage
+        // de plus de 32 caracteres arrivait ampute (conditions de devis, URL de skin, presentation).
+        TextBoxComponent field = Components.textBox(Sizing.fixed(free ? 220 : 150));
         field.setMaxLength(Math.max(1, data.maxLength()));
+        field.setValue(data.defaultText());
         field.setFilter(free
                 ? s -> s.isEmpty() || s.matches("[^\\u00a7\\u0000-\\u001f\\u007f]+")
                 : s -> s.isEmpty() || s.matches("[a-zA-Z0-9_\\-]+"));

@@ -121,7 +121,7 @@ public final class StructureMenus {
             openSelection(admin);
             return;
         }
-        Menus.promptText(admin, Icons.label("Nom de la structure", ChatFormatting.GOLD),
+        Menus.promptFreeText(admin, Icons.label("Nom de la structure", ChatFormatting.GOLD),
                 List.of(Icons.lore("Ex : montgolfiere", ChatFormatting.GRAY),
                         Icons.lore("L'etat 1 sera capture tout de suite.", ChatFormatting.DARK_GRAY)),
                 Icons.label("Creer", ChatFormatting.GREEN), "", 24,
@@ -598,7 +598,7 @@ public final class StructureMenus {
                 Icons.label("Nom", ChatFormatting.GRAY),
                 Icons.label(st.npcName, ChatFormatting.WHITE),
                 Icons.label("Renommer", ChatFormatting.YELLOW),
-                sp -> Menus.promptText(sp, Icons.label("Nom du marchand", ChatFormatting.GOLD), List.of(),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nom du marchand", ChatFormatting.GOLD), List.of(),
                         Icons.label("Valider", ChatFormatting.GREEN), st.npcName, 24,
                         n -> {
                             if (n != null && !n.isBlank()) {
@@ -691,7 +691,7 @@ public final class StructureMenus {
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.PAINTING),
                 Icons.label("Depuis une URL", ChatFormatting.AQUA),
                 Icons.lore("URL textures.minecraft.net (ou juste le hash)", ChatFormatting.GRAY),
-                sp -> Menus.promptText(sp, Icons.label("URL du skin", ChatFormatting.GOLD),
+                sp -> Menus.promptFreeText(sp, Icons.label("URL du skin", ChatFormatting.GOLD),
                         List.of(Icons.lore("http://textures.minecraft.net/texture/<hash>", ChatFormatting.GRAY),
                                 Icons.lore("Le hash seul suffit (NameMC, MineSkin...).", ChatFormatting.DARK_GRAY),
                                 Icons.lore("Seul ce domaine est accepte par le client.", ChatFormatting.DARK_GRAY)),
@@ -756,7 +756,7 @@ public final class StructureMenus {
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
                 Icons.label("Rechercher...", ChatFormatting.YELLOW),
                 Icons.lore(query.isBlank() ? "Filtrer par nom" : "Filtre : " + query, ChatFormatting.GRAY),
-                sp -> Menus.promptText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
+                sp -> Menus.promptFreeText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
                         List.of(Icons.lore("Laisse vide pour tout afficher", ChatFormatting.GRAY)),
                         Icons.label("Chercher", ChatFormatting.GREEN), query, 32,
                         q -> openSkinPack(sp, name, q == null ? "" : q, 0, original))));

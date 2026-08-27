@@ -175,6 +175,11 @@ public final class TransitMenus {
                 Icons.label("Nouveau capitaine", ChatFormatting.GREEN),
                 Icons.lore("Place un capitaine a ta position", ChatFormatting.GRAY),
                 TransitMenus::promptCreate));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.OAK_BOAT),
+                Icons.label("Capitaine de retour ici", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Un clic : meme skin, un seul bouton \"Retour sur Utopia\"",
+                        ChatFormatting.GRAY),
+                TransitMenus::createReturnCaptain));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPASS),
                 Icons.label("Destinations (4 caps)", ChatFormatting.AQUA),
                 Icons.lore("Quais d'arrivee sur le continent", ChatFormatting.GRAY),
@@ -200,8 +205,44 @@ public final class TransitMenus {
                 TransitMenus::openAdmin, com.utopia.menu.AdminMenu::open);
     }
 
+    /**
+     * Pose en un seul clic un capitaine du retour a la position de l'admin : meme apparence que les
+     * capitaines deja en place, mode Retour, et une interface a un seul bouton vers Utopia. C'est la
+     * moitie de la ligne qui demande le moins de reglages, autant qu'elle n'en demande aucun.
+     */
+    private static void createReturnCaptain(ServerPlayer admin) {
+        TransitData data = TransitData.get(admin.server);
+
+        // On reprend l'apparence et le nom d'un capitaine existant : la ligne doit se ressembler.
+        TransitData.Captain model = null;
+        for (TransitData.Captain c : data.captains()) {
+            if (!c.skinValue.isBlank()) {
+                model = c;
+                break;
+            }
+        }
+        String name = model != null ? model.name : "Capitaine Transit";
+        TransitData.Captain captain = data.create(name);
+        captain.mode = TransitData.Mode.RETOUR;
+        if (model != null) {
+            captain.skinValue = model.skinValue;
+            captain.skinSignature = model.skinSignature;
+        }
+        place(admin, captain);
+        data.setDirty();
+        TransitManager.syncNpcs(admin.server);
+
+        admin.sendSystemMessage(Messages.success("Capitaine du retour place ici"
+                + (model != null ? " avec le skin de " + model.name + "." : ".")));
+        if (!data.isReturnUsable()) {
+            admin.sendSystemMessage(Messages.warn("Il reste a indiquer ou les joueurs debarquent sur "
+                    + "Utopia : /admin > Capitaines Transit > Point de retour."));
+        }
+        openAdmin(admin);
+    }
+
     private static void promptCreate(ServerPlayer admin) {
-        Menus.promptText(admin, Icons.label("Nom du capitaine", ChatFormatting.GOLD),
+        Menus.promptFreeText(admin, Icons.label("Nom du capitaine", ChatFormatting.GOLD),
                 List.of(Icons.lore("Ex : Capitaine Transit", ChatFormatting.GRAY)),
                 Icons.label("Placer ici", ChatFormatting.GREEN), "Capitaine Transit", 32,
                 name -> {
@@ -257,7 +298,7 @@ public final class TransitMenus {
                 Icons.label("Nom", ChatFormatting.GRAY),
                 Icons.label(captain.name, ChatFormatting.WHITE),
                 Icons.label("Renommer", ChatFormatting.YELLOW),
-                sp -> Menus.promptText(sp, Icons.label("Nom du capitaine", ChatFormatting.GOLD), List.of(),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nom du capitaine", ChatFormatting.GOLD), List.of(),
                         Icons.label("Valider", ChatFormatting.GREEN), captain.name, 32,
                         n -> {
                             if (n != null && !n.isBlank()) {
@@ -344,7 +385,7 @@ public final class TransitMenus {
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
                 Icons.label("Rechercher...", ChatFormatting.YELLOW),
                 Icons.lore(query.isBlank() ? "Filtrer par nom" : "Filtre : " + query, ChatFormatting.GRAY),
-                sp -> Menus.promptText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
+                sp -> Menus.promptFreeText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
                         List.of(Icons.lore("Laisse vide pour tout afficher", ChatFormatting.GRAY)),
                         Icons.label("Chercher", ChatFormatting.GREEN), query, 32,
                         q -> openSkin(sp, id, q == null ? "" : q, 0, original))));

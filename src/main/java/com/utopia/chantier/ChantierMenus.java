@@ -287,7 +287,7 @@ public final class ChantierMenus {
     }
 
     private static void promptCreate(ServerPlayer admin) {
-        Menus.promptText(admin, Icons.label("Nom du chantier", ChatFormatting.GOLD),
+        Menus.promptFreeText(admin, Icons.label("Nom du chantier", ChatFormatting.GOLD),
                 List.of(Icons.lore("Ex : le pont, l'eglise...", ChatFormatting.GRAY)),
                 Icons.label("Creer ici", ChatFormatting.GREEN), "", 32,
                 name -> {
@@ -348,7 +348,7 @@ public final class ChantierMenus {
                 Icons.label(chantier.presentation == null || chantier.presentation.isBlank()
                         ? "vide" : "definie", ChatFormatting.AQUA),
                 Icons.label("Ecrire", ChatFormatting.YELLOW),
-                sp -> Menus.promptText(sp, Icons.label("Texte de presentation", ChatFormatting.GOLD),
+                sp -> Menus.promptFreeText(sp, Icons.label("Texte de presentation", ChatFormatting.GOLD),
                         List.of(Icons.lore("Affiche en haut de l'interface du chantier", ChatFormatting.GRAY)),
                         Icons.label("Valider", ChatFormatting.GREEN),
                         chantier.presentation == null ? "" : chantier.presentation, 256,
@@ -361,7 +361,7 @@ public final class ChantierMenus {
                 Icons.label("Nom du PNJ", ChatFormatting.GRAY),
                 Icons.label(chantier.npcName, ChatFormatting.WHITE),
                 Icons.label("Renommer", ChatFormatting.YELLOW),
-                sp -> Menus.promptText(sp, Icons.label("Nom du PNJ", ChatFormatting.GOLD), List.of(),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nom du PNJ", ChatFormatting.GOLD), List.of(),
                         Icons.label("Valider", ChatFormatting.GREEN), chantier.npcName, 32,
                         n -> {
                             if (n != null && !n.isBlank()) {
@@ -512,6 +512,15 @@ public final class ChantierMenus {
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        // L'objectif en Utopieces se pose d'un clic, sans avoir a sortir une piece de sa poche : c'est
+        // le plus courant, il ouvre donc la liste.
+        boolean hasCoinGoal = chantier.goals.stream().anyMatch(ChantierManager::isCoinGoal);
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Objectif en Utopieces", ChatFormatting.GOLD),
+                Icons.label(hasCoinGoal ? "deja pose" : "aucun pour l'instant",
+                        hasCoinGoal ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                hasCoinGoal ? null : Icons.label("Ajouter", ChatFormatting.GREEN),
+                hasCoinGoal ? null : sp -> promptAddCoinGoal(sp, id)));
         for (int i = 0; i < chantier.goals.size(); i++) {
             final int index = i;
             ChantierData.Goal goal = chantier.goals.get(i);
@@ -522,9 +531,9 @@ public final class ChantierMenus {
                     Icons.label("Regler", ChatFormatting.YELLOW),
                     sp -> openGoal(sp, id, index)));
         }
-        if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun objectif", ChatFormatting.GRAY),
-                    Icons.label("tiens un item en main", ChatFormatting.DARK_GRAY), null, null));
+        if (chantier.goals.isEmpty()) {
+            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun autre objectif", ChatFormatting.GRAY),
+                    Icons.label("tiens un item en main puis Ajouter", ChatFormatting.DARK_GRAY), null, null));
         }
 
         List<OwoMenuServer.PanelAction> footer = List.of(
@@ -533,6 +542,44 @@ public final class ChantierMenus {
 
         OwoMenuServer.openPanel(admin, title, rows, footer,
                 sp -> openGoals(sp, id), sp -> openAdminChantier(sp, id));
+    }
+
+    /**
+     * Ajoute l'objectif en Utopieces sans passer par l'item tenu en main : c'est l'objectif que porte
+     * presque tout chantier, il est mis en avant dans la vitrine et sa cagnotte revient a la mairie.
+     */
+    private static void promptAddCoinGoal(ServerPlayer admin, String id) {
+        ChantierData data = ChantierData.get(admin.server);
+        ChantierData.Chantier chantier = data.get(id);
+        if (chantier == null) {
+            openAdmin(admin);
+            return;
+        }
+        if (chantier.goals.stream().anyMatch(ChantierManager::isCoinGoal)) {
+            admin.sendSystemMessage(Messages.warn("Ce chantier a deja un objectif en Utopieces."));
+            openGoals(admin, id);
+            return;
+        }
+        ItemStack model = new ItemStack(ChantierManager.coinItem());
+        String display = model.getHoverName().getString();
+        Menus.promptAmount(admin, Icons.label("Utopieces demandees", ChatFormatting.GOLD),
+                List.of(Icons.lore("Total a reunir par l'ensemble du serveur", ChatFormatting.GRAY),
+                        Icons.lore("Les pieces versees rejoignent la caisse de la mairie",
+                                ChatFormatting.DARK_GRAY)),
+                Icons.label("Ajouter", ChatFormatting.GREEN), 1_000, 1, 1_000_000L,
+                required -> {
+                    ChantierData d = ChantierData.get(admin.server);
+                    ChantierData.Chantier c = d.get(id);
+                    if (c == null || c.goals.stream().anyMatch(ChantierManager::isCoinGoal)) {
+                        openGoals(admin, id);
+                        return;
+                    }
+                    // En tete de la liste : la vitrine joueur montre les Utopieces en premier.
+                    c.goals.add(0, new ChantierData.Goal(model, display, (int) required, true));
+                    d.setDirty();
+                    admin.sendSystemMessage(Messages.success("Objectif ajoute : " + required + " Utopieces."));
+                    openGoals(admin, id);
+                });
     }
 
     /** Ajoute l'item tenu en main comme objectif : sa version exacte sert de reference. */
@@ -605,7 +652,7 @@ public final class ChantierMenus {
                 Icons.label("Nom affiche", ChatFormatting.GRAY),
                 Icons.label(goal.display, ChatFormatting.WHITE),
                 Icons.label("Renommer", ChatFormatting.YELLOW),
-                sp -> Menus.promptText(sp, Icons.label("Nom affiche", ChatFormatting.GOLD), List.of(),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nom affiche", ChatFormatting.GOLD), List.of(),
                         Icons.label("Valider", ChatFormatting.GREEN), goal.display, 32,
                         n -> {
                             if (n != null && !n.isBlank()) {
@@ -676,7 +723,7 @@ public final class ChantierMenus {
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
                 Icons.label("Rechercher...", ChatFormatting.YELLOW),
                 Icons.lore(query.isBlank() ? "Filtrer par nom" : "Filtre : " + query, ChatFormatting.GRAY),
-                sp -> Menus.promptText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
+                sp -> Menus.promptFreeText(sp, Icons.label("Rechercher un skin", ChatFormatting.GOLD),
                         List.of(Icons.lore("Laisse vide pour tout afficher", ChatFormatting.GRAY)),
                         Icons.label("Chercher", ChatFormatting.GREEN), query, 32,
                         q -> openSkin(sp, id, q == null ? "" : q, 0))));

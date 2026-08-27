@@ -57,7 +57,8 @@ public final class QuoteManager {
         if (quote == null) {
             return null;
         }
-        quote.title = "Devis de " + issuer.getGameProfile().getName();
+        // Un objet deja formule se corrige plus vite qu'un champ vide ne se remplit.
+        quote.title = "Prestation de " + issuer.getGameProfile().getName();
         return quote;
     }
 
