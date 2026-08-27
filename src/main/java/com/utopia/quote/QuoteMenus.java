@@ -813,6 +813,11 @@ public final class QuoteMenus {
     }
 
     public static void openAdmin(ServerPlayer admin, int page) {
+        if (!QuoteManager.canAdminister(admin)) {
+            admin.sendSystemMessage(Messages.warn("Reserve a l'administration et au maire."));
+            openHome(admin);
+            return;
+        }
         QuoteData data = QuoteData.get(admin.server);
         List<QuoteData.Quote> all = data.all();
 
@@ -857,11 +862,16 @@ public final class QuoteMenus {
         }
 
         OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PAGE_SIZE,
-                QuoteMenus::openAdmin, com.utopia.menu.AdminMenu::open);
+                QuoteMenus::openAdmin,
+                admin.hasPermissions(2) ? com.utopia.menu.AdminMenu::open : QuoteMenus::openHome);
     }
 
     /** Joueurs apparaissant dans au moins un devis. */
     public static void openAdminPlayers(ServerPlayer admin, int page) {
+        if (!QuoteManager.canAdminister(admin)) {
+            openHome(admin);
+            return;
+        }
         QuoteData data = QuoteData.get(admin.server);
         Component title = Component.literal("Devis par joueur")
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
@@ -886,6 +896,10 @@ public final class QuoteMenus {
 
     /** Historique complet d'un joueur : ce qu'il a emis et ce qu'il a recu. */
     public static void openAdminPlayer(ServerPlayer admin, UUID target, int page) {
+        if (!QuoteManager.canAdminister(admin)) {
+            openHome(admin);
+            return;
+        }
         QuoteData data = QuoteData.get(admin.server);
         String name = data.nameOf(target);
         List<QuoteData.Quote> issued = data.issuedBy(target);
@@ -937,6 +951,16 @@ public final class QuoteMenus {
     }
 
     public static void openAdminSettings(ServerPlayer admin) {
+        openAdminSettings(admin, QuoteMenus::openAdmin);
+    }
+
+    /** Variante : {@code back} permet d'y venir depuis le menu de la mairie comme depuis /devis admin. */
+    public static void openAdminSettings(ServerPlayer admin, Consumer<ServerPlayer> back) {
+        if (!QuoteManager.canAdminister(admin)) {
+            admin.sendSystemMessage(Messages.warn("Reserve a l'administration et au maire."));
+            openHome(admin);
+            return;
+        }
         QuoteData data = QuoteData.get(admin.server);
         Component title = Component.literal("Reglages des devis")
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
@@ -954,7 +978,7 @@ public final class QuoteMenus {
                                 Icons.label("Valider", ChatFormatting.GREEN), data.taxPercent(), 0, 100,
                                 v -> {
                                     QuoteData.get(sp.server).setTaxPercent((int) v);
-                                    openAdminSettings(sp);
+                                    openAdminSettings(sp, back);
                                 })),
                 new OwoMenuServer.PanelRow(
                         Icons.label("Validite par defaut", ChatFormatting.GRAY),
@@ -969,7 +993,7 @@ public final class QuoteMenus {
                                 data.defaultValidityDays(), 0, 365,
                                 v -> {
                                     QuoteData.get(sp.server).setDefaultValidityDays((int) v);
-                                    openAdminSettings(sp);
+                                    openAdminSettings(sp, back);
                                 })),
                 new OwoMenuServer.PanelRow(
                         Icons.label("Reglement", ChatFormatting.GRAY),
@@ -978,10 +1002,16 @@ public final class QuoteMenus {
                 new OwoMenuServer.PanelRow(
                         Icons.label("Reglement en liquide", ChatFormatting.GRAY),
                         Icons.label("declare par l'emetteur, hors banque : aucune taxe prelevee",
-                                ChatFormatting.DARK_GRAY), null, null));
+                                ChatFormatting.DARK_GRAY), null, null),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Destination de la taxe", ChatFormatting.GRAY),
+                        Icons.label("caisse de la mairie - solde actuel : "
+                                        + com.utopia.economy.EconomyManager.getBalance(admin.server,
+                                                com.utopia.data.MarketData.MAIRIE_UUID) + " Utopieces",
+                                ChatFormatting.GOLD), null, null));
 
-        OwoMenuServer.openPanel(admin, title, rows, List.of(), QuoteMenus::openAdminSettings,
-                QuoteMenus::openAdmin);
+        OwoMenuServer.openPanel(admin, title, rows, List.of(),
+                sp -> openAdminSettings(sp, back), back);
     }
 
     // ==============================================================================================

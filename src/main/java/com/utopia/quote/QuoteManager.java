@@ -293,6 +293,17 @@ public final class QuoteManager {
         data.prune(); // brouillons abandonnes, puis archives en trop
     }
 
+    // ------------------------------------------------------------------ Permissions
+
+    /**
+     * Peut consulter l'historique de tous les devis et regler la taxe : op et maire. La taxe finit
+     * dans la caisse de la mairie, il est normal que celui qui en repond puisse en fixer la part.
+     */
+    public static boolean canAdminister(ServerPlayer player) {
+        return player.hasPermissions(2)
+                || MarketData.get(player.server).isMaire(player.getUUID());
+    }
+
     // ------------------------------------------------------------------ Notifications
 
     private static Component message(String text, ChatFormatting color) {

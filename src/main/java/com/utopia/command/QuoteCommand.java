@@ -2,6 +2,7 @@ package com.utopia.command;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
+import com.utopia.quote.QuoteManager;
 import com.utopia.quote.QuoteMenus;
 import com.utopia.util.Messages;
 
@@ -25,15 +26,24 @@ public final class QuoteCommand {
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(Commands.literal("admin")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(QuoteCommand::canAdminister)
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            if (!player.hasPermissions(2)) {
-                                player.sendSystemMessage(Messages.warn("Reserve a l'administration."));
+                            if (!QuoteManager.canAdminister(player)) {
+                                player.sendSystemMessage(Messages.warn(
+                                        "Reserve a l'administration et au maire."));
                                 return 0;
                             }
                             QuoteMenus.openAdmin(player);
                             return Command.SINGLE_SUCCESS;
                         })));
+    }
+
+    /** Op (niveau 2) ou maire designe. */
+    private static boolean canAdminister(CommandSourceStack source) {
+        if (source.hasPermission(2)) {
+            return true;
+        }
+        return source.getEntity() instanceof ServerPlayer p && QuoteManager.canAdminister(p);
     }
 }

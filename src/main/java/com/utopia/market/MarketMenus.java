@@ -234,7 +234,12 @@ public final class MarketMenus {
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
                         .append(Component.literal(balance + " Utopieces")
                                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))),
-                Component.literal("Alimente par la taxe du marche (15%).")
+                Component.literal("Alimente par la taxe du marche (15%)"
+                                + (com.utopia.data.QuoteData.get(player.server).taxPercent() > 0
+                                        ? " et celle des devis ("
+                                                + com.utopia.data.QuoteData.get(player.server).taxPercent()
+                                                + "%)."
+                                        : "."))
                         .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
@@ -309,6 +314,11 @@ public final class MarketMenus {
                                 openMaire(sp);
                             });
                 }));
+
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK),
+                Icons.label("Taxe sur les devis", ChatFormatting.YELLOW),
+                Icons.lore("Part prelevee sur chaque reglement, versee a la mairie", ChatFormatting.GRAY),
+                sp -> com.utopia.quote.QuoteMenus.openAdminSettings(sp, MarketMenus::openMaire)));
 
         OwoMenuServer.openHub(player, title, stats, entries, MarketMenus::openMaire, null);
     }
