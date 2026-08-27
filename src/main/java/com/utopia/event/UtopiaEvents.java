@@ -375,6 +375,8 @@ public final class UtopiaEvents {
         if (t % 200 == 0) {
             ParcelManager.checkCommercialLicenses(server);
         }
+        // Traversees en cours : le navire appareille au bout du decompte.
+        com.utopia.transit.TransitManager.tickBoardings(server);
         // Structures : avancement des dissolutions en cours (chaque tick pour rester fluide).
         com.utopia.structure.StructureManager.tickTransitions();
         // Salaires : verses a 12h (heure de Paris). Un controle toutes les ~30 s suffit.

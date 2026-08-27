@@ -108,6 +108,12 @@ public final class ChantierManager {
             return new Deposit(DepositResult.NONE_OWNED, 0, false, false);
         }
         goal.current += removed;
+        // Les ressources sont consommees par la construction, mais les Utopieces donnees ne sortent pas
+        // de l'economie : elles rejoignent la caisse de la mairie, qui finance la suite du chantier.
+        if (isCoinGoal(goal)) {
+            com.utopia.economy.EconomyManager.add(player.server,
+                    com.utopia.data.MarketData.MAIRIE_UUID, removed);
+        }
         chantier.addContribution(player.getUUID(), player.getGameProfile().getName(),
                 goal.display, removed);
         ChantierData.get(player.server).setDirty();

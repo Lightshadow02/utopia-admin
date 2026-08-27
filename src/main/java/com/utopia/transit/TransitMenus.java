@@ -128,7 +128,7 @@ public final class TransitMenus {
 
     /** Embarquement effectif : verifie le quai puis emmene le joueur, ou explique pourquoi c'est impossible. */
     private static void depart(ServerPlayer player, TransitData.Point point, String where, String captainId) {
-        TransitManager.BoardResult result = TransitManager.board(player, point);
+        TransitManager.BoardResult result = TransitManager.board(player, point, where);
         if (result != TransitManager.BoardResult.OK) {
             player.sendSystemMessage(Messages.warn(TransitManager.reason(result)));
             TransitData.Captain captain = TransitData.get(player.server).captain(captainId);
@@ -140,7 +140,8 @@ public final class TransitMenus {
             return;
         }
         Menus.close(player);
-        player.sendSystemMessage(Messages.success("Vous embarquez pour " + where + ". Bonne traversee !"));
+        player.sendSystemMessage(Messages.success("Vous montez a bord... Le navire appareille pour "
+                + where + ". Bonne traversee !"));
     }
 
     // ==============================================================================================

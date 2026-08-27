@@ -243,11 +243,22 @@ public final class JobManager {
 
     // ------------------------------------------------------------------ Permissions
 
-    /** Op, maire ou banquier : les trois profils autorises a gerer les metiers et les salaires. */
+    /**
+     * Peut ouvrir le panel : op, maire ou banquier. Le banquier n'a que ce panel, aucun autre droit.
+     */
     public static boolean canManage(ServerPlayer player) {
         return player.hasPermissions(2)
                 || MarketData.get(player.server).isMaire(player.getUUID())
                 || JobData.get(player.server).isBanker(player.getUUID());
+    }
+
+    /**
+     * Peut modifier les metiers eux-memes (creer, renommer, changer un salaire, supprimer) : op et
+     * maire seulement. Le banquier embauche et licencie, mais ne fixe pas les montants : c'est le
+     * garde-fou qui l'empeche de se creer un metier tres bien paye.
+     */
+    public static boolean canEditJobs(ServerPlayer player) {
+        return player.hasPermissions(2) || MarketData.get(player.server).isMaire(player.getUUID());
     }
 
     /** Total verse chaque jour par la banque (utile pour l'affichage du panel). */

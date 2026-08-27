@@ -90,7 +90,18 @@ public final class TransitManager {
 
     // ------------------------------------------------------------------ Embarquement
 
-    public enum BoardResult { OK, NOT_CONFIGURED, DISABLED, UNSAFE, NO_WORLD }
+    public enum BoardResult { OK, NOT_CONFIGURED, DISABLED, UNSAFE, NO_WORLD, MOUNTED, TOO_SOON, BUSY }
+
+    /** Duree de l'embarquement, et delai minimal entre deux traversees (anti double-clic). */
+    private static final int BOARDING_TICKS = 60;      // ~3 s
+    private static final long COOLDOWN_MS = 5_000L;
+
+    /** Une traversee en cours : le joueur monte a bord, puis part au bout du decompte. */
+    private record Boarding(UUID player, TransitData.Point point, String where, int ticksLeft) {
+    }
+
+    private static final List<Boarding> BOARDINGS = new java.util.ArrayList<>();
+    private static final Map<UUID, Long> LAST_TRIP = new HashMap<>();
 
     /**
      * Verifie qu'un point d'arrivee est praticable : le monde existe, il y a deux blocs libres pour
@@ -138,20 +149,88 @@ public final class TransitManager {
     }
 
     /**
-     * Fait embarquer le joueur vers le point donne. Ne touche ni a l'inventaire, ni a l'experience, ni
-     * a la vie, ni a la faim, ni aux effets : seul le lieu change.
+     * Lance l'embarquement : le navire appareille au bout de quelques secondes. Refuse si le joueur
+     * monte une bete ou en tient une en laisse (elle resterait a quai), s'il vient deja de voyager, ou
+     * si le quai n'est pas praticable.
      */
-    public static BoardResult board(ServerPlayer player, TransitData.Point point) {
+    public static BoardResult board(ServerPlayer player, TransitData.Point point, String where) {
         BoardResult check = check(player.server, point);
         if (check != BoardResult.OK) {
             return check;
         }
-        ServerLevel level = resolveLevel(player.server, point.dim);
-        if (level == null) {
-            return BoardResult.NO_WORLD;
+        if (player.isPassenger() || player.isVehicle() || hasLeashed(player)) {
+            return BoardResult.MOUNTED;
         }
-        player.teleportTo(level, point.x, point.y, point.z, point.yaw, point.pitch);
+        if (isBoarding(player)) {
+            return BoardResult.BUSY;
+        }
+        Long last = LAST_TRIP.get(player.getUUID());
+        if (last != null && System.currentTimeMillis() - last < COOLDOWN_MS) {
+            return BoardResult.TOO_SOON;
+        }
+        BOARDINGS.add(new Boarding(player.getUUID(), point, where, BOARDING_TICKS));
+        player.serverLevel().playSound(null, player.blockPosition(),
+                net.minecraft.sounds.SoundEvents.BOAT_PADDLE_WATER,
+                net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
         return BoardResult.OK;
+    }
+
+    public static boolean isBoarding(ServerPlayer player) {
+        return BOARDINGS.stream().anyMatch(b -> b.player().equals(player.getUUID()));
+    }
+
+    /** Le joueur tient-il une bete en laisse ? (elle serait abandonnee a quai) */
+    private static boolean hasLeashed(ServerPlayer player) {
+        net.minecraft.world.phys.AABB box = player.getBoundingBox().inflate(12.0);
+        for (net.minecraft.world.entity.Mob mob
+                : player.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box)) {
+            if (mob.isLeashed() && mob.getLeashHolder() == player) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A appeler chaque tick : fait avancer les embarquements en cours et emmene les joueurs a l'echeance.
+     * Le deplacement ne touche ni a l'inventaire, ni a l'experience, ni a la vie, ni a la faim, ni aux effets.
+     */
+    public static void tickBoardings(MinecraftServer server) {
+        if (BOARDINGS.isEmpty()) {
+            return;
+        }
+        List<Boarding> next = new java.util.ArrayList<>(BOARDINGS.size());
+        for (Boarding b : BOARDINGS) {
+            ServerPlayer player = server.getPlayerList().getPlayer(b.player());
+            if (player == null) {
+                continue; // deconnecte pendant la manoeuvre : la traversee est abandonnee
+            }
+            if (b.ticksLeft() > 1) {
+                if (b.ticksLeft() % 20 == 0) {
+                    player.serverLevel().playSound(null, player.blockPosition(),
+                            net.minecraft.sounds.SoundEvents.BOAT_PADDLE_WATER,
+                            net.minecraft.sounds.SoundSource.PLAYERS, 0.5f, 1.1f);
+                }
+                next.add(new Boarding(b.player(), b.point(), b.where(), b.ticksLeft() - 1));
+                continue;
+            }
+            // Le quai est reverifie a l'arrivee : il a pu changer pendant la manoeuvre.
+            BoardResult result = check(server, b.point());
+            ServerLevel level = result == BoardResult.OK ? resolveLevel(server, b.point().dim) : null;
+            if (level == null) {
+                player.sendSystemMessage(com.utopia.util.Messages.warn(reason(
+                        result == BoardResult.OK ? BoardResult.NO_WORLD : result)));
+                continue;
+            }
+            player.teleportTo(level, b.point().x, b.point().y, b.point().z, b.point().yaw, b.point().pitch);
+            LAST_TRIP.put(b.player(), System.currentTimeMillis());
+            player.sendSystemMessage(com.utopia.util.Messages.success(
+                    "Vous voila arrive a " + b.where() + ". Bon sejour !"));
+            level.playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.BOAT_PADDLE_LAND,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
+        }
+        BOARDINGS.clear();
+        BOARDINGS.addAll(next);
     }
 
     /** Message explicatif quand une traversee ne peut pas avoir lieu (sans jamais parler de teleportation). */
@@ -161,6 +240,10 @@ public final class TransitManager {
             case DISABLED -> "Cette destination est momentanement fermee a la navigation.";
             case UNSAFE -> "Le quai d'arrivee n'est pas praticable en ce moment : la traversee est annulee.";
             case NO_WORLD -> "Le monde de destination est introuvable : la traversee est annulee.";
+            case MOUNTED -> "Impossible d'embarquer avec une monture ou une bete en laisse : "
+                    + "laisse-la a quai avant de monter a bord.";
+            case TOO_SOON -> "Le navire vient a peine d'accoster : laisse-lui quelques secondes.";
+            case BUSY -> "Tu es deja en train d'embarquer.";
             default -> "";
         };
     }

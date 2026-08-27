@@ -49,11 +49,14 @@ public final class JobMenus {
                                 + " Utopieces / jour, versee a 12h (heure de Paris)")
                         .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
 
+        boolean canEdit = JobManager.canEditJobs(player);
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
-                Icons.label("Creer un metier", ChatFormatting.GREEN),
-                Icons.lore("Nom puis salaire quotidien", ChatFormatting.GRAY),
-                JobMenus::promptCreate));
+        if (canEdit) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                    Icons.label("Creer un metier", ChatFormatting.GREEN),
+                    Icons.lore("Nom puis salaire quotidien", ChatFormatting.GRAY),
+                    JobMenus::promptCreate));
+        }
         for (JobData.Job job : data.jobs()) {
             String id = job.id;
             int count = data.employeesOf(id).size();
@@ -129,11 +132,13 @@ public final class JobMenus {
         Component title = Component.literal(job.name)
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
 
+        boolean canEdit = JobManager.canEditJobs(player);
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Salaire / jour", ChatFormatting.GRAY),
                 Icons.label(job.salary + " Utopieces", ChatFormatting.GOLD),
-                Icons.label("Modifier", ChatFormatting.YELLOW),
+                canEdit ? Icons.label("Modifier", ChatFormatting.YELLOW) : null,
+                !canEdit ? null :
                 sp -> Menus.promptAmount(sp, Icons.label("Salaire de " + job.name, ChatFormatting.GOLD),
                         List.of(Icons.lore("Applique des le prochain versement de midi", ChatFormatting.GRAY)),
                         Icons.label("Valider", ChatFormatting.GREEN), job.salary, 0, 1_000_000L,
@@ -145,7 +150,8 @@ public final class JobMenus {
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Nom", ChatFormatting.GRAY),
                 Icons.label(job.name, ChatFormatting.WHITE),
-                Icons.label("Renommer", ChatFormatting.YELLOW),
+                canEdit ? Icons.label("Renommer", ChatFormatting.YELLOW) : null,
+                !canEdit ? null :
                 sp -> Menus.promptText(sp, Icons.label("Nouveau nom", ChatFormatting.GOLD), List.of(),
                         Icons.label("Valider", ChatFormatting.GREEN), job.name, 32,
                         n -> {
@@ -158,8 +164,8 @@ public final class JobMenus {
                 Icons.label("Etat", ChatFormatting.GRAY),
                 Icons.label(job.enabled ? "actif" : "desactive",
                         job.enabled ? ChatFormatting.GREEN : ChatFormatting.RED),
-                Icons.label(job.enabled ? "Desactiver" : "Activer", ChatFormatting.YELLOW),
-                sp -> {
+                canEdit ? Icons.label(job.enabled ? "Desactiver" : "Activer", ChatFormatting.YELLOW) : null,
+                !canEdit ? null : sp -> {
                     JobManager.setEnabled(sp.server, job, !job.enabled, sp.getGameProfile().getName());
                     sp.sendSystemMessage(job.enabled
                             ? Messages.success("Metier actif : les salaires reprennent.")
@@ -172,7 +178,7 @@ public final class JobMenus {
                 Icons.label("Gerer", ChatFormatting.YELLOW),
                 sp -> openEmployees(sp, id, 0)));
 
-        List<OwoMenuServer.PanelAction> footer = List.of(
+        List<OwoMenuServer.PanelAction> footer = !canEdit ? List.of() : List.of(
                 new OwoMenuServer.PanelAction(Icons.label("Supprimer", ChatFormatting.RED),
                         sp -> {
                             JobManager.delete(sp.server, job, sp.getGameProfile().getName());
