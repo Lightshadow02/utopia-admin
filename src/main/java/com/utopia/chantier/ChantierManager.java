@@ -98,12 +98,12 @@ public final class ChantierManager {
         if (goal.done()) {
             return new Deposit(DepositResult.ALREADY_DONE, 0, false, false);
         }
-        int owned = count(player, goal);
+        int owned = available(player, goal);
         if (owned <= 0) {
             return new Deposit(DepositResult.NONE_OWNED, 0, false, false);
         }
         int take = Math.min(Math.min(qty, owned), goal.remaining());
-        int removed = remove(player, goal, take);
+        int removed = collect(player, goal, take);
         if (removed <= 0) {
             return new Deposit(DepositResult.NONE_OWNED, 0, false, false);
         }
@@ -129,6 +129,33 @@ public final class ChantierManager {
     }
 
     /** Retire jusqu'a {@code qty} exemplaires ; renvoie le nombre reellement retire. */
+    /**
+     * Ce que le joueur peut donner : ce qu'il porte, et pour un objectif en Utopieces, son solde en
+     * banque par-dessus. On ne fait pas le tour de la ville pour retirer des pieces avant de
+     * contribuer : le PNJ du chantier sait encaisser un virement.
+     */
+    public static int available(ServerPlayer player, ChantierData.Goal goal) {
+        int carried = count(player, goal);
+        if (!isCoinGoal(goal)) {
+            return carried;
+        }
+        long balance = com.utopia.economy.EconomyManager.getBalance(player.server, player.getUUID());
+        return (int) Math.min(Integer.MAX_VALUE, (long) carried + Math.max(0, balance));
+    }
+
+    /** Prend d'abord ce que le joueur porte, puis complete sur son compte s'il s'agit d'Utopieces. */
+    private static int collect(ServerPlayer player, ChantierData.Goal goal, int qty) {
+        int removed = remove(player, goal, qty);
+        if (removed >= qty || !isCoinGoal(goal)) {
+            return removed;
+        }
+        int rest = qty - removed;
+        if (com.utopia.economy.EconomyManager.remove(player.server, player.getUUID(), rest)) {
+            removed += rest;
+        }
+        return removed;
+    }
+
     private static int remove(ServerPlayer player, ChantierData.Goal goal, int qty) {
         Inventory inv = player.getInventory();
         int remaining = qty;

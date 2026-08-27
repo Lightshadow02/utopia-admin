@@ -298,12 +298,20 @@ public final class JobManager {
     }
 
     /**
-     * Peut modifier les metiers eux-memes : creer, renommer, changer un salaire, supprimer. Le
-     * banquier en fait partie, la banque tenant le registre des emplois comme celui des livrets.
-     * Chaque geste reste horodate au journal, qui sert de garde-fou.
+     * Peut tenir le registre des emplois : creer un metier, le renommer, l'activer, embaucher et
+     * licencier. Le banquier en fait partie, la banque tenant les emplois comme les livrets.
      */
     public static boolean canEditJobs(ServerPlayer player) {
         return canManage(player);
+    }
+
+    /**
+     * Peut fixer un montant de salaire : op et maire seulement. Le banquier tient le registre mais
+     * ne decide pas de ce que la banque verse chaque jour — sans quoi rien ne l'empecherait de
+     * s'attribuer le metier le mieux paye du serveur.
+     */
+    public static boolean canSetSalary(ServerPlayer player) {
+        return player.hasPermissions(2) || MarketData.get(player.server).isMaire(player.getUUID());
     }
 
     /** Total verse chaque jour par la banque (utile pour l'affichage du panel). */

@@ -42,9 +42,12 @@ public final class JobMenus {
 
         Component title = Component.literal("METIERS ET SALAIRES")
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        long unpaidJobs = data.jobs().stream().filter(j -> j.salary <= 0).count();
         List<Component> stats = List.of(
-                Component.literal(data.jobs().size() + " metier(s) - " + data.employees().size() + " employe(s)")
-                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
+                Component.literal(data.jobs().size() + " metier(s) - " + data.employees().size() + " employe(s)"
+                                + (unpaidJobs > 0 ? " - " + unpaidJobs + " sans salaire" : ""))
+                        .withStyle(s -> s.withColor(unpaidJobs > 0 ? ChatFormatting.YELLOW : ChatFormatting.GRAY)
+                                .withItalic(false)),
                 Component.literal("Masse salariale : " + JobManager.dailyPayroll(server)
                                 + " Utopieces / jour, versee a 12h (heure de Paris)")
                         .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
@@ -60,12 +63,17 @@ public final class JobMenus {
         for (JobData.Job job : data.jobs()) {
             String id = job.id;
             int count = data.employeesOf(id).size();
+            // Un metier ouvert par le banquier arrive sans montant : il doit sauter aux yeux de qui
+            // peut le fixer, sinon il resterait a zero sans que personne ne s'en apercoive.
+            boolean unpaid = job.salary <= 0;
             entries.add(new OwoMenuServer.HubEntry(
-                    new ItemStack(job.enabled ? Items.GOLD_INGOT : Items.GRAY_DYE),
+                    new ItemStack(job.enabled ? (unpaid ? Items.IRON_INGOT : Items.GOLD_INGOT) : Items.GRAY_DYE),
                     Icons.label(job.name, job.enabled ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY),
-                    Icons.lore(job.salary + " Utopieces/jour - " + count + " employe(s)"
+                    Icons.lore((unpaid ? "SALAIRE A FIXER" : job.salary + " Utopieces/jour")
+                            + " - " + count + " employe(s)"
                             + (job.enabled ? "" : " - DESACTIVE"),
-                            job.enabled ? ChatFormatting.GRAY : ChatFormatting.RED),
+                            !job.enabled ? ChatFormatting.RED
+                                    : unpaid ? ChatFormatting.YELLOW : ChatFormatting.GRAY),
                     sp -> openJob(sp, id)));
         }
         if (com.utopia.savings.SavingsManager.canKeepRegistry(player)) {
@@ -104,6 +112,22 @@ public final class JobMenus {
                         open(player);
                         return;
                     }
+                    if (!JobManager.canSetSalary(player)) {
+                        // Le banquier ouvre le poste ; le montant reste a la main de l'administration.
+                        JobData.Job created = JobManager.create(player.server, name, 0,
+                                player.getGameProfile().getName());
+                        if (created == null) {
+                            player.sendSystemMessage(Messages.warn("Creation impossible."));
+                            open(player);
+                            return;
+                        }
+                        player.sendSystemMessage(Messages.success("Metier \"" + created.name
+                                + "\" cree, sans salaire pour l'instant."));
+                        player.sendSystemMessage(Messages.info(
+                                "Un administrateur ou le maire doit en fixer le montant."));
+                        openJob(player, created.id);
+                        return;
+                    }
                     Menus.promptAmount(player, Icons.label("Salaire quotidien de " + name.trim(), ChatFormatting.GOLD),
                             List.of(Icons.lore("En Utopieces, verse chaque jour a 12h", ChatFormatting.GRAY)),
                             Icons.label("Creer", ChatFormatting.GREEN), 100, 0, 1_000_000L,
@@ -139,12 +163,15 @@ public final class JobMenus {
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
 
         boolean canEdit = JobManager.canEditJobs(player);
+        boolean canPay = JobManager.canSetSalary(player);
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Salaire / jour", ChatFormatting.GRAY),
-                Icons.label(job.salary + " Utopieces", ChatFormatting.GOLD),
-                canEdit ? Icons.label("Modifier", ChatFormatting.YELLOW) : null,
-                !canEdit ? null :
+                Icons.label(job.salary + " Utopieces"
+                                + (canPay ? "" : " - fixe par l'administration"),
+                        job.salary > 0 ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY),
+                canPay ? Icons.label("Modifier", ChatFormatting.YELLOW) : null,
+                !canPay ? null :
                 sp -> Menus.promptAmount(sp, Icons.label("Salaire de " + job.name, ChatFormatting.GOLD),
                         List.of(Icons.lore("Applique des le prochain versement de midi", ChatFormatting.GRAY)),
                         Icons.label("Valider", ChatFormatting.GREEN), job.salary, 0, 1_000_000L,

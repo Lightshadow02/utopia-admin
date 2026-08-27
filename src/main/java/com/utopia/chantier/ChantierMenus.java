@@ -122,18 +122,27 @@ public final class ChantierMenus {
             openChantier(player, id);
             return;
         }
-        int owned = ChantierManager.count(player, goal);
+        boolean coin = ChantierManager.isCoinGoal(goal);
+        int carried = ChantierManager.count(player, goal);
+        int owned = ChantierManager.available(player, goal);
         if (owned <= 0) {
-            player.sendSystemMessage(Messages.warn("Tu n'as pas de " + goal.display + " sur toi."));
+            player.sendSystemMessage(Messages.warn(coin
+                    ? "Tu n'as pas d'Utopieces, ni sur toi ni en banque."
+                    : "Tu n'as pas de " + goal.display + " sur toi."));
             openChantier(player, id);
             return;
         }
         int max = Math.min(owned, goal.remaining());
-        Menus.promptAmount(player, Icons.label("Donner : " + goal.display, ChatFormatting.GOLD),
-                List.of(Icons.lore("Tu en possedes " + owned + " - il en manque " + goal.remaining(),
-                                ChatFormatting.GRAY),
-                        Icons.lore("Une contribution est definitive : elle ne peut pas etre reprise.",
-                                ChatFormatting.RED)),
+        List<Component> info = new ArrayList<>();
+        info.add(Icons.lore("Tu en possedes " + owned + " - il en manque " + goal.remaining(),
+                ChatFormatting.GRAY));
+        if (coin) {
+            info.add(Icons.lore("Dont " + carried + " en poche et " + (owned - carried)
+                    + " en banque - les pieces partent en premier", ChatFormatting.DARK_GRAY));
+        }
+        info.add(Icons.lore("Une contribution est definitive : elle ne peut pas etre reprise.",
+                ChatFormatting.RED));
+        Menus.promptAmount(player, Icons.label("Donner : " + goal.display, ChatFormatting.GOLD), info,
                 Icons.label("Donner", ChatFormatting.GREEN), max, 1, max,
                 qty -> confirmGive(player, id, goalIndex, (int) qty));
     }
@@ -162,7 +171,10 @@ public final class ChantierMenus {
                     switch (d.result()) {
                         case CLOSED -> sp.sendSystemMessage(Messages.warn("Ce chantier n'accepte plus de dons."));
                         case ALREADY_DONE -> sp.sendSystemMessage(Messages.warn("Objectif deja atteint."));
-                        case NONE_OWNED -> sp.sendSystemMessage(Messages.warn("Tu n'as plus cet objet."));
+                        case NONE_OWNED -> sp.sendSystemMessage(Messages.warn(
+                                ChantierManager.isCoinGoal(goal)
+                                        ? "Tu n'as plus cette somme, ni sur toi ni en banque."
+                                        : "Tu n'as plus cet objet."));
                         case INVALID -> sp.sendSystemMessage(Messages.warn("Don impossible."));
                         default -> {
                             sp.sendSystemMessage(Messages.success("Merci ! Tu as donne " + d.amount()
