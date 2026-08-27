@@ -95,7 +95,8 @@ public final class QuoteData extends SavedData {
         public long sentAt;
         public long decidedAt;
         public int validityDays;            // 0 = sans date limite
-        public long paid;                   // deja regle par le client
+        public long paid;                   // deja regle, en banque comme de la main a la main
+        public long paidCash;               // part de "paid" reglee hors du systeme, declaree par l'emetteur
 
         public Quote(String id, UUID issuer) {
             this.id = id;
@@ -371,6 +372,7 @@ public final class QuoteData extends SavedData {
             quote.decidedAt = q.getLong("decided");
             quote.validityDays = q.getInt("validity");
             quote.paid = q.getLong("paid");
+            quote.paidCash = q.getLong("paidCash");
             ListTag lines = q.getList("lines", Tag.TAG_COMPOUND);
             for (int k = 0; k < lines.size() && quote.lines.size() < MAX_LINES; k++) {
                 CompoundTag l = lines.getCompound(k);
@@ -432,6 +434,7 @@ public final class QuoteData extends SavedData {
             q.putLong("decided", quote.decidedAt);
             q.putInt("validity", quote.validityDays);
             q.putLong("paid", quote.paid);
+            q.putLong("paidCash", quote.paidCash);
             ListTag lines = new ListTag();
             for (Line line : quote.lines) {
                 CompoundTag l = new CompoundTag();

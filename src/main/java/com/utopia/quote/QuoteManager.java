@@ -161,12 +161,13 @@ public final class QuoteManager {
 
     // ------------------------------------------------------------------ Reglement
 
-    public enum PayResult { OK, NOT_ACCEPTED, NOT_CLIENT, BAD_AMOUNT, NOT_ENOUGH }
+    public enum PayResult { OK, NOT_ACCEPTED, NOT_CLIENT, NOT_ISSUER, BAD_AMOUNT, NOT_ENOUGH }
 
     public static String reason(PayResult result) {
         return switch (result) {
             case NOT_ACCEPTED -> "Ce devis n'est pas en attente de reglement.";
             case NOT_CLIENT -> "Seul le destinataire du devis peut le regler.";
+            case NOT_ISSUER -> "Seul l'emetteur peut declarer un reglement en liquide.";
             case BAD_AMOUNT -> "Montant invalide.";
             case NOT_ENOUGH -> "Vous n'avez pas cette somme, pieces et banque reunies.";
             default -> "";
@@ -213,6 +214,52 @@ public final class QuoteManager {
                         : clientName + " a verse un acompte sur le devis " + quote.id + " : +" + net
                                 + " Utopieces (reste " + quote.remaining() + ").",
                 ChatFormatting.GREEN);
+        return PayResult.OK;
+    }
+
+    /**
+     * L'emetteur declare avoir ete paye de la main a la main : pieces comptees au comptoir, troc,
+     * arrangement hors du jeu. Rien ne circule dans l'economie, seule la trace est posee — la taxe de
+     * la mairie ne s'applique donc pas, ce qu'annoncent les reglages.
+     *
+     * <p>Un devis simplement envoye peut etre solde ainsi : un client qui paie n'a pas toujours pense
+     * a cliquer sur "Accepter". Le destinataire est prevenu dans tous les cas, pour qu'une declaration
+     * erronee ne passe jamais inapercue.
+     */
+    public static PayResult settleCash(ServerPlayer issuer, QuoteData.Quote quote, long amount) {
+        if (quote == null || !issuer.getUUID().equals(quote.issuer)) {
+            return PayResult.NOT_ISSUER;
+        }
+        if (quote.status != QuoteData.Status.ACCEPTE && quote.status != QuoteData.Status.ENVOYE) {
+            return PayResult.NOT_ACCEPTED;
+        }
+        long remaining = quote.remaining();
+        if (amount <= 0 || amount > remaining) {
+            return PayResult.BAD_AMOUNT;
+        }
+        QuoteData data = QuoteData.get(issuer.server);
+        quote.paid += amount;
+        quote.paidCash += amount;
+        boolean settled = quote.remaining() <= 0;
+        if (settled) {
+            quote.status = QuoteData.Status.SOLDE;
+            quote.decidedAt = System.currentTimeMillis();
+        } else if (quote.status == QuoteData.Status.ENVOYE) {
+            // Un acompte encaisse vaut engagement : le devis ne peut plus expirer sans reponse.
+            quote.status = QuoteData.Status.ACCEPTE;
+            quote.decidedAt = System.currentTimeMillis();
+        }
+        data.setDirty();
+
+        String issuerName = data.nameOf(quote.issuer);
+        if (quote.client != null) {
+            tell(issuer.server, data, quote.client, message(issuerName + (settled
+                            ? " a marque le devis " + quote.id + " comme regle en liquide ("
+                                    + amount + " Utopieces). Signalez-le a un administrateur si c'est une erreur."
+                            : " a enregistre un acompte en liquide de " + amount + " Utopieces sur le devis "
+                                    + quote.id + " (reste " + quote.remaining() + ")."),
+                    ChatFormatting.AQUA));
+        }
         return PayResult.OK;
     }
 

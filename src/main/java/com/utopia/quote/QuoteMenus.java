@@ -569,7 +569,13 @@ public final class QuoteMenus {
         rows.add(row("TOTAL", quote.total() + " Utopieces", ChatFormatting.GOLD));
         if (quote.paid > 0) {
             rows.add(row("Deja regle", quote.paid + " Utopieces", ChatFormatting.GREEN));
-            rows.add(row("Reste a payer", quote.remaining() + " Utopieces", ChatFormatting.YELLOW));
+            if (quote.paidCash > 0) {
+                rows.add(row("dont en liquide", quote.paidCash
+                        + " Utopieces, declare par l'emetteur", ChatFormatting.AQUA));
+            }
+            if (quote.remaining() > 0) {
+                rows.add(row("Reste a payer", quote.remaining() + " Utopieces", ChatFormatting.YELLOW));
+            }
         }
         if (data.taxPercent() > 0) {
             rows.add(row("Taxe de la mairie", data.taxPercent() + " % du reglement",
@@ -582,7 +588,7 @@ public final class QuoteMenus {
                     sp -> {
                         if (QuoteManager.accept(sp, QuoteData.get(sp.server).quote(id))) {
                             sp.sendSystemMessage(Messages.success("Devis " + id
-                                    + " accepte. Vous pouvez le regler quand vous le souhaitez."));
+                                    + " accepte : le bouton \"Payer le solde\" reglera tout d'un coup."));
                         } else {
                             sp.sendSystemMessage(Messages.warn("Ce devis n'attend plus de reponse."));
                         }
@@ -597,8 +603,15 @@ public final class QuoteMenus {
                     }));
         }
         if (isClient && quote.status == QuoteData.Status.ACCEPTE && quote.remaining() > 0) {
-            footer.add(new OwoMenuServer.PanelAction(Icons.label("Regler", ChatFormatting.GREEN),
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Payer le solde", ChatFormatting.GREEN),
+                    sp -> payAll(sp, id, back)));
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Verser un acompte", ChatFormatting.YELLOW),
                     sp -> promptPay(sp, id, back)));
+        }
+        if (isIssuer && quote.remaining() > 0
+                && (quote.status == QuoteData.Status.ACCEPTE || quote.status == QuoteData.Status.ENVOYE)) {
+            footer.add(new OwoMenuServer.PanelAction(Icons.label("Regle en liquide", ChatFormatting.AQUA),
+                    sp -> promptCash(sp, id, back)));
         }
         if (isIssuer && quote.status == QuoteData.Status.ENVOYE) {
             footer.add(new OwoMenuServer.PanelAction(Icons.label("Annuler le devis", ChatFormatting.RED),
@@ -665,6 +678,69 @@ public final class QuoteMenus {
         Consumer<ServerPlayer> next = pages > 1 ? sp -> openAllLines(sp, id, (cur + 1) % pages, back) : null;
         OwoMenuServer.openPanel(player, title, rows, List.of(), false, prev, next,
                 sp -> openAllLines(sp, id, cur, back), sp -> openQuote(sp, id, back));
+    }
+
+    /**
+     * Reglement en un clic : le solde restant part d'un coup, pieces en main d'abord puis compte en
+     * banque. Si le compte n'y suffit pas, on dit exactement ce qui manque plutot que d'echouer sec.
+     */
+    private static void payAll(ServerPlayer client, String id, Consumer<ServerPlayer> back) {
+        QuoteData.Quote quote = QuoteData.get(client.server).quote(id);
+        if (quote == null || quote.status != QuoteData.Status.ACCEPTE || quote.remaining() <= 0) {
+            openQuote(client, id, back);
+            return;
+        }
+        long due = quote.remaining();
+        long available = EconomyManager.countCoins(client)
+                + EconomyManager.getBalance(client.server, client.getUUID());
+        if (available < due) {
+            client.sendSystemMessage(Messages.warn("Il vous manque " + (due - available)
+                    + " Utopieces pour solder ce devis. Vous pouvez verser un acompte de "
+                    + available + " en attendant."));
+            openQuote(client, id, back);
+            return;
+        }
+        QuoteManager.PayResult result = QuoteManager.pay(client, quote, due);
+        if (result != QuoteManager.PayResult.OK) {
+            client.sendSystemMessage(Messages.warn(QuoteManager.reason(result)));
+        } else {
+            client.sendSystemMessage(Messages.success("Devis " + id + " solde : " + due
+                    + " Utopieces verses a " + QuoteData.get(client.server).nameOf(quote.issuer) + "."));
+        }
+        openQuote(client, id, back);
+    }
+
+    /** L'emetteur declare avoir ete paye de la main a la main : rien ne circule, la trace est posee. */
+    private static void promptCash(ServerPlayer issuer, String id, Consumer<ServerPlayer> back) {
+        QuoteData data = QuoteData.get(issuer.server);
+        QuoteData.Quote quote = data.quote(id);
+        if (quote == null || quote.remaining() <= 0) {
+            openQuote(issuer, id, back);
+            return;
+        }
+        long remaining = quote.remaining();
+        Menus.promptAmount(issuer, Icons.label("Regle en liquide - " + quote.id, ChatFormatting.AQUA),
+                List.of(Icons.lore("Somme recue de la main a la main : pieces comptees, troc...",
+                                ChatFormatting.GRAY),
+                        Icons.lore("Reste du : " + remaining + " Utopieces", ChatFormatting.GRAY),
+                        Icons.lore("Rien ne circule en banque : seule la trace est posee",
+                                ChatFormatting.DARK_GRAY),
+                        Icons.lore(data.nameOf(quote.client) + " en sera informe", ChatFormatting.DARK_GRAY)),
+                Icons.label("Declarer regle", ChatFormatting.GREEN), remaining, 1, remaining,
+                amount -> {
+                    QuoteManager.PayResult result = QuoteManager.settleCash(issuer,
+                            QuoteData.get(issuer.server).quote(id), amount);
+                    if (result != QuoteManager.PayResult.OK) {
+                        issuer.sendSystemMessage(Messages.warn(QuoteManager.reason(result)));
+                    } else {
+                        QuoteData.Quote fresh = QuoteData.get(issuer.server).quote(id);
+                        issuer.sendSystemMessage(Messages.success(
+                                fresh != null && fresh.remaining() <= 0
+                                        ? "Devis " + id + " marque comme regle en liquide."
+                                        : "Acompte en liquide de " + amount + " Utopieces enregistre."));
+                    }
+                    openQuote(issuer, id, back);
+                });
     }
 
     private static void promptPay(ServerPlayer client, String id, Consumer<ServerPlayer> back) {
@@ -786,20 +862,26 @@ public final class QuoteMenus {
         List<QuoteData.Quote> received = data.receivedBy(target);
 
         long billed = 0;
+        long billedCash = 0;
         long spent = 0;
+        long spentCash = 0;
         for (QuoteData.Quote q : issued) {
             billed += q.paid;
+            billedCash += q.paidCash;
         }
         for (QuoteData.Quote q : received) {
             spent += q.paid;
+            spentCash += q.paidCash;
         }
 
         Component title = Component.literal("Devis de " + name)
                 .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
         List<Component> stats = List.of(
-                stat("Emis : ", issued.size() + " - encaisse " + billed + " Utopieces",
+                stat("Emis : ", issued.size() + " - encaisse " + billed + " Utopieces"
+                        + (billedCash > 0 ? " (dont " + billedCash + " en liquide)" : ""),
                         ChatFormatting.GREEN),
-                stat("Recus : ", received.size() + " - regle " + spent + " Utopieces",
+                stat("Recus : ", received.size() + " - regle " + spent + " Utopieces"
+                        + (spentCash > 0 ? " (dont " + spentCash + " en liquide)" : ""),
                         ChatFormatting.YELLOW));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
@@ -862,6 +944,10 @@ public final class QuoteMenus {
                 new OwoMenuServer.PanelRow(
                         Icons.label("Reglement", ChatFormatting.GRAY),
                         Icons.label("accepter engage, payer reste un geste separe",
+                                ChatFormatting.DARK_GRAY), null, null),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Reglement en liquide", ChatFormatting.GRAY),
+                        Icons.label("declare par l'emetteur, hors banque : aucune taxe prelevee",
                                 ChatFormatting.DARK_GRAY), null, null));
 
         OwoMenuServer.openPanel(admin, title, rows, List.of(), QuoteMenus::openAdminSettings,
