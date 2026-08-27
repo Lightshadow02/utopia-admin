@@ -158,6 +158,10 @@ public final class EconomyMenus {
                 Icons.label("Payer un joueur", ChatFormatting.YELLOW),
                 Icons.lore("Envoyer de l'argent a un joueur en ligne", ChatFormatting.GRAY),
                 EconomyMenus::openPayPicker));
+        entries.add(new OwoMenuServer.HubEntry(ItemStack.EMPTY,
+                Icons.label("Mon livret d'epargne", ChatFormatting.GOLD),
+                Icons.lore("Solde, taux et gains de chaque nuit", ChatFormatting.GRAY),
+                com.utopia.savings.SavingsMenus::openOwn));
 
         OwoMenuServer.openHub(player, title, stats, entries,
                 EconomyMenus::openPlayerMenu, com.utopia.menu.MainMenu::open);

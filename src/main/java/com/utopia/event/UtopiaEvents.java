@@ -78,6 +78,7 @@ public final class UtopiaEvents {
         com.utopia.command.MarcheCommand.register(dispatcher);
         com.utopia.command.VoteCommand.register(dispatcher);
         com.utopia.command.JobCommand.register(dispatcher);
+        com.utopia.command.SavingsCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -293,6 +294,7 @@ public final class UtopiaEvents {
         DailyManager.loadCalendar();
         com.utopia.structure.MongolManager.loadCalendar();
         com.utopia.job.JobManager.tick(event.getServer()); // rattrape un versement manque
+        com.utopia.savings.SavingsManager.tick(event.getServer()); // rattrape les nuits d'interets
         com.utopia.util.Banner.print(event.getServer());
     }
 
@@ -304,6 +306,7 @@ public final class UtopiaEvents {
         }
         // Salaires verses pendant son absence : le message n'apparait qu'une fois.
         com.utopia.job.JobManager.onLogin(sp);
+        com.utopia.savings.SavingsManager.onLogin(sp);
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
             MutableComponent open = Component.literal("[/daily]").withStyle(s -> s
                     .withColor(ChatFormatting.GREEN).withBold(true)
@@ -382,6 +385,7 @@ public final class UtopiaEvents {
         // Salaires : verses a 12h (heure de Paris). Un controle toutes les ~30 s suffit.
         if (t % 600 == 0) {
             com.utopia.job.JobManager.tick(server);
+            com.utopia.savings.SavingsManager.tick(server); // interets a minuit (heure de Paris)
         }
         // Structures en mode auto : bascule jour <-> nuit + presence des marchands (toutes les ~5 s).
         if (t % 100 == 0) {
