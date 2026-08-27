@@ -3,6 +3,50 @@
     "category": "music",
     "sounds": [ { "name": "utopia_admin:music/jour/chemin_forestier1", "stream": true } ]
   },
+  "music.jour.coral_path_loop": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/coral_path_loop", "stream": true } ]
+  },
+  "music.jour.coral_path_loop_1": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/coral_path_loop_1", "stream": true } ]
+  },
+  "music.jour.lagoon_drifttt": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/lagoon_drifttt", "stream": true } ]
+  },
+  "music.jour.palm_drift": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_drift", "stream": true } ]
+  },
+  "music.jour.palm_drift_loop": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_drift_loop", "stream": true } ]
+  },
+  "music.jour.palm_drift_loop_2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_drift_loop_2", "stream": true } ]
+  },
+  "music.jour.palm_drift_loop_3": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_drift_loop_3", "stream": true } ]
+  },
+  "music.jour.palm_frond_drift": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_frond_drift", "stream": true } ]
+  },
+  "music.jour.palm_ruins_drift": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_ruins_drift", "stream": true } ]
+  },
+  "music.jour.palm_tide_loop": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palm_tide_loop", "stream": true } ]
+  },
+  "music.jour.palms_in_dust": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/palms_in_dust", "stream": true } ]
+  },
   "music.jour.route_surf_1": {
     "category": "music",
     "sounds": [ { "name": "utopia_admin:music/jour/route_surf_1", "stream": true } ]
@@ -15,6 +59,18 @@
     "category": "music",
     "sounds": [ { "name": "utopia_admin:music/jour/temple_du_crepuscule2", "stream": true } ]
   },
+  "music.jour.untitled": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/jour/untitled", "stream": true } ]
+  },
+  "music.nuit.clairiere_secrete2": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/nuit/clairiere_secrete2", "stream": true } ]
+  },
+  "music.nuit.isla_de_madera": {
+    "category": "music",
+    "sounds": [ { "name": "utopia_admin:music/nuit/isla_de_madera", "stream": true } ]
+  },
   "music.nuit.nuit_1": {
     "category": "music",
     "sounds": [ { "name": "utopia_admin:music/nuit/nuit_1", "stream": true } ]
@@ -22,10 +78,6 @@
   "music.nuit.nuit_2": {
     "category": "music",
     "sounds": [ { "name": "utopia_admin:music/nuit/nuit_2", "stream": true } ]
-  },
-  "music.nuit.clairiere_secrete2": {
-    "category": "music",
-    "sounds": [ { "name": "utopia_admin:music/nuit/clairiere_secrete2", "stream": true } ]
   },
   "music.nuit.sanctuaire_etoile2": {
     "category": "music",

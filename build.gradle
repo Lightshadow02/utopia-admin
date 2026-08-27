@@ -158,8 +158,88 @@ tasks.register('generateNpcSkinIndex') {
     }
 }
 
+// Musiques du serveur : les .ogg deposes dans /Music (prives, hors depot) sont recopies dans les
+// assets sous un nom normalise, puis declares dans sounds.json et dans un index lu au demarrage.
+// Ajouter un morceau = le deposer dans Music/JOUR, Music/NUIT ou Music/Grotte et rebuild, rien d'autre.
+tasks.register('syncMusic') {
+    var sourceRoot = file('Music')
+    var targetRoot = file("src/main/resources/assets/${mod_id}/sounds/music")
+    var soundsJson = file("src/main/resources/assets/${mod_id}/sounds.json")
+    var indexFile = file("src/main/resources/assets/${mod_id}/music_index.txt")
+    var modId = mod_id          // capture : les proprietes du projet ne sont pas visibles dans doLast
+    inputs.dir(sourceRoot).optional()
+    outputs.files(soundsJson, indexFile)
+    doLast {
+        // Nom de dossier cote source -> contexte de lecture cote jeu.
+        var contexts = [jour: 'JOUR', nuit: 'NUIT', grotte: 'Grotte']
+
+        // "Temple du crepuscule2.ogg" -> "temple_du_crepuscule2" ; un nom commencant par un chiffre
+        // est prefixe par son contexte ("1.ogg" cote nuit -> "nuit_1").
+        var slug = { String name, String ctx ->
+            var out = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD)
+                    .replaceAll(/\p{M}+/, '')
+                    .toLowerCase(Locale.ROOT)
+                    .replaceAll(/[^a-z0-9]+/, '_')
+                    .replaceAll(/_+/, '_')
+                    .replaceAll(/^_+|_+$/, '')
+            (out.isEmpty() || Character.isDigit(out.charAt(0) as char)) ? ctx + '_' + out : out
+        }
+
+        var tracks = [:]  // contexte -> liste de noms normalises
+        contexts.each { ctx, folder ->
+            var targetDir = new File(targetRoot, ctx)
+            var sourceDir = new File(sourceRoot, folder)
+            if (sourceDir.isDirectory()) {
+                // La source fait autorite : un morceau retire de /Music disparait aussi du jar.
+                targetDir.deleteDir()
+                targetDir.mkdirs()
+                var seen = [] as Set
+                sourceDir.listFiles({ f -> f.isFile() && f.name.toLowerCase(Locale.ROOT).endsWith('.ogg') } as FileFilter)
+                        .sort { it.name.toLowerCase(Locale.ROOT) }
+                        .each { src ->
+                            var name = slug(src.name.replaceAll(/(?i)\.ogg$/, ''), ctx)
+                            if (!seen.add(name)) {
+                                logger.warn("[Utopia] Musique ignoree : '${src.name}' porte le meme nom normalise que '${name}.ogg'.")
+                                return
+                            }
+                            new File(targetDir, name + '.ogg').bytes = src.bytes
+                        }
+            }
+            tracks[ctx] = targetDir.isDirectory()
+                    ? targetDir.listFiles({ f -> f.name.endsWith('.ogg') } as FileFilter)
+                            .collect { it.name.replaceAll(/\.ogg$/, '') }.sort()
+                    : []
+        }
+
+        var total = tracks.values().sum { it.size() }
+        if (total == 0) {
+            // Depot sans les musiques privees : on ne touche a rien plutot que de tout effacer.
+            logger.lifecycle('[Utopia] Aucune musique trouvee : sounds.json et l\'index sont laisses tels quels.')
+            return
+        }
+
+        var events = []
+        contexts.keySet().each { ctx -> tracks[ctx].each { events << "music.${ctx}.${it}" as String } }
+
+        soundsJson.parentFile.mkdirs()
+        soundsJson.text = '{\n' + contexts.keySet().collectMany { ctx ->
+            tracks[ctx].collect { name ->
+                """  "music.${ctx}.${name}": {
+    "category": "music",
+    "sounds": [ { "name": "${modId}:music/${ctx}/${name}", "stream": true } ]
+  }"""
+            }
+        }.join(',\n') + '\n}\n'
+
+        indexFile.text = events.join('\n') + '\n'
+        logger.lifecycle("[Utopia] ${total} musique(s) embarquee(s) : "
+                + contexts.keySet().collect { "${it} ${tracks[it].size()}" }.join(', ') + '.')
+    }
+}
+
 tasks.withType(ProcessResources).configureEach {
     dependsOn 'generateNpcSkinIndex'
+    dependsOn 'syncMusic'
     var replaceProperties = [
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,

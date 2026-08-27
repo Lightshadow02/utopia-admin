@@ -61,3 +61,6 @@ repo/
 
 ### META-INF parasite a la racine (l'access transformer dans src/ reste suivi) ###
 /META-INF/
+
+### Index des musiques : regenere au build a partir de /Music ###
+/src/main/resources/assets/utopia_admin/music_index.txt
