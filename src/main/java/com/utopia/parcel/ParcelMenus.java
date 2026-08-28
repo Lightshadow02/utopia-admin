@@ -232,12 +232,15 @@ public final class ParcelMenus {
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (Parcel p : shown) {
             String pid = p.id();
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)),
-                    Icons.label("[" + p.type().label() + "] " + pid, p.type().color()),
-                    Icons.lore(p.forSale()
-                                    ? "En vente : " + EconomyManager.format(p.price())
-                                    : p.members().size() + " membre(s) - " + p.regionCount() + " region(s)",
-                            p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+            Component label = Component.literal(pid)
+                    .withStyle(x -> x.withColor(p.type().color()).withItalic(false));
+            if (p.forSale()) {
+                label = label.copy().append(Component.literal("  en vente " + EconomyManager.format(p.price()))
+                        .withStyle(x -> x.withColor(ChatFormatting.GREEN).withItalic(false)));
+            }
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)), label,
+                    Icons.lore(p.type().label() + " - " + p.members().size() + " membre(s) - "
+                                    + p.regionCount() + " region(s)", ChatFormatting.GRAY),
                     sp -> openMyParcelsFor(sp, pid)));
         }
         if (shown.isEmpty()) {
@@ -735,9 +738,15 @@ public final class ParcelMenus {
                                                     Parcel.Type type, String context,
                                                     Consumer<ServerPlayer> back) {
         boolean on = filter.kind == kind;
-        return new OwoMenuServer.HubEntry(new ItemStack(type.wool()),
-                Icons.label((on ? "> " : "") + kindTitle(kind), type.color()),
-                Icons.lore(on ? "Affiche - clic pour tout revoir" : "N'afficher que ces parcelles",
+        // Banniere et non laine : un bouton de filtre ne doit pas se confondre avec une parcelle,
+        // alors qu'ils partagent la meme couleur de categorie.
+        net.minecraft.world.item.Item icon = kind == ParcelFilter.Kind.COMMERCE
+                ? Items.ORANGE_BANNER : Items.BLUE_BANNER;
+        return new OwoMenuServer.HubEntry(new ItemStack(icon),
+                Component.literal(on ? "Seulement les " + kindTitle(kind).toLowerCase(java.util.Locale.ROOT)
+                                : "Voir les " + kindTitle(kind).toLowerCase(java.util.Locale.ROOT))
+                        .withStyle(x -> x.withColor(type.color()).withBold(on).withItalic(false)),
+                Icons.lore(on ? "Filtre actif - clic pour tout revoir" : "N'afficher que cette categorie",
                         on ? ChatFormatting.GREEN : ChatFormatting.GRAY),
                 sp -> {
                     ParcelFilter f = ParcelFilter.of(sp, context);
@@ -800,15 +809,40 @@ public final class ParcelMenus {
                     .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
         }
 
+        long budget = EconomyManager.countCoins(player)
+                + EconomyManager.getBalance(server, player.getUUID());
+        stats.add(Component.literal("Votre budget : ")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(budget + " Utopieces")
+                        .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))));
+
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (Parcel p : sale) {
             String pid = p.id();
-            ChatFormatting color = p.type().color();
-            String vendor = p.isOwned() ? p.ownerName() + " (joueur)" : "Mairie";
+            boolean affordable = p.price() <= budget;
+            String vendor = p.isOwned() ? p.ownerName() : "Mairie";
+            // Le prix vit dans le libelle : le sous-titre n'est qu'une infobulle, illisible sur une
+            // liste de soixante parcelles ou il faudrait survoler chacune pour comparer.
+            Component label = Component.literal(pid)
+                    .withStyle(x -> x.withColor(p.type().color()).withItalic(false))
+                    .append(Component.literal("  ")
+                            .withStyle(x -> x.withColor(ChatFormatting.DARK_GRAY).withItalic(false)))
+                    .append(Component.literal(EconomyManager.format(p.price()))
+                            .withStyle(x -> x.withColor(affordable ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY)
+                                    .withBold(affordable).withItalic(false)));
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)),
-                    Icons.label("[" + p.type().label() + "] " + pid, color),
-                    Icons.lore("Prix : " + EconomyManager.format(p.price()) + " - " + vendor, ChatFormatting.GRAY),
+                    label,
+                    Icons.lore(p.type().label() + " - vendue par " + vendor + " - "
+                                    + p.approxFootprint() + " blocs au sol"
+                                    + (affordable ? "" : " - hors budget"),
+                            affordable ? ChatFormatting.GRAY : ChatFormatting.RED),
                     sp -> openBuyConfirm(sp, pid)));
+        }
+        if (sale.isEmpty()) {
+            stats.add(Component.literal(filter.active()
+                            ? "Aucune parcelle ne correspond a la recherche."
+                            : "Aucune parcelle n'est en vente pour le moment.")
+                    .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
         }
 
         OwoMenuServer.openHubPaged(player, title, stats,

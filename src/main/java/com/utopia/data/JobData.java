@@ -61,6 +61,8 @@ public final class JobData extends SavedData {
     private final Map<UUID, String> knownNames = new HashMap<>();
     private final List<HistoryEntry> history = new ArrayList<>();
     private final Set<UUID> bankers = new HashSet<>();
+    /** Salaire quotidien attache au statut de banquier, qui n'est pas un metier ordinaire. */
+    private long bankerSalary;
 
     public JobData() {
     }
@@ -222,6 +224,15 @@ public final class JobData extends SavedData {
 
     // -------- Banquiers (permission independante) --------
 
+    public long bankerSalary() {
+        return bankerSalary;
+    }
+
+    public void setBankerSalary(long salary) {
+        this.bankerSalary = Math.max(0, salary);
+        setDirty();
+    }
+
     public boolean isBanker(UUID id) {
         return bankers.contains(id);
     }
@@ -296,6 +307,7 @@ public final class JobData extends SavedData {
             CompoundTag h = hist.getCompound(i);
             data.history.add(new HistoryEntry(h.getLong("t"), h.getString("text")));
         }
+        data.bankerSalary = tag.getLong("bankerSalary");
         ListTag bank = tag.getList("bankers", Tag.TAG_STRING);
         for (int i = 0; i < bank.size(); i++) {
             try {
@@ -364,6 +376,7 @@ public final class JobData extends SavedData {
             bank.add(StringTag.valueOf(id.toString()));
         }
         tag.put("bankers", bank);
+        tag.putLong("bankerSalary", bankerSalary);
         return tag;
     }
 }

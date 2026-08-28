@@ -76,6 +76,34 @@ public final class JobMenus {
                                     : unpaid ? ChatFormatting.YELLOW : ChatFormatting.GRAY),
                     sp -> openJob(sp, id)));
         }
+        if (JobManager.canSetSalary(player)) {
+            // Le statut de banquier n'est pas un metier : sans cette ligne, son salaire n'existe nulle part.
+            long bankerPay = data.bankerSalary();
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
+                    Icons.label("Salaire du banquier", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore(bankerPay > 0
+                                    ? bankerPay + " Utopieces/jour - " + data.bankers().size() + " banquier(s)"
+                                    : "aucun salaire - " + data.bankers().size() + " banquier(s)",
+                            bankerPay > 0 ? ChatFormatting.GRAY : ChatFormatting.YELLOW),
+                    sp -> Menus.promptAmount(sp,
+                            Icons.label("Salaire du banquier", ChatFormatting.LIGHT_PURPLE),
+                            List.of(Icons.lore("Verse chaque jour a 12h a chaque banquier designe",
+                                            ChatFormatting.GRAY),
+                                    Icons.lore("S'ajoute aux metiers qu'il exerce par ailleurs",
+                                            ChatFormatting.DARK_GRAY),
+                                    Icons.lore("0 = le statut ne rapporte rien", ChatFormatting.DARK_GRAY)),
+                            Icons.label("Valider", ChatFormatting.GREEN), bankerPay, 0, 1_000_000L,
+                            v -> {
+                                JobData d = JobData.get(sp.server);
+                                d.setBankerSalary(v);
+                                d.log(sp.getGameProfile().getName() + " a fixe le salaire du banquier a "
+                                        + v + " Utopieces/jour");
+                                sp.sendSystemMessage(Messages.success(v > 0
+                                        ? "Salaire du banquier : " + v + " Utopieces/jour."
+                                        : "Le statut de banquier ne rapporte plus rien."));
+                                open(sp);
+                            })));
+        }
         if (com.utopia.savings.SavingsManager.canKeepRegistry(player)) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
                     Icons.label("Livrets d'epargne", ChatFormatting.GOLD),

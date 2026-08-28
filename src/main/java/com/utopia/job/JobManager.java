@@ -186,7 +186,12 @@ public final class JobManager {
         }
         JobData data = JobData.get(server);
         long day = today();
-        for (UUID player : data.employees()) {
+        // Les banquiers sont payes meme sans metier : leur statut n'en est pas un, mais il se remunere.
+        java.util.Set<UUID> payees = new java.util.LinkedHashSet<>(data.employees());
+        if (data.bankerSalary() > 0) {
+            payees.addAll(data.bankers());
+        }
+        for (UUID player : payees) {
             if (data.lastPaidDay(player) >= day) {
                 continue; // deja paye aujourd'hui
             }
@@ -205,6 +210,10 @@ public final class JobManager {
             }
             total += job.salary;
             lines.add(job.name + " : +" + job.salary + " Utopieces");
+        }
+        if (data.isBanker(player) && data.bankerSalary() > 0) {
+            total += data.bankerSalary();
+            lines.add("Banquier : +" + data.bankerSalary() + " Utopieces");
         }
         // Meme sans rien a verser, on marque la journee : inutile de re-tester ce joueur en boucle.
         data.setLastPaidDay(player, day);
@@ -226,6 +235,9 @@ public final class JobManager {
 
     private static List<String> jobNames(JobData data, UUID player) {
         List<String> names = new ArrayList<>();
+        if (data.isBanker(player) && data.bankerSalary() > 0) {
+            names.add("Banquier");
+        }
         for (String id : data.jobsOf(player)) {
             JobData.Job job = data.job(id);
             if (job != null && job.enabled && job.salary > 0) {
@@ -317,7 +329,7 @@ public final class JobManager {
     /** Total verse chaque jour par la banque (utile pour l'affichage du panel). */
     public static long dailyPayroll(MinecraftServer server) {
         JobData data = JobData.get(server);
-        long total = 0;
+        long total = (long) data.bankers().size() * data.bankerSalary();
         for (UUID player : data.employees()) {
             for (String id : data.jobsOf(player)) {
                 JobData.Job job = data.job(id);
