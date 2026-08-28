@@ -168,7 +168,7 @@ public final class JobMenus {
         rows.add(new OwoMenuServer.PanelRow(
                 Icons.label("Salaire / jour", ChatFormatting.GRAY),
                 Icons.label(job.salary + " Utopieces"
-                                + (canPay ? "" : " - fixe par l'administration"),
+                                + (canPay ? "" : " - lecture seule"),
                         job.salary > 0 ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY),
                 canPay ? Icons.label("Modifier", ChatFormatting.YELLOW) : null,
                 !canPay ? null :

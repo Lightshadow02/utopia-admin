@@ -306,12 +306,12 @@ public final class JobManager {
     }
 
     /**
-     * Peut fixer un montant de salaire : op et maire seulement. Le banquier tient le registre mais
-     * ne decide pas de ce que la banque verse chaque jour — sans quoi rien ne l'empecherait de
-     * s'attribuer le metier le mieux paye du serveur.
+     * Peut fixer un montant de salaire. Le banquier en fait partie : il tient le registre des
+     * emplois, il en fixe donc aussi les montants. Chaque changement reste horodate au journal avec
+     * l'ancien et le nouveau montant, ce qui rend toute derive visible apres coup.
      */
     public static boolean canSetSalary(ServerPlayer player) {
-        return player.hasPermissions(2) || MarketData.get(player.server).isMaire(player.getUUID());
+        return canManage(player);
     }
 
     /** Total verse chaque jour par la banque (utile pour l'affichage du panel). */

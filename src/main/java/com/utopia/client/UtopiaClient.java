@@ -48,6 +48,9 @@ public final class UtopiaClient {
         // Chantier : le nom du PNJ est affiche, le Top 3 est un hologramme au-dessus.
         event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.CHANTIER_NPC.get(),
                 ctx -> new StallNpcRenderer<com.utopia.entity.ChantierNpc>(ctx, true));
+        // Bookmaker : son nom est affiche, la cagnotte est un hologramme au-dessus.
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.BOOKMAKER_NPC.get(),
+                ctx -> new StallNpcRenderer<com.utopia.entity.BookmakerNpc>(ctx, true));
     }
 
     /** POC : /utopiaui ouvre l'ecran owo-ui de demonstration cote client. */

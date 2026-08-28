@@ -49,6 +49,14 @@ public final class UtopiaEntities {
                     .updateInterval(2)
                     .build("chantier_npc"));
 
+    /** Bookmaker d'un pari : tient les mises et affiche la cagnotte au-dessus de sa tete. */
+    public static final DeferredHolder<EntityType<?>, EntityType<BookmakerNpc>> BOOKMAKER_NPC =
+            ENTITIES.register("bookmaker_npc", () -> EntityType.Builder.<BookmakerNpc>of(BookmakerNpc::new, MobCategory.MISC)
+                    .sized(0.6f, 1.8f)
+                    .clientTrackingRange(8)
+                    .updateInterval(2)
+                    .build("bookmaker_npc"));
+
     private UtopiaEntities() {
     }
 
@@ -62,5 +70,6 @@ public final class UtopiaEntities {
         event.put(SHOP_NPC.get(), LivingEntity.createLivingAttributes().build());
         event.put(TRANSIT_NPC.get(), LivingEntity.createLivingAttributes().build());
         event.put(CHANTIER_NPC.get(), LivingEntity.createLivingAttributes().build());
+        event.put(BOOKMAKER_NPC.get(), LivingEntity.createLivingAttributes().build());
     }
 }

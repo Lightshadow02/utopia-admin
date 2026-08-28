@@ -80,6 +80,7 @@ public final class UtopiaEvents {
         com.utopia.command.JobCommand.register(dispatcher);
         com.utopia.command.SavingsCommand.register(dispatcher);
         com.utopia.command.QuoteCommand.register(dispatcher);
+        com.utopia.command.BetCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -267,6 +268,12 @@ public final class UtopiaEvents {
                 || !(sp.serverLevel() instanceof ServerLevel level)) {
             return;
         }
+        // Un mob hostile n'appartient a personne : il se defend partout, y compris chez les autres.
+        // Sans cela, un joueur attaque sur une parcelle qui n'est pas la sienne ne pourrait pas
+        // riposter.
+        if (event.getTarget() instanceof net.minecraft.world.entity.monster.Enemy) {
+            return;
+        }
         BlockPos pos = event.getTarget().blockPosition();
         if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
             event.setCanceled(true);
@@ -309,6 +316,7 @@ public final class UtopiaEvents {
         com.utopia.job.JobManager.onLogin(sp);
         com.utopia.savings.SavingsManager.onLogin(sp);
         com.utopia.quote.QuoteManager.onLogin(sp);
+        com.utopia.bet.BetManager.onLogin(sp);
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
             MutableComponent open = Component.literal("[/daily]").withStyle(s -> s
                     .withColor(ChatFormatting.GREEN).withBold(true)
@@ -346,6 +354,9 @@ public final class UtopiaEvents {
             com.utopia.net.OwoMenuServer.clear(sp);
             // Les criteres de recherche de parcelles ne survivent pas a la session.
             com.utopia.parcel.ParcelFilter.forget(sp.getUUID());
+            // Brouillon de pari et jeton de confirmation : rien ne survit a la session.
+            com.utopia.bet.BetMenus.forget(sp.getUUID());
+            com.utopia.bet.BetAdminMenus.forget(sp.getUUID());
         }
     }
 
@@ -393,12 +404,21 @@ public final class UtopiaEvents {
             com.utopia.quote.QuoteManager.tick(server);     // devis arrives a echeance
         }
         // Structures en mode auto : bascule jour <-> nuit + presence des marchands (toutes les ~5 s).
+        if (t % 40 == 0) {
+            // Paris : echeance des mises, annulations automatiques, versements interrompus.
+            com.utopia.bet.BetManager.tick(server);
+        }
+        if (t % 60 == 0) {
+            // Bookmakers a leur poste et hologrammes a jour (le compte a rebours s'y affiche).
+            com.utopia.bet.BetManager.syncWorld(server);
+        }
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);
             com.utopia.structure.StructureManager.syncShopNpcs(server);
             com.utopia.structure.MongolManager.tick(server); // remise a zero du quota a minuit
             com.utopia.transit.TransitManager.syncNpcs(server); // capitaines a leur poste
             com.utopia.chantier.ChantierManager.sync(server);  // PNJ + hologramme Top 3
+            com.utopia.hologram.HologramManager.sync(server);  // panneaux libres de l'administration
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.
         com.utopia.election.ElectionManager.tick(server);

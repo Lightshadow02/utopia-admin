@@ -55,6 +55,8 @@ public final class MainMenu {
                 DailyMenus::openPlayerMenu));
         entries.add(entry(Items.WRITABLE_BOOK, "Mes devis", ChatFormatting.YELLOW, quoteSublabel(server, player),
                 com.utopia.quote.QuoteMenus::openHome));
+        entries.add(entry(Items.GOLD_NUGGET, "Creer un pari", ChatFormatting.GOLD, betSublabel(server, player),
+                com.utopia.bet.BetMenus::openCreate));
         entries.add(entry(Items.ENDER_PEARL, "Se teleporter", ChatFormatting.LIGHT_PURPLE, "Vers un joueur (/tpa)",
                 MainMenu::openTpaPicker));
         entries.add(entry(Items.COMPASS, "Retour au spawn", ChatFormatting.AQUA, "Spawn du serveur",
@@ -78,6 +80,17 @@ public final class MainMenu {
                 }));
 
         OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open, null);
+    }
+
+    /**
+     * Sous-titre du bouton Pari. On ne liste jamais les paris en cours ici : pour en consulter un, il
+     * faut trouver son Bookmaker dans le monde.
+     */
+    private static String betSublabel(MinecraftServer server, ServerPlayer player) {
+        com.utopia.data.BetData.Bet active =
+                com.utopia.data.BetData.get(server).activeOf(player.getUUID());
+        return active == null ? "Placer un Bookmaker et ouvrir les mises"
+                : "Vous avez deja un pari en cours";
     }
 
     /** Sous-titre du bouton Devis : signale d'emblee ce qui attend une reponse. */

@@ -96,6 +96,15 @@ public final class AdminMenu {
                 Icons.label("Metiers et salaires", ChatFormatting.GOLD),
                 Icons.lore("Metiers, salaires quotidiens, employes, banquiers", ChatFormatting.GRAY),
                 com.utopia.job.JobMenus::open));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GLOW_ITEM_FRAME),
+                Icons.label("Hologrammes", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Panneaux de texte libres : lignes, couleurs, position", ChatFormatting.GRAY),
+                com.utopia.hologram.HologramMenus::open));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
+                Icons.label("Paris", ChatFormatting.GOLD),
+                Icons.lore("Registre complet, controle des cagnottes, paris a surveiller",
+                        ChatFormatting.GRAY),
+                com.utopia.bet.BetAdminMenus::open));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
                 Icons.label("Devis des joueurs", ChatFormatting.YELLOW),
                 Icons.lore("Historique des devis emis et recus, taxe, validite", ChatFormatting.GRAY),
