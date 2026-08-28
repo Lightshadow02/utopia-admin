@@ -9,12 +9,15 @@ import java.util.UUID;
 import com.utopia.data.TransitData;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -174,10 +177,58 @@ public final class TransitManager {
             return check;
         }
         BOARDINGS.add(new Boarding(player.getUUID(), point, where, BOARDING_TICKS));
-        player.serverLevel().playSound(null, player.blockPosition(),
-                net.minecraft.sounds.SoundEvents.BOAT_PADDLE_WATER,
-                net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
+        ServerLevel from = player.serverLevel();
+        from.sendParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 0.2, player.getZ(),
+                20, 0.5, 0.1, 0.5, 0.05);
+        from.playSound(null, player.blockPosition(), SoundEvents.BOAT_PADDLE_WATER,
+                SoundSource.PLAYERS, 0.8f, 0.9f);
         return BoardResult.OK;
+    }
+
+    /**
+     * Ecume qui monte en tournant autour du joueur pendant que le navire prend le large. L'anneau se
+     * resserre et la cadence des rames s'accelere a mesure que le depart approche : on entend qu'on
+     * s'en va avant de le voir.
+     */
+    private static void boardingEffect(ServerPlayer player, int ticksLeft) {
+        ServerLevel level = player.serverLevel();
+        double progress = 1.0 - ticksLeft / (double) BOARDING_TICKS; // 0 au depart, 1 a l'appareillage
+        double phase = (player.tickCount % 20) / 20.0 * (Math.PI * 2.0);
+        double radius = 1.15 - 0.65 * progress;
+        double height = 0.15 + progress * 1.35;
+        for (int i = 0; i < 4; i++) {
+            double angle = phase + i * (Math.PI / 2.0);
+            level.sendParticles(ParticleTypes.SPLASH,
+                    player.getX() + Math.cos(angle) * radius, player.getY() + height,
+                    player.getZ() + Math.sin(angle) * radius, 2, 0.05, 0.05, 0.05, 0.0);
+        }
+        level.sendParticles(ParticleTypes.BUBBLE_POP, player.getX(), player.getY() + 0.1,
+                player.getZ(), 3, 0.35, 0.05, 0.35, 0.01);
+
+        // Un coup de rame par demi-seconde sur la fin, contre un par seconde au debut.
+        int beat = progress > 0.6 ? 10 : 20;
+        if (ticksLeft % beat == 0) {
+            level.playSound(null, player.blockPosition(), SoundEvents.BOAT_PADDLE_WATER,
+                    SoundSource.PLAYERS, 0.5f, (float) (0.9 + progress * 0.45));
+        }
+    }
+
+    /** Gerbe d'eau laissee au quai de depart. */
+    private static void departureEffect(ServerLevel level, double x, double y, double z) {
+        level.sendParticles(ParticleTypes.SPLASH, x, y + 0.6, z, 60, 0.5, 0.6, 0.5, 0.15);
+        level.sendParticles(ParticleTypes.BUBBLE_COLUMN_UP, x, y + 0.2, z, 30, 0.4, 0.3, 0.4, 0.05);
+        level.sendParticles(ParticleTypes.CLOUD, x, y + 0.4, z, 25, 0.4, 0.2, 0.4, 0.03);
+        level.playSound(null, BlockPos.containing(x, y, z), SoundEvents.PLAYER_SPLASH_HIGH_SPEED,
+                SoundSource.PLAYERS, 0.9f, 0.8f);
+    }
+
+    /** Accostage : l'ecume retombe et la coque touche le quai. */
+    private static void arrivalEffect(ServerLevel level, double x, double y, double z) {
+        level.sendParticles(ParticleTypes.SPLASH, x, y + 0.5, z, 40, 0.45, 0.4, 0.45, 0.1);
+        level.sendParticles(ParticleTypes.CLOUD, x, y + 0.3, z, 18, 0.35, 0.15, 0.35, 0.02);
+        BlockPos pos = BlockPos.containing(x, y, z);
+        level.playSound(null, pos, SoundEvents.PLAYER_SPLASH, SoundSource.PLAYERS, 0.6f, 1.1f);
+        level.playSound(null, pos, SoundEvents.BOAT_PADDLE_LAND, SoundSource.PLAYERS, 0.9f, 1.0f);
     }
 
     public static boolean isBoarding(ServerPlayer player) {
@@ -211,11 +262,7 @@ public final class TransitManager {
                 continue; // deconnecte pendant la manoeuvre : la traversee est abandonnee
             }
             if (b.ticksLeft() > 1) {
-                if (b.ticksLeft() % 20 == 0) {
-                    player.serverLevel().playSound(null, player.blockPosition(),
-                            net.minecraft.sounds.SoundEvents.BOAT_PADDLE_WATER,
-                            net.minecraft.sounds.SoundSource.PLAYERS, 0.5f, 1.1f);
-                }
+                boardingEffect(player, b.ticksLeft());
                 next.add(new Boarding(b.player(), b.point(), b.where(), b.ticksLeft() - 1));
                 continue;
             }
@@ -227,12 +274,13 @@ public final class TransitManager {
                         result == BoardResult.OK ? BoardResult.NO_WORLD : result)));
                 continue;
             }
+            // Le sillage reste au quai de depart : ceux qui regardent voient le navire s'en aller.
+            departureEffect(player.serverLevel(), player.getX(), player.getY(), player.getZ());
             player.teleportTo(level, b.point().x, b.point().y, b.point().z, b.point().yaw, b.point().pitch);
             LAST_TRIP.put(b.player(), System.currentTimeMillis());
+            arrivalEffect(level, b.point().x, b.point().y, b.point().z);
             player.sendSystemMessage(com.utopia.util.Messages.success(
                     "Vous voila arrive a " + b.where() + ". Bon sejour !"));
-            level.playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.BOAT_PADDLE_LAND,
-                    net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
         }
         BOARDINGS.clear();
         BOARDINGS.addAll(next);
