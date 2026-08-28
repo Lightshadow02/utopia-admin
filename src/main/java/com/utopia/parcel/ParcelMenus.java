@@ -792,66 +792,76 @@ public final class ParcelMenus {
         openShop(player, 0);
     }
 
+    /**
+     * Boutique en tableau : les criteres de recherche en tete, puis une ligne par parcelle avec son
+     * prix lisible sans survol. Meme disposition que l'inventaire d'administration, pour qu'on
+     * n'apprenne pas deux presentations differentes.
+     */
     public static void openShop(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
         List<Parcel> offer = new ArrayList<>(ParcelData.get(server).forSale());
         ParcelFilter filter = ParcelFilter.of(player, ParcelFilter.SHOP);
         List<Parcel> sale = filter.apply(offer);
 
-        Component title = Icons.label("Parcelles en vente", ChatFormatting.GREEN);
-        List<Component> stats = new ArrayList<>();
-        stats.add(Component.literal(filter.active()
-                        ? sale.size() + " parcelle(s) sur " + offer.size() + " correspondent"
-                        : sale.size() + " parcelle(s) en vente")
-                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
-        if (filter.active()) {
-            stats.add(Component.literal("Filtre : " + filter.summary())
-                    .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
-        }
-
         long budget = EconomyManager.countCoins(player)
                 + EconomyManager.getBalance(server, player.getUUID());
-        stats.add(Component.literal("Votre budget : ")
-                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
-                .append(Component.literal(budget + " Utopieces")
-                        .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))));
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        for (Parcel p : sale) {
+        int pages = Math.max(1, (sale.size() + SHOP_PAGE_SIZE - 1) / SHOP_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * SHOP_PAGE_SIZE;
+        int to = Math.min(sale.size(), from + SHOP_PAGE_SIZE);
+
+        Component title = Component.literal("PARCELLES EN VENTE"
+                        + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""))
+                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Recherche", filter.active() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                Icons.label(filter.summary(), ChatFormatting.DARK_GRAY),
+                Icons.label("Filtrer", ChatFormatting.YELLOW),
+                sp -> openFilter(sp, ParcelFilter.SHOP, ParcelMenus::openShop)));
+        rows.add(kindRow(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
+                ParcelFilter.SHOP, ParcelMenus::openShop));
+        rows.add(kindRow(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
+                ParcelFilter.SHOP, ParcelMenus::openShop));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Votre budget", ChatFormatting.GRAY),
+                Component.literal(budget + " Utopieces")
+                        .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))
+                        .append(Component.literal("  -  " + sale.size() + " en vente")
+                                .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false))),
+                null, null));
+
+        for (Parcel p : sale.subList(Math.min(from, sale.size()), to)) {
             String pid = p.id();
             boolean affordable = p.price() <= budget;
             String vendor = p.isOwned() ? p.ownerName() : "Mairie";
-            // Le prix vit dans le libelle : le sous-titre n'est qu'une infobulle, illisible sur une
-            // liste de soixante parcelles ou il faudrait survoler chacune pour comparer.
+            // La couleur porte la categorie : bleu habitation, orange commerce, comme partout.
             Component label = Component.literal(pid)
-                    .withStyle(x -> x.withColor(p.type().color()).withItalic(false))
-                    .append(Component.literal("  ")
-                            .withStyle(x -> x.withColor(ChatFormatting.DARK_GRAY).withItalic(false)))
-                    .append(Component.literal(EconomyManager.format(p.price()))
-                            .withStyle(x -> x.withColor(affordable ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY)
-                                    .withBold(affordable).withItalic(false)));
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)),
-                    label,
-                    Icons.lore(p.type().label() + " - vendue par " + vendor + " - "
-                                    + p.approxFootprint() + " blocs au sol"
-                                    + (affordable ? "" : " - hors budget"),
-                            affordable ? ChatFormatting.GRAY : ChatFormatting.RED),
+                    .withStyle(x -> x.withColor(p.type().color()).withItalic(false));
+            Component value = Component.literal(EconomyManager.format(p.price()))
+                    .withStyle(x -> x.withColor(affordable ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY)
+                            .withBold(affordable).withItalic(false))
+                    .append(Component.literal("  " + vendor)
+                            .withStyle(x -> x.withColor(ChatFormatting.GRAY).withBold(false).withItalic(false)));
+            rows.add(new OwoMenuServer.PanelRow(label, value,
+                    Icons.label(affordable ? "Acheter" : "Voir",
+                            affordable ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
                     sp -> openBuyConfirm(sp, pid)));
         }
         if (sale.isEmpty()) {
-            stats.add(Component.literal(filter.active()
-                            ? "Aucune parcelle ne correspond a la recherche."
-                            : "Aucune parcelle n'est en vente pour le moment.")
-                    .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(filter.active() ? "Aucun resultat" : "Aucune parcelle en vente",
+                            ChatFormatting.RED),
+                    Icons.label(filter.active() ? "elargissez la recherche" : "revenez plus tard",
+                            ChatFormatting.DARK_GRAY), null, null));
         }
 
-        OwoMenuServer.openHubPaged(player, title, stats,
-                List.of(filterEntry(filter, ParcelFilter.SHOP, ParcelMenus::openShop),
-                        kindEntry(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
-                                ParcelFilter.SHOP, ParcelMenus::openShop),
-                        kindEntry(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
-                                ParcelFilter.SHOP, ParcelMenus::openShop)),
-                entries, page, ADMIN_PAGE_SIZE, ParcelMenus::openShop, com.utopia.menu.MainMenu::open);
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openShop(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openShop(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openPanel(player, title, rows, List.of(), false, onPrev, onNext,
+                sp -> openShop(sp, cur), com.utopia.menu.MainMenu::open);
     }
 
     // ----------------------------------------------------------------------------------- admin : toutes les parcelles
@@ -859,6 +869,9 @@ public final class ParcelMenus {
     /** Toutes les parcelles (triees par ID). Clic gauche = menu admin, clic droit = teleportation. */
     /** Nombre de parcelles affichees par page dans le menu admin global. */
     private static final int ADMIN_PAGE_SIZE = 10;
+
+    /** Parcelles affichees par page dans la boutique (hors lignes de filtre et budget). */
+    private static final int SHOP_PAGE_SIZE = 9;
 
     public static void openAdminAll(ServerPlayer admin) {
         openAdminAll(admin, 0);
