@@ -340,6 +340,96 @@ public final class OwoMenuServer {
                 MenuS2CPayload.of(new OpenAmountPayload(id, title, info, confirmLabel, defaultValue, min, max)));
     }
 
+    /** Une colonne d'un tableau : son en-tete, sa largeur en pixels, son alignement (0/1/2). */
+    public record Column(Component header, int width, int align) {
+        public static final int LEFT = 0;
+        public static final int CENTER = 1;
+        public static final int RIGHT = 2;
+    }
+
+    /** Une ligne d'un tableau : une cellule par colonne, et l'action du clic (peut etre nulle). */
+    public record TableRow(List<Component> cells, Consumer<ServerPlayer> action) {
+    }
+
+    /**
+     * Ouvre un ecran <b>tableau</b> : lignes de commande facultatives, en-tete de colonnes, puis une
+     * ligne par enregistrement, cliquable dans son entier. Les colonnes portent leur largeur et leur
+     * alignement, pour que les chiffres se lisent les uns sous les autres.
+     */
+    public static void openTable(ServerPlayer player, Component title, List<Component> stats,
+                                 List<PanelRow> controls, List<Column> columns, List<TableRow> rows,
+                                 List<PanelAction> footer, Consumer<ServerPlayer> onPrev,
+                                 Consumer<ServerPlayer> onNext, Consumer<ServerPlayer> onRefresh,
+                                 Consumer<ServerPlayer> onBack) {
+        int id = COUNTER.incrementAndGet();
+        UtopiaGui gui = new UtopiaGui(6, title); // 54 slots d'actions
+
+        int reserved = controls.size() + footer.size() + (onRefresh != null ? 1 : 0)
+                + (onBack != null ? 1 : 0) + (onPrev != null ? 1 : 0) + (onNext != null ? 1 : 0);
+        rows = clampEntries(rows, Math.max(1, MAX_ACTION_SLOTS - reserved), title);
+
+        int idCounter = 0;
+        List<OpenTablePayload.Control> netControls = new ArrayList<>(controls.size());
+        for (PanelRow c : controls) {
+            int actionId = -1;
+            if (c.action() != null) {
+                actionId = idCounter++;
+                gui.button(actionId, ItemStack.EMPTY, c.action());
+            }
+            netControls.add(new OpenTablePayload.Control(c.label(), c.value(),
+                    c.buttonLabel() == null ? Component.empty() : c.buttonLabel(), actionId));
+        }
+        List<OpenTablePayload.Row> netRows = new ArrayList<>(rows.size());
+        for (TableRow r : rows) {
+            int actionId = -1;
+            if (r.action() != null) {
+                actionId = idCounter++;
+                gui.button(actionId, ItemStack.EMPTY, r.action());
+            }
+            netRows.add(new OpenTablePayload.Row(r.cells(), actionId));
+        }
+        List<OpenTablePayload.Action> netFooter = new ArrayList<>(footer.size());
+        for (PanelAction a : footer) {
+            int aid = idCounter++;
+            gui.button(aid, ItemStack.EMPTY, a.action());
+            netFooter.add(new OpenTablePayload.Action(aid, a.label()));
+        }
+        int refreshId = -1;
+        if (onRefresh != null) {
+            refreshId = idCounter++;
+            gui.button(refreshId, ItemStack.EMPTY, onRefresh);
+        }
+        int backId = -1;
+        if (onBack != null) {
+            backId = idCounter++;
+            gui.button(backId, ItemStack.EMPTY, onBack);
+        }
+        int prevId = -1;
+        if (onPrev != null) {
+            prevId = idCounter++;
+            gui.button(prevId, ItemStack.EMPTY, onPrev);
+        }
+        int nextId = -1;
+        if (onNext != null) {
+            nextId = idCounter++;
+            gui.button(nextId, ItemStack.EMPTY, onNext);
+        }
+
+        List<Component> headers = new ArrayList<>(columns.size());
+        List<Integer> widths = new ArrayList<>(columns.size());
+        List<Integer> aligns = new ArrayList<>(columns.size());
+        for (Column c : columns) {
+            headers.add(c.header());
+            widths.add(c.width());
+            aligns.add(c.align());
+        }
+
+        SESSIONS.put(player.getUUID(), new Session(id, gui, null, null));
+        PacketDistributor.sendToPlayer(player, MenuS2CPayload.of(new OpenTablePayload(
+                id, title, stats, netControls, headers, widths, aligns, netRows, netFooter,
+                refreshId, backId, prevId, nextId)));
+    }
+
     /** Ouvre un ecran de saisie d'identifiant (sans espace) ; {@code onConfirm} recoit la chaine saisie. */
     public static void openText(ServerPlayer player, Component title, List<Component> info, Component confirmLabel,
                                 String defaultText, int maxLength, Consumer<String> onConfirm) {

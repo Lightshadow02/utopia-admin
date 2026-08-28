@@ -32,6 +32,8 @@ public final class OwoMenuClient {
                 mc.setScreen(null);
             } else if (mc.screen instanceof UtopiaPanelScreen panel && panel.sessionId() == payload.sessionId()) {
                 mc.setScreen(null);
+            } else if (mc.screen instanceof UtopiaTableScreen table && table.sessionId() == payload.sessionId()) {
+                mc.setScreen(null);
             }
         });
     }
@@ -51,6 +53,11 @@ public final class OwoMenuClient {
     /** Ecran de progression (barres graphiques) : chantiers communautaires. */
     public static void handleProgress(com.utopia.net.OpenProgressPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaProgressScreen(payload)));
+    }
+
+    /** Ecran tableau : une colonne par donnee, ligne entiere cliquable. */
+    public static void handleTable(com.utopia.net.OpenTablePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaTableScreen(payload)));
     }
 
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {
