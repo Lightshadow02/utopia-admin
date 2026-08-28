@@ -43,8 +43,7 @@ public final class HologramMenus {
         }
         HologramData data = HologramData.get(admin.server);
 
-        Component title = Component.literal("HOLOGRAMMES")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Hologrammes", ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal(data.all().size() + " hologramme(s) pose(s)")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
@@ -117,8 +116,7 @@ public final class HologramMenus {
             open(admin);
             return;
         }
-        Component title = Component.literal(holo.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title(holo.name, ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -189,8 +187,7 @@ public final class HologramMenus {
             open(admin);
             return;
         }
-        Component title = Component.literal("Lignes - " + holo.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Lignes - " + holo.name, ChatFormatting.AQUA);
         List<Component> stats = List.of(
                 Component.literal(holo.lines.size() + " / " + HologramData.MAX_LINES + " ligne(s)")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
@@ -241,8 +238,8 @@ public final class HologramMenus {
             return;
         }
         HologramData.Line line = holo.lines.get(index);
-        Component title = Component.literal("Ligne " + (index + 1) + " - " + holo.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Ligne " + (index + 1) + " - " + holo.name,
+                ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -342,8 +339,7 @@ public final class HologramMenus {
             open(admin);
             return;
         }
-        Component title = Component.literal("Position - " + holo.name)
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Position - " + holo.name, ChatFormatting.LIGHT_PURPLE);
 
         List<OwoMenuServer.PanelRow> rows = List.of(
                 new OwoMenuServer.PanelRow(

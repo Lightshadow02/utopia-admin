@@ -69,7 +69,7 @@ public final class TransitMenus {
         if (captain == null) {
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label(captain.name, ChatFormatting.GOLD)).gridLayout(true);
+        UtopiaGui gui = new UtopiaGui(3, Icons.title(captain.name, ChatFormatting.GOLD)).gridLayout(true);
 
         // Centre purement informatif : volontairement non cliquable.
         gui.set(SLOT_CENTRE, Icons.icon(Items.COMPASS,
@@ -109,8 +109,7 @@ public final class TransitMenus {
             return;
         }
         boolean usable = data.isReturnUsable();
-        Component title = Component.literal(captain.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title(captain.name, ChatFormatting.GOLD);
         List<Component> stats = List.of(Component.literal(usable
                         ? "Le navire est pret a lever l'ancre."
                         : "Aucune traversee possible pour le moment.")
@@ -155,8 +154,7 @@ public final class TransitMenus {
     public static void openAdmin(ServerPlayer admin, int page) {
         TransitData data = TransitData.get(admin.server);
 
-        Component title = Component.literal("CAPITAINES TRANSIT")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Capitaines Transit", ChatFormatting.GOLD);
         int usable = 0;
         for (TransitData.Direction d : TransitData.Direction.values()) {
             if (data.isUsable(d)) {
@@ -278,8 +276,7 @@ public final class TransitMenus {
             openAdmin(admin);
             return;
         }
-        Component title = Component.literal(captain.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title(captain.name, ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -371,8 +368,7 @@ public final class TransitMenus {
         List<String> found = com.utopia.entity.NpcSkins.search(query);
         String currentName = com.utopia.entity.NpcSkins.nameOf(captain.skinValue);
 
-        Component title = Component.literal("Skin - " + captain.name)
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Skin - " + captain.name, ChatFormatting.LIGHT_PURPLE);
         List<Component> stats = List.of(
                 Component.literal(query.isBlank()
                                 ? found.size() + " skins disponibles"
@@ -423,8 +419,7 @@ public final class TransitMenus {
 
     public static void openDestinations(ServerPlayer admin) {
         TransitData data = TransitData.get(admin.server);
-        Component title = Component.literal("Destinations du continent")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Destinations du continent", ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         for (TransitData.Direction d : TransitData.Direction.values()) {
@@ -451,8 +446,7 @@ public final class TransitMenus {
     public static void openPoint(ServerPlayer admin, TransitData.Direction direction) {
         TransitData data = TransitData.get(admin.server);
         TransitData.Point p = data.destination(direction);
-        Component title = Component.literal("Quai " + direction.label())
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Quai " + direction.label(), ChatFormatting.AQUA);
         List<Component> stats = List.of(
                 Component.literal(pointLabel(p))
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
@@ -488,8 +482,7 @@ public final class TransitMenus {
     public static void openReturnPoint(ServerPlayer admin) {
         TransitData data = TransitData.get(admin.server);
         TransitData.Point p = data.returnPoint();
-        Component title = Component.literal("Point de retour - Utopia")
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Point de retour - Utopia", ChatFormatting.LIGHT_PURPLE);
         List<Component> stats = List.of(
                 Component.literal(pointLabel(p))
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),

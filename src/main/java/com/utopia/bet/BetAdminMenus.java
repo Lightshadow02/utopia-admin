@@ -116,6 +116,10 @@ public final class BetAdminMenus {
         open(admin, 0);
     }
 
+    /**
+     * Le registre en tableau : cagnottes et etats se lisent les uns sous les autres, ce qui est
+     * la seule facon de reperer une anomalie sans ouvrir chaque pari.
+     */
     public static void open(ServerPlayer admin, int page) {
         if (!admin.hasPermissions(2)) {
             admin.sendSystemMessage(Messages.warn("Reserve a l'administration."));
@@ -136,8 +140,13 @@ public final class BetAdminMenus {
             }
         }
 
-        Component title = Component.literal("REGISTRE DES PARIS")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        int pages = Math.max(1, (all.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PAGE_SIZE;
+        int to = Math.min(all.size(), from + PAGE_SIZE);
+
+        Component title = Icons.screenTitle("Registre des paris"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GOLD);
         List<Component> stats = new ArrayList<>();
         stats.add(stat(data.all().size() + " pari(s) au registre - ", live + " en cours",
                 ChatFormatting.AQUA));
@@ -147,46 +156,66 @@ public final class BetAdminMenus {
                     ChatFormatting.YELLOW));
         }
 
-        List<OwoMenuServer.HubEntry> pinned = List.of(
-                new OwoMenuServer.HubEntry(new ItemStack(Items.SPYGLASS),
+        List<OwoMenuServer.PanelRow> controls = List.of(
+                new OwoMenuServer.PanelRow(
                         Icons.label("Rechercher / filtrer",
-                                filter.active() ? ChatFormatting.GREEN : ChatFormatting.YELLOW),
-                        Icons.lore(filter.summary(), ChatFormatting.GRAY),
+                                filter.active() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                        Icons.label(filter.summary(), ChatFormatting.DARK_GRAY),
+                        Icons.label("Filtrer", ChatFormatting.YELLOW),
                         BetAdminMenus::openFilter),
-                new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
-                        Icons.label("Par joueur", ChatFormatting.AQUA),
-                        Icons.lore("Historique complet d'un joueur", ChatFormatting.GRAY),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Par joueur", ChatFormatting.GRAY),
+                        Icons.label("Historique complet d'un joueur", ChatFormatting.DARK_GRAY),
+                        Icons.label("Ouvrir", ChatFormatting.YELLOW),
                         sp -> openPlayers(sp, 0)),
-                new OwoMenuServer.HubEntry(new ItemStack(Items.REDSTONE_TORCH),
+                new OwoMenuServer.PanelRow(
                         Icons.label("Paris a surveiller", ChatFormatting.RED),
-                        Icons.lore("Ecarts comptables, annulations en serie, createurs gagnants",
-                                ChatFormatting.GRAY),
+                        Icons.label("Ecarts comptables, annulations en serie, createurs gagnants",
+                                ChatFormatting.DARK_GRAY),
+                        Icons.label("Consulter", ChatFormatting.YELLOW),
                         sp -> openSuspicious(sp, 0)));
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        for (BetData.Bet bet : all) {
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("PARI"), 40, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("NOM"), 84, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("ETAT"), 52, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("CAGNOTTE"), 48, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("CREATEUR"), 76, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (BetData.Bet bet : all.subList(Math.min(from, all.size()), to)) {
             String id = bet.id;
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(icon(bet.state)),
-                    Icons.label(bet.id + " - " + bet.name, ChatFormatting.WHITE),
-                    Icons.lore(bet.state.label() + " - " + bet.creatorName + " - " + bet.pot()
-                                    + " Utopieces - " + bet.choice.size() + " parieur(s)",
-                            color(bet.state)),
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(bet.id, ChatFormatting.WHITE),
+                    Icons.label(bet.name, ChatFormatting.WHITE),
+                    Icons.label(shortState(bet.state), color(bet.state)),
+                    Icons.label(String.valueOf(bet.pot()), ChatFormatting.GOLD),
+                    Icons.label(bet.creatorName, ChatFormatting.AQUA)),
                     sp -> openBet(sp, id)));
         }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(filter.active() ? "Aucun resultat" : "Aucun pari au registre",
+                            ChatFormatting.RED),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty()), null));
+        }
 
-        OwoMenuServer.openHubPaged(admin, title, stats, pinned, entries, page, PAGE_SIZE,
-                BetAdminMenus::open, com.utopia.menu.AdminMenu::open);
+        Consumer<ServerPlayer> prev = pages > 1 ? sp -> open(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> next = pages > 1 ? sp -> open(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(admin, title, stats, controls, columns, rows, List.of(),
+                prev, next, sp -> open(sp, cur), com.utopia.menu.AdminMenu::open);
     }
 
-    private static net.minecraft.world.item.Item icon(BetData.State state) {
+    /** Etat en un mot : le libelle complet ne tiendrait pas dans une colonne de tableau. */
+    private static String shortState(BetData.State state) {
         return switch (state) {
-            case OUVERT -> Items.EMERALD;
-            case FERME -> Items.CLOCK;
-            case RESOLU -> Items.GOLD_INGOT;
-            case ANNULE -> Items.GRAY_DYE;
-            case ARCHIVE -> Items.PAPER;
-            case SUSPENDU -> Items.BARRIER;
-            case ERREUR -> Items.REDSTONE_TORCH;
+            case OUVERT -> "Ouvert";
+            case FERME -> "Ferme";
+            case RESOLU -> "Resolu";
+            case ANNULE -> "Annule";
+            case ARCHIVE -> "Archive";
+            case SUSPENDU -> "Suspendu";
+            case ERREUR -> "Erreur";
         };
     }
 
@@ -203,7 +232,7 @@ public final class BetAdminMenus {
 
     public static void openFilter(ServerPlayer admin) {
         Filter filter = filterOf(admin);
-        Component title = Icons.label("Recherche de paris", ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Recherche de paris", ChatFormatting.DARK_AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -284,8 +313,7 @@ public final class BetAdminMenus {
             open(admin);
             return;
         }
-        Component title = Component.literal(bet.id + " - " + bet.name)
-                .withStyle(s -> s.withColor(color(bet.state)).withBold(true));
+        Component title = Icons.title(bet.id + " - " + bet.name, color(bet.state));
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(BetMenus.row("Etat", bet.state.label(), color(bet.state)));
@@ -414,43 +442,76 @@ public final class BetAdminMenus {
             open(admin);
             return;
         }
-        Component title = Component.literal("Participants - " + bet.id)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
-
         List<UUID> players = new ArrayList<>(bet.choice.keySet());
         int pages = Math.max(1, (players.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         final int cur = Math.max(0, Math.min(page, pages - 1));
         int from = cur * PAGE_SIZE;
         int to = Math.min(players.size(), from + PAGE_SIZE);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Participants - " + bet.id
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.AQUA);
+
+        // Le benefice a sa propre colonne : c'est le chiffre qu'on lit en premier sur un pari, le
+        // laisser deduire d'une soustraction entre deux colonnes revenait a le cacher.
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("JOUEUR"), 82, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("CHOIX"), 60, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("MISE"), 42, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("RETOUR"), 46, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("BENEFICE"), 52, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("ETAT"), 50, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (UUID player : players.subList(Math.min(from, players.size()), to)) {
             long stake = bet.stakeOf(player);
             long back = bet.payout.getOrDefault(player, 0L);
             boolean paid = bet.paidOut.contains(player);
             BetData.Option option = bet.option(bet.choice.get(player));
+            // Libelles courts : la colonne d'etat est etroite, un mot qui se replie casse la rangee.
             String state = bet.state == BetData.State.ANNULE
-                    ? (paid ? "rembourse " + back : "remboursement en attente")
-                    : back > 0 ? (paid ? "recu " + back + " (benefice " + (back - stake) + ")"
-                            : "paiement en attente de " + back)
-                    : bet.state == BetData.State.RESOLU ? "perdu " + stake : "en jeu";
-            rows.add(new OwoMenuServer.PanelRow(
+                    ? (paid ? "Rendu" : "A rendre")
+                    : back > 0 ? (paid ? "Recu" : "A payer")
+                    : bet.state == BetData.State.RESOLU ? "Perdu" : "En jeu";
+            ChatFormatting tone = back > stake ? ChatFormatting.GREEN
+                    : back > 0 ? ChatFormatting.AQUA : ChatFormatting.GRAY;
+
+            // Un pari resolu sans retour est une perte seche : elle s'ecrit en negatif plutot que de
+            // laisser une case vide qu'on pourrait lire comme "rien ne s'est passe".
+            String profit;
+            ChatFormatting profitTone;
+            if (back > 0) {
+                long delta = back - stake;
+                profit = (delta > 0 ? "+" : "") + delta;
+                profitTone = delta > 0 ? ChatFormatting.GREEN
+                        : delta < 0 ? ChatFormatting.RED : ChatFormatting.GRAY;
+            } else if (bet.state == BetData.State.RESOLU) {
+                profit = "-" + stake;
+                profitTone = ChatFormatting.RED;
+            } else {
+                profit = "-";
+                profitTone = ChatFormatting.DARK_GRAY;
+            }
+
+            rows.add(new OwoMenuServer.TableRow(List.of(
                     Icons.label(BetMenus.nameOf(bet, player), ChatFormatting.WHITE),
-                    Icons.label((option == null ? "?" : option.label) + " - mise " + stake + " - " + state,
-                            back > stake ? ChatFormatting.GREEN
-                                    : back > 0 ? ChatFormatting.AQUA : ChatFormatting.GRAY),
-                    null, null));
+                    Icons.label(option == null ? "?" : option.label, ChatFormatting.GRAY),
+                    Icons.label(String.valueOf(stake), ChatFormatting.GOLD),
+                    Icons.label(back > 0 ? String.valueOf(back) : "-", tone),
+                    Icons.label(profit, profitTone),
+                    Icons.label(state, tone)), null));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun participant", ChatFormatting.GRAY),
-                    Icons.label("", ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucun participant", ChatFormatting.GRAY),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty(),
+                    Component.empty()), null));
         }
         Consumer<ServerPlayer> prev = pages > 1
                 ? sp -> openParticipants(sp, betId, (cur - 1 + pages) % pages) : null;
         Consumer<ServerPlayer> next = pages > 1
                 ? sp -> openParticipants(sp, betId, (cur + 1) % pages) : null;
-        OwoMenuServer.openPanel(admin, title, rows, List.of(), false, prev, next,
-                sp -> openParticipants(sp, betId, cur), sp -> openBet(sp, betId));
+        OwoMenuServer.openTable(admin, title, List.of(), List.of(), columns, rows, List.of(),
+                prev, next, sp -> openParticipants(sp, betId, cur), sp -> openBet(sp, betId));
     }
 
     public static void openJournal(ServerPlayer admin, String betId, int page) {
@@ -461,28 +522,33 @@ public final class BetAdminMenus {
         }
         List<BetData.LogEntry> all = new ArrayList<>(bet.journal);
         java.util.Collections.reverse(all);
-        Component title = Component.literal("Journal - " + bet.id)
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
 
         int pages = Math.max(1, (all.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         final int cur = Math.max(0, Math.min(page, pages - 1));
         int from = cur * PAGE_SIZE;
         int to = Math.min(all.size(), from + PAGE_SIZE);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Journal - " + bet.id
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.YELLOW);
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DATE"), 92, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("EVENEMENT"), 204, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (BetData.LogEntry e : all.subList(Math.min(from, all.size()), to)) {
-            rows.add(new OwoMenuServer.PanelRow(
+            rows.add(new OwoMenuServer.TableRow(List.of(
                     Icons.label(BetManager.stamp(e.millis()), ChatFormatting.DARK_GRAY),
-                    Icons.label(e.text(), ChatFormatting.WHITE), null, null));
+                    Icons.label(e.text(), ChatFormatting.WHITE)), null));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Journal vide", ChatFormatting.GRAY),
-                    Icons.label("", ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Journal vide", ChatFormatting.GRAY), Component.empty()), null));
         }
         Consumer<ServerPlayer> prev = pages > 1 ? sp -> openJournal(sp, betId, (cur - 1 + pages) % pages) : null;
         Consumer<ServerPlayer> next = pages > 1 ? sp -> openJournal(sp, betId, (cur + 1) % pages) : null;
-        OwoMenuServer.openPanel(admin, title, rows, List.of(), false, prev, next,
-                sp -> openJournal(sp, betId, cur), sp -> openBet(sp, betId));
+        OwoMenuServer.openTable(admin, title, List.of(), List.of(), columns, rows, List.of(),
+                prev, next, sp -> openJournal(sp, betId, cur), sp -> openBet(sp, betId));
     }
 
     // ==============================================================================================
@@ -501,8 +567,7 @@ public final class BetAdminMenus {
                 names.putIfAbsent(w.player(), w.playerName());
             }
         }
-        Component title = Component.literal("Paris par joueur")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Paris par joueur", ChatFormatting.AQUA);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (UUID id : players) {
@@ -541,8 +606,7 @@ public final class BetAdminMenus {
         }
         long profit = returned - (staked - refunded - lost);
 
-        Component title = Component.literal("Paris de " + name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Paris de " + name, ChatFormatting.AQUA);
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(BetMenus.row("Identifiant", target.toString(), ChatFormatting.DARK_GRAY));
         rows.add(BetMenus.row("Total mise", staked + " Utopieces", ChatFormatting.GOLD));
@@ -606,7 +670,7 @@ public final class BetAdminMenus {
         }
         long average = potCount > 0 ? potSum / potCount : 0;
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        List<Flagged> flagged = new ArrayList<>();
         for (BetData.Bet bet : all) {
             List<String> flags = new ArrayList<>();
             if (bet.state == BetData.State.ERREUR) {
@@ -635,25 +699,62 @@ public final class BetAdminMenus {
             if (flags.isEmpty()) {
                 continue;
             }
-            String id = bet.id;
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.REDSTONE_TORCH),
-                    Icons.label(bet.id + " - " + bet.name, ChatFormatting.RED),
-                    Icons.lore(bet.creatorName + " - " + String.join(", ", flags), ChatFormatting.YELLOW),
-                    sp -> openBet(sp, id)));
+            flagged.add(new Flagged(bet, String.join(", ", flags)));
         }
 
-        Component title = Component.literal("Paris a surveiller")
-                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        int pages = Math.max(1, (flagged.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PAGE_SIZE;
+        int to = Math.min(flagged.size(), from + PAGE_SIZE);
+
+        Component title = Icons.title("Paris a surveiller"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.RED);
         List<Component> stats = List.of(
-                Component.literal(entries.isEmpty() ? "Rien a signaler."
-                                : entries.size() + " pari(s) meritent un second regard.")
-                        .withStyle(s -> s.withColor(entries.isEmpty() ? ChatFormatting.GREEN
+                Component.literal(flagged.isEmpty() ? "Rien a signaler."
+                                : flagged.size() + " pari(s) meritent un second regard.")
+                        .withStyle(s -> s.withColor(flagged.isEmpty() ? ChatFormatting.GREEN
                                 : ChatFormatting.YELLOW).withItalic(false)),
                 Component.literal("Ce sont des indices, pas des preuves.")
                         .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
 
-        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PAGE_SIZE,
-                BetAdminMenus::openSuspicious, BetAdminMenus::open);
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("PARI"), 40, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("NOM"), 76, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("CREATEUR"), 76, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("MOTIF"), 108, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (Flagged f : flagged.subList(Math.min(from, flagged.size()), to)) {
+            String id = f.bet().id;
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(f.bet().id, ChatFormatting.RED),
+                    Icons.label(f.bet().name, ChatFormatting.WHITE),
+                    Icons.label(f.bet().creatorName, ChatFormatting.AQUA),
+                    Icons.label(f.motif(), ChatFormatting.YELLOW)),
+                    sp -> openBet(sp, id)));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Rien a signaler", ChatFormatting.GREEN),
+                    Component.empty(), Component.empty(), Component.empty()), null));
+        }
+
+        Consumer<ServerPlayer> prev = pages > 1
+                ? sp -> openSuspicious(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> next = pages > 1
+                ? sp -> openSuspicious(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(admin, title, stats, List.of(), columns, rows, List.of(),
+                prev, next, sp -> openSuspicious(sp, cur), BetAdminMenus::open);
+    }
+
+    /** Un pari signale et les motifs qui l'ont fait remonter, le temps de dresser le tableau. */
+    private record Flagged(BetData.Bet bet, String motif) {
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     private static Component stat(String label, String value, ChatFormatting valueColor) {

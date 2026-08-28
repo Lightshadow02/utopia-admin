@@ -104,8 +104,8 @@ public final class DailyMenus {
             nextIcons.add(new ItemStack(Items.CHEST));
         }
 
-        Component title = Component.literal("Recompenses - " + monthName(ym) + " " + ym.getYear())
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Recompense - " + monthName(ym) + " " + ym.getYear(),
+                ChatFormatting.GOLD);
 
         // Actions (portees par un UtopiaGui : clic id -> action).
         int claimId = 0;
@@ -233,8 +233,7 @@ public final class DailyMenus {
     // =============================================================================================
 
     public static void openAdminMenu(ServerPlayer admin) {
-        Component title = Component.literal("Daily - Administration")
-                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true));
+        Component title = Icons.screenTitle("Recompenses (daily)", ChatFormatting.DARK_AQUA);
         List<Component> stats = List.of(Component.literal("Planification des recompenses & gestion des joueurs")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -295,8 +294,7 @@ public final class DailyMenus {
         int resetH = Config.DAILY_STREAK_RESET_HOURS.get();
         List<? extends String> milestones = Config.DAILY_STREAK_MILESTONES.get();
 
-        Component title = Component.literal("Series (streak)")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Series (streak)", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -358,7 +356,7 @@ public final class DailyMenus {
                         Icons.lore("(les paliers recurrents *N s'editent dans la config)", ChatFormatting.DARK_GRAY)),
                 Icons.label("Suivant : items", ChatFormatting.GREEN), 7, 1, 3650,
                 day -> openItemsEditor(admin,
-                        Icons.label("Items du palier (jour " + day + ")", ChatFormatting.DARK_AQUA),
+                        Icons.title("Items du palier (jour " + day + ")", ChatFormatting.DARK_AQUA),
                         List.of(),
                         specs -> {
                             List<String> cur = new ArrayList<>(Config.DAILY_STREAK_MILESTONES.get());
@@ -415,7 +413,7 @@ public final class DailyMenus {
 
     private static void openDayEditor(ServerPlayer admin, LocalDate date, YearMonth backTo) {
         openItemsEditor(admin,
-                Icons.label("Recompense du " + date, ChatFormatting.DARK_AQUA),
+                Icons.title("Recompense du " + date, ChatFormatting.DARK_AQUA),
                 DailyManager.calendar().getReward(date),
                 specs -> {
                     DailyManager.calendar().setReward(date, specs);
@@ -469,8 +467,8 @@ public final class DailyMenus {
         gui.button(nextId, ItemStack.EMPTY, sp -> openAdminCalendarRich(sp, ym.plusMonths(1)));
         gui.button(backId, ItemStack.EMPTY, DailyMenus::openAdminMenu);
 
-        Component title = Component.literal("Calendrier - " + monthName(ym) + " " + ym.getYear())
-                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true));
+        Component title = Icons.title("Calendrier - " + monthName(ym) + " " + ym.getYear(),
+                ChatFormatting.DARK_AQUA);
         Component plannedLine = Component.literal(planned + " jour(s) planifie(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GREEN).withItalic(false));
         List<Component> help = List.of(
@@ -486,7 +484,7 @@ public final class DailyMenus {
 
     private static void openDayEditorRich(ServerPlayer admin, LocalDate date, YearMonth backTo) {
         openItemsEditor(admin,
-                Icons.label("Recompense du " + date, ChatFormatting.DARK_AQUA),
+                Icons.title("Recompense du " + date, ChatFormatting.DARK_AQUA),
                 DailyManager.calendar().getReward(date),
                 specs -> {
                     DailyManager.calendar().setReward(date, specs);
@@ -517,7 +515,7 @@ public final class DailyMenus {
     private static void openBaseRewardEditor(ServerPlayer admin) {
         List<String> current = new ArrayList<>(Config.DAILY_ITEMS.get());
         openItemsEditor(admin,
-                Icons.label("Recompense par defaut", ChatFormatting.DARK_AQUA),
+                Icons.title("Recompense par defaut", ChatFormatting.DARK_AQUA),
                 current,
                 specs -> {
                     Config.DAILY_ITEMS.set(specs);
@@ -629,7 +627,7 @@ public final class DailyMenus {
 
     public static void openPlayerList(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
-        Component title = Icons.label("Gestion des joueurs", ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Gestion des joueurs", ChatFormatting.DARK_AQUA);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
@@ -664,7 +662,7 @@ public final class DailyMenus {
         boolean available = DailyManager.isAvailable(server, targetId);
 
         UtopiaGui gui = new UtopiaGui(3,
-                Icons.label("Joueur : " + target.getGameProfile().getName(), ChatFormatting.DARK_AQUA));
+                Icons.title("Joueur : " + target.getGameProfile().getName(), ChatFormatting.DARK_AQUA));
 
         gui.set(4, Icons.playerHead(target,
                 Icons.label(target.getGameProfile().getName(), ChatFormatting.WHITE),
@@ -756,6 +754,6 @@ public final class DailyMenus {
         if (!month.isEmpty()) {
             month = Character.toUpperCase(month.charAt(0)) + month.substring(1);
         }
-        return Icons.label(prefix + " - " + month + " " + ym.getYear(), ChatFormatting.DARK_AQUA);
+        return Icons.title(prefix + " - " + month + " " + ym.getYear(), ChatFormatting.DARK_AQUA);
     }
 }

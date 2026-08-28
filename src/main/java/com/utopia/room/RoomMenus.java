@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.utopia.data.RoomData;
 import com.utopia.economy.EconomyManager;
@@ -16,8 +17,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 /** Menus de l'auberge (admin/aubergiste) : liste des chambres + gestion d'une chambre. */
 public final class RoomMenus {
@@ -29,31 +28,74 @@ public final class RoomMenus {
         return RoomData.get(server).get(id);
     }
 
-    /** Liste de toutes les chambres (ecran riche). */
+    /** Chambres affichees par page : au-dela, une auberge perdait ses dernieres chambres sans le dire. */
+    private static final int AUBERGE_PAGE_SIZE = 12;
+
+    /** Liste de toutes les chambres (ecran racine de l'auberge). */
     public static void openAuberge(ServerPlayer admin) {
+        openAuberge(admin, 0);
+    }
+
+    /**
+     * Tableau des chambres : la ligne entiere ouvre la chambre. Prix et durees se lisent cales a
+     * droite les uns sous les autres, ce qui laisse reperer une chambre hors norme sans avoir a
+     * ouvrir chaque fiche.
+     */
+    public static void openAuberge(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
         List<Room> rooms = new ArrayList<>(RoomData.get(server).all());
         rooms.sort(Comparator.comparing(Room::id, String.CASE_INSENSITIVE_ORDER));
         boolean op = admin.hasPermissions(2);
 
-        Component title = Icons.label("Auberge - chambres", ChatFormatting.GOLD);
-        List<Component> stats = List.of(Component.literal(rooms.size() + " chambre(s)")
-                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+        int pages = Math.max(1, (rooms.size() + AUBERGE_PAGE_SIZE - 1) / AUBERGE_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * AUBERGE_PAGE_SIZE;
+        int to = Math.min(rooms.size(), from + AUBERGE_PAGE_SIZE);
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        for (Room r : rooms) {
+        Component title = Icons.screenTitle("Auberge"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GOLD);
+        List<Component> stats = List.of(Icons.lore(rooms.size() + " chambre(s)", ChatFormatting.GRAY));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("CHAMBRE"), 58, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("OCCUPANT"), 86, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("PRIX/JOUR"), 62, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("JOURS"), 40, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("ETAT"), 54, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (Room r : rooms.subList(Math.min(from, rooms.size()), to)) {
             String rid = r.id();
-            entries.add(new OwoMenuServer.HubEntry(
-                    new ItemStack(r.frozen() ? Items.BLUE_ICE : r.isAssigned() ? Items.RED_BED : Items.WHITE_BED),
-                    Icons.label((r.frozen() ? "[GELEE] " : "") + "Chambre " + rid,
-                            r.frozen() ? ChatFormatting.AQUA : ChatFormatting.WHITE),
-                    Icons.lore("Occupant : " + (r.isAssigned() ? r.occupantName() : "libre")
-                            + " - " + EconomyManager.format(r.pricePerDay()) + "/j x " + r.days(), ChatFormatting.GRAY),
+            boolean frozen = r.frozen();
+            boolean assigned = r.isAssigned();
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.lore(rid, frozen ? ChatFormatting.AQUA : ChatFormatting.WHITE),
+                    Icons.lore(assigned ? r.occupantName() : "libre",
+                            assigned ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                    Icons.lore(String.valueOf(r.pricePerDay()), ChatFormatting.GOLD),
+                    Icons.lore(String.valueOf(r.days()), ChatFormatting.AQUA),
+                    Icons.lore(frozen ? "gelee" : "active",
+                            frozen ? ChatFormatting.RED : ChatFormatting.GREEN)),
                     sp -> openRoom(sp, rid)));
         }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.lore("Aucune chambre", ChatFormatting.RED),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty()), null));
+        }
+
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openAuberge(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openAuberge(sp, (cur + 1) % pages) : null;
         // La configuration (outil chambre, bloc d'acces) est dans /admin -> Auberge, pas ici.
-        OwoMenuServer.openHub(admin, title, stats, entries,
-                RoomMenus::openAuberge, op ? com.utopia.menu.AdminMenu::openAubergeAdmin : null);
+        OwoMenuServer.openTable(admin, title, stats, List.of(), columns, rows, List.of(),
+                onPrev, onNext, sp -> openAuberge(sp, cur),
+                op ? com.utopia.menu.AdminMenu::openAubergeAdmin : null);
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     /** Gestion d'une chambre (ecran riche). */
@@ -64,7 +106,7 @@ public final class RoomMenus {
             admin.sendSystemMessage(Messages.error("Chambre introuvable."));
             return;
         }
-        Component title = Icons.label("Chambre " + r.id(), ChatFormatting.GOLD);
+        Component title = Icons.title("Chambre " + r.id(), ChatFormatting.GOLD);
         boolean frozen = r.frozen();
         long curPrice = r.pricePerDay();
         int curDays = r.days();
@@ -154,7 +196,7 @@ public final class RoomMenus {
 
     private static void openAssignPicker(ServerPlayer admin, String roomId, int page) {
         MinecraftServer server = admin.server;
-        Component title = Icons.label("Attribuer - choisir un joueur", ChatFormatting.GOLD);
+        Component title = Icons.title("Attribuer - choisir un joueur", ChatFormatting.GOLD);
         List<Component> stats = List.of(Component.literal("Chambre : " + roomId)
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 

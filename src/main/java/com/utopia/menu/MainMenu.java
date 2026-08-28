@@ -33,8 +33,8 @@ public final class MainMenu {
         MinecraftServer server = player.server;
 
         // En-tete + statistiques (deja formatees cote serveur).
-        Component title = Component.literal("UTOPIA - " + player.getGameProfile().getName())
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Utopia - " + player.getGameProfile().getName(),
+                ChatFormatting.GOLD);
 
         long balance = EconomyManager.getBalance(server, player.getUUID());
         int coins = EconomyManager.countCoins(player);
@@ -124,7 +124,7 @@ public final class MainMenu {
 
     public static void openTpaPicker(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
-        Component title = Icons.label("Se teleporter a...", ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Se teleporter a...", ChatFormatting.DARK_AQUA);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {

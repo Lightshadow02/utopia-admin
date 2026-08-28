@@ -25,6 +25,20 @@ public final class Icons {
     }
 
     /** Une ligne de description (lore). */
+    /**
+     * Titre d'un ecran racine : en capitales et en gras. C'est la porte d'entree d'un systeme
+     * ({@code /admin}, la banque, les paris...), on doit la reconnaitre d'un coup d'oeil.
+     */
+    public static Component screenTitle(String text, ChatFormatting color) {
+        return Component.literal(text.toUpperCase(java.util.Locale.FRANCE))
+                .withStyle(s -> s.withColor(color).withBold(true).withItalic(false));
+    }
+
+    /** Titre d'un ecran interne : gras, casse normale. Il se lit comme un sous-chapitre. */
+    public static Component title(String text, ChatFormatting color) {
+        return Component.literal(text).withStyle(s -> s.withColor(color).withBold(true).withItalic(false));
+    }
+
     public static Component lore(String text, ChatFormatting color) {
         return Component.literal(text).withStyle(s -> s.withColor(color).withItalic(false));
     }

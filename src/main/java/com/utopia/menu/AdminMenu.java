@@ -38,8 +38,7 @@ public final class AdminMenu {
     }
 
     public static void open(ServerPlayer player) {
-        Component title = Component.literal("ADMINISTRATION")
-                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        Component title = Icons.screenTitle("Administration", ChatFormatting.RED);
         List<Component> stats = List.of(Component.literal("Outils reserves aux operateurs")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -144,8 +143,7 @@ public final class AdminMenu {
         com.utopia.data.WarpData data = com.utopia.data.WarpData.get(player.server);
         List<String> names = data.names();
 
-        Component title = Component.literal("Warps admin")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Warps admin", ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal(names.isEmpty()
                 ? "Aucun warp - /setwarp <nom> pour en creer"
                 : names.size() + " warp(s) - /setwarp, /delwarp")
@@ -173,8 +171,7 @@ public final class AdminMenu {
     public static void openInventorySwitch(ServerPlayer player) {
         int active = com.utopia.data.InventoryData.get(player.server).getActive(player.getUUID());
 
-        Component title = Component.literal("Inventaires")
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Inventaires", ChatFormatting.LIGHT_PURPLE);
         List<Component> stats = List.of(
                 Component.literal("Actif : Inventaire " + active)
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
@@ -207,8 +204,7 @@ public final class AdminMenu {
         MinecraftServer server = player.server;
         MarketData data = MarketData.get(server);
 
-        Component title = Component.literal("Maire")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Maire", ChatFormatting.GOLD);
         List<Component> stats = List.of(Component.literal(data.maires().size() + " maire(s) designe(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -268,8 +264,7 @@ public final class AdminMenu {
                     Menus.close(sp);
                 }));
 
-        Component title = Component.literal("Auberge - configuration")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Auberge - configuration", ChatFormatting.GOLD);
         OwoMenuServer.openHub(admin, title, List.of(), entries, AdminMenu::openAubergeAdmin, AdminMenu::open);
     }
 
@@ -282,8 +277,7 @@ public final class AdminMenu {
         MinecraftServer server = player.server;
         RoomData data = RoomData.get(server);
 
-        Component title = Component.literal("Aubergistes")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Aubergistes", ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal(data.aubergistes().size() + " aubergiste(s) designe(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 

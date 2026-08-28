@@ -3,6 +3,7 @@ package com.utopia.job;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.utopia.data.JobData;
 import com.utopia.gui.Icons;
@@ -25,6 +26,9 @@ public final class JobMenus {
 
     private static final int PAGE_SIZE = 12;
 
+    /** Une ligne d'historique peut se replier sur deux lignes : on en met moins par page. */
+    private static final int HISTORY_PAGE_SIZE = 10;
+
     private JobMenus() {
     }
 
@@ -36,15 +40,26 @@ public final class JobMenus {
         open(player, 0);
     }
 
+    /**
+     * Accueil : un tableau des metiers, une ligne par poste. Salaires et effectifs sont cales a
+     * droite les uns sous les autres, ce qui fait ressortir sans survol le poste sans montant ou
+     * celui que personne n'exerce.
+     */
     public static void open(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
         JobData data = JobData.get(server);
+        List<JobData.Job> jobs = new ArrayList<>(data.jobs());
 
-        Component title = Component.literal("METIERS ET SALAIRES")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
-        long unpaidJobs = data.jobs().stream().filter(j -> j.salary <= 0).count();
+        int pages = Math.max(1, (jobs.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PAGE_SIZE;
+        int to = Math.min(jobs.size(), from + PAGE_SIZE);
+
+        Component title = Icons.screenTitle("Metiers et salaires"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GOLD);
+        long unpaidJobs = jobs.stream().filter(j -> j.salary <= 0).count();
         List<Component> stats = List.of(
-                Component.literal(data.jobs().size() + " metier(s) - " + data.employees().size() + " employe(s)"
+                Component.literal(jobs.size() + " metier(s) - " + data.employees().size() + " employe(s)"
                                 + (unpaidJobs > 0 ? " - " + unpaidJobs + " sans salaire" : ""))
                         .withStyle(s -> s.withColor(unpaidJobs > 0 ? ChatFormatting.YELLOW : ChatFormatting.GRAY)
                                 .withItalic(false)),
@@ -52,39 +67,21 @@ public final class JobMenus {
                                 + " Utopieces / jour, versee a 12h (heure de Paris)")
                         .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
 
-        boolean canEdit = JobManager.canEditJobs(player);
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        if (canEdit) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
-                    Icons.label("Creer un metier", ChatFormatting.GREEN),
-                    Icons.lore("Nom puis salaire quotidien", ChatFormatting.GRAY),
-                    JobMenus::promptCreate));
-        }
-        for (JobData.Job job : data.jobs()) {
-            String id = job.id;
-            int count = data.employeesOf(id).size();
-            // Un metier ouvert par le banquier arrive sans montant : il doit sauter aux yeux de qui
-            // peut le fixer, sinon il resterait a zero sans que personne ne s'en apercoive.
-            boolean unpaid = job.salary <= 0;
-            entries.add(new OwoMenuServer.HubEntry(
-                    new ItemStack(job.enabled ? (unpaid ? Items.IRON_INGOT : Items.GOLD_INGOT) : Items.GRAY_DYE),
-                    Icons.label(job.name, job.enabled ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY),
-                    Icons.lore((unpaid ? "SALAIRE A FIXER" : job.salary + " Utopieces/jour")
-                            + " - " + count + " employe(s)"
-                            + (job.enabled ? "" : " - DESACTIVE"),
-                            !job.enabled ? ChatFormatting.RED
-                                    : unpaid ? ChatFormatting.YELLOW : ChatFormatting.GRAY),
-                    sp -> openJob(sp, id)));
-        }
+        List<OwoMenuServer.PanelRow> controls = new ArrayList<>();
         if (JobManager.canSetSalary(player)) {
             // Le statut de banquier n'est pas un metier : sans cette ligne, son salaire n'existe nulle part.
             long bankerPay = data.bankerSalary();
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
+            // L'effectif multiplie le montant qu'on est en train de fixer. La ligne "Banquiers" plus
+            // bas est reservee aux op : sans ce rappel ici, le maire et le banquier regleraient le
+            // salaire sans jamais voir combien de personnes le toucheront.
+            int bankerCount = data.bankers().size();
+            controls.add(new OwoMenuServer.PanelRow(
                     Icons.label("Salaire du banquier", ChatFormatting.LIGHT_PURPLE),
-                    Icons.lore(bankerPay > 0
-                                    ? bankerPay + " Utopieces/jour - " + data.bankers().size() + " banquier(s)"
-                                    : "aucun salaire - " + data.bankers().size() + " banquier(s)",
-                            bankerPay > 0 ? ChatFormatting.GRAY : ChatFormatting.YELLOW),
+                    Icons.label(bankerPay > 0
+                                    ? bankerPay + " x " + bankerCount + " banquier(s)"
+                                    : "aucun salaire - " + bankerCount + " banquier(s)",
+                            bankerPay > 0 ? ChatFormatting.GOLD : ChatFormatting.YELLOW),
+                    Icons.label("Modifier", ChatFormatting.YELLOW),
                     sp -> Menus.promptAmount(sp,
                             Icons.label("Salaire du banquier", ChatFormatting.LIGHT_PURPLE),
                             List.of(Icons.lore("Verse chaque jour a 12h a chaque banquier designe",
@@ -104,25 +101,70 @@ public final class JobMenus {
                                 open(sp);
                             })));
         }
-        if (com.utopia.savings.SavingsManager.canKeepRegistry(player)) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
-                    Icons.label("Livrets d'epargne", ChatFormatting.GOLD),
-                    Icons.lore("Registre des livrets, depots et retraits au comptoir", ChatFormatting.GRAY),
-                    com.utopia.savings.SavingsMenus::openRegistry));
-        }
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BOOK),
-                Icons.label("Historique", ChatFormatting.YELLOW),
-                Icons.lore("Versements et modifications", ChatFormatting.GRAY),
-                sp -> openHistory(sp, 0)));
         if (player.hasPermissions(2)) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
+            controls.add(new OwoMenuServer.PanelRow(
                     Icons.label("Banquiers", ChatFormatting.LIGHT_PURPLE),
-                    Icons.lore("Designer qui accede a ce panel (sans droits admin)", ChatFormatting.GRAY),
+                    Icons.label(data.bankers().size() + " designe(s)", ChatFormatting.GRAY),
+                    Icons.label("Designer", ChatFormatting.YELLOW),
                     sp -> openBankerPicker(sp, 0)));
         }
 
-        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PAGE_SIZE,
-                JobMenus::open, player.hasPermissions(2) ? com.utopia.menu.AdminMenu::open : null);
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("METIER"), 100, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("SALAIRE/JOUR"), 86, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("EMPLOYES"), 58, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("ETAT"), 56, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (JobData.Job job : jobs.subList(Math.min(from, jobs.size()), to)) {
+            String id = job.id;
+            int count = data.employeesOf(id).size();
+            // Un metier ouvert par le banquier arrive sans montant : il doit sauter aux yeux de qui
+            // peut le fixer, sinon il resterait a zero sans que personne ne s'en apercoive.
+            boolean unpaid = job.salary <= 0;
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(job.name).withStyle(x -> x.withColor(
+                            job.enabled ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY).withItalic(false)),
+                    Component.literal(unpaid ? "A FIXER" : String.valueOf(job.salary))
+                            .withStyle(x -> x.withColor(unpaid ? ChatFormatting.YELLOW : ChatFormatting.GOLD)
+                                    .withItalic(false)),
+                    Component.literal(String.valueOf(count)).withStyle(x -> x.withColor(
+                            count > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY).withItalic(false)),
+                    Component.literal(job.enabled ? "actif" : "desactive").withStyle(x -> x.withColor(
+                            job.enabled ? ChatFormatting.GREEN : ChatFormatting.RED).withItalic(false))),
+                    sp -> openJob(sp, id)));
+        }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal("Aucun metier")
+                            .withStyle(x -> x.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.empty(), Component.empty(), Component.empty()), null));
+        }
+
+        List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
+        if (JobManager.canEditJobs(player)) {
+            footer.add(new OwoMenuServer.PanelAction(
+                    Icons.label("Creer un metier", ChatFormatting.GREEN), JobMenus::promptCreate));
+        }
+        if (com.utopia.savings.SavingsManager.canKeepRegistry(player)) {
+            footer.add(new OwoMenuServer.PanelAction(
+                    Icons.label("Livrets d'epargne", ChatFormatting.GOLD),
+                    com.utopia.savings.SavingsMenus::openRegistry));
+        }
+        footer.add(new OwoMenuServer.PanelAction(
+                Icons.label("Historique", ChatFormatting.YELLOW), sp -> openHistory(sp, 0)));
+
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> open(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> open(sp, (cur + 1) % pages) : null;
+        Consumer<ServerPlayer> onBack = player.hasPermissions(2) ? com.utopia.menu.AdminMenu::open : null;
+        OwoMenuServer.openTable(player, title, stats, controls, columns, rows, footer,
+                onPrev, onNext, sp -> open(sp, cur), onBack);
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     private static void promptCreate(ServerPlayer player) {
@@ -187,8 +229,7 @@ public final class JobMenus {
         }
         List<UUID> employees = data.employeesOf(id);
 
-        Component title = Component.literal(job.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title(job.name, ChatFormatting.AQUA);
 
         boolean canEdit = JobManager.canEditJobs(player);
         boolean canPay = JobManager.canSetSalary(player);
@@ -261,8 +302,7 @@ public final class JobMenus {
             open(player);
             return;
         }
-        Component title = Component.literal("Employes - " + job.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Employes - " + job.name, ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal(
                         data.employeesOf(id).size() + " employe(s) - " + job.salary + " Utopieces/jour chacun")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
@@ -297,8 +337,7 @@ public final class JobMenus {
             open(player);
             return;
         }
-        Component title = Component.literal("Embaucher - " + job.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        Component title = Icons.title("Embaucher - " + job.name, ChatFormatting.GREEN);
         List<Component> stats = List.of(Component.literal(
                         JobManager.pastPayTime()
                                 ? "Midi est passe : le premier salaire sera verse demain."
@@ -375,31 +414,36 @@ public final class JobMenus {
         List<JobData.HistoryEntry> all = new ArrayList<>(data.history());
         java.util.Collections.reverse(all); // le plus recent en premier
 
-        Component title = Component.literal("Historique")
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
+        int pages = Math.max(1, (all.size() + HISTORY_PAGE_SIZE - 1) / HISTORY_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * HISTORY_PAGE_SIZE;
+        int to = Math.min(all.size(), from + HISTORY_PAGE_SIZE);
 
-        int from = Math.max(0, page * 10);
-        int to = Math.min(all.size(), from + 10);
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Historique"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.YELLOW);
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DATE"), 100, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("EVENEMENT"), 212, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (JobData.HistoryEntry e : all.subList(Math.min(from, all.size()), to)) {
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label(JobManager.stamp(e.millis()), ChatFormatting.DARK_GRAY),
-                    Icons.label(e.text(), ChatFormatting.WHITE),
-                    null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(JobManager.stamp(e.millis()))
+                            .withStyle(x -> x.withColor(ChatFormatting.DARK_GRAY).withItalic(false)),
+                    Component.literal(e.text())
+                            .withStyle(x -> x.withColor(ChatFormatting.WHITE).withItalic(false))), null));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun evenement", ChatFormatting.GRAY),
-                    Icons.label("", ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(Component.empty(),
+                    Component.literal("Aucun evenement")
+                            .withStyle(x -> x.withColor(ChatFormatting.GRAY).withItalic(false))), null));
         }
-        int pages = Math.max(1, (all.size() + 9) / 10);
-        final int cur = Math.max(0, Math.min(page, pages - 1));
-        java.util.function.Consumer<ServerPlayer> prev = pages > 1
-                ? sp -> openHistory(sp, (cur - 1 + pages) % pages) : null;
-        java.util.function.Consumer<ServerPlayer> next = pages > 1
-                ? sp -> openHistory(sp, (cur + 1) % pages) : null;
 
-        OwoMenuServer.openPanel(player, title, rows, List.of(), false, prev, next,
-                sp -> openHistory(sp, cur), JobMenus::open);
+        Consumer<ServerPlayer> prev = pages > 1 ? sp -> openHistory(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> next = pages > 1 ? sp -> openHistory(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(player, title, List.of(), List.of(), columns, rows, List.of(),
+                prev, next, sp -> openHistory(sp, cur), JobMenus::open);
     }
 
     // ==============================================================================================
@@ -410,8 +454,7 @@ public final class JobMenus {
         MinecraftServer server = admin.server;
         JobData data = JobData.get(server);
 
-        Component title = Component.literal("Banquiers")
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Banquiers", ChatFormatting.LIGHT_PURPLE);
         List<Component> stats = List.of(
                 Component.literal(data.bankers().size() + " banquier(s) designe(s)")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),

@@ -55,8 +55,7 @@ public final class QuoteMenus {
             }
         }
 
-        Component title = Component.literal("MES DEVIS")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Mes devis", ChatFormatting.GOLD);
         List<Component> stats = new ArrayList<>();
         stats.add(stat("Devis emis : ", issued.size() + " (dont " + drafts + " brouillon(s))",
                 ChatFormatting.AQUA));
@@ -139,34 +138,66 @@ public final class QuoteMenus {
                 (sp, id) -> openQuote(sp, id, s2 -> openReceived(s2, 0)), true);
     }
 
-    /** Liste paginee de devis ; {@code showIssuer} affiche l'emetteur plutot que le destinataire. */
+    /**
+     * Liste paginee de devis, en tableau : un devis par ligne, montants cales a droite les uns sous
+     * les autres pour qu'on compare sans ouvrir chaque fiche. {@code showIssuer} affiche l'emetteur
+     * plutot que le destinataire.
+     */
     private static void list(ServerPlayer player, String heading, ChatFormatting color,
                              List<QuoteData.Quote> quotes, int page, String emptyText,
                              java.util.function.BiConsumer<ServerPlayer, Integer> reopen,
                              java.util.function.BiConsumer<ServerPlayer, String> onClick,
                              boolean showIssuer) {
         QuoteData data = QuoteData.get(player.server);
-        Component title = Component.literal(heading).withStyle(s -> s.withColor(color).withBold(true));
-        List<Component> stats = quotes.isEmpty()
-                ? List.of(Component.literal(emptyText)
-                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)))
-                : List.of(Component.literal(quotes.size() + " devis")
-                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+        int pages = Math.max(1, (quotes.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PAGE_SIZE;
+        int to = Math.min(quotes.size(), from + PAGE_SIZE);
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        for (QuoteData.Quote quote : quotes) {
+        Component title = Icons.title(heading
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), color);
+        List<Component> stats = List.of(Component.literal(
+                        quotes.isEmpty() ? emptyText : quotes.size() + " devis")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DEVIS"), 42, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("OBJET"), 72, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("ETAT"), 52, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("MONTANT"), 50, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("AVEC"), 86, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (QuoteData.Quote quote : quotes.subList(Math.min(from, quotes.size()), to)) {
             String id = quote.id;
             String other = showIssuer ? data.nameOf(quote.issuer) : data.nameOf(quote.client);
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(icon(quote.status)),
-                    Icons.label(quote.id + " - " + quote.title, ChatFormatting.WHITE),
-                    Icons.lore(quote.status.label() + " - " + quote.total() + " Utopieces - "
-                                    + (showIssuer ? "de " : "pour ") + other,
-                            QuoteManager.color(quote.status)),
+            ChatFormatting stateColor = QuoteManager.color(quote.status);
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(quote.id)
+                            .withStyle(s -> s.withColor(ChatFormatting.WHITE).withItalic(false)),
+                    Component.literal(clip(quote.title, 12))
+                            .withStyle(s -> s.withColor(ChatFormatting.WHITE).withItalic(false)),
+                    Component.literal(quote.status.label())
+                            .withStyle(s -> s.withColor(stateColor).withItalic(false)),
+                    Component.literal(String.valueOf(quote.total()))
+                            .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false)),
+                    Component.literal(clip(other, 14))
+                            .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))),
                     sp -> onClick.accept(sp, id)));
         }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal("Aucun devis")
+                            .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty()), null));
+        }
 
-        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PAGE_SIZE, reopen,
-                QuoteMenus::openHome);
+        Consumer<ServerPlayer> onPrev = pages > 1
+                ? sp -> reopen.accept(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1
+                ? sp -> reopen.accept(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(player, title, stats, List.of(), columns, rows, List.of(),
+                onPrev, onNext, sp -> reopen.accept(sp, cur), QuoteMenus::openHome);
     }
 
     private static net.minecraft.world.item.Item icon(QuoteData.Status status) {
@@ -197,8 +228,7 @@ public final class QuoteMenus {
             return;
         }
 
-        Component title = Component.literal("Devis " + quote.id + " (brouillon)")
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
+        Component title = Icons.title("Devis " + quote.id + " (brouillon)", ChatFormatting.YELLOW);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -312,8 +342,7 @@ public final class QuoteMenus {
             openHome(player);
             return;
         }
-        Component title = Component.literal("Lignes - " + quote.id)
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
+        Component title = Icons.title("Lignes - " + quote.id, ChatFormatting.YELLOW);
         List<Component> stats = List.of(
                 stat("Total : ", quote.total() + " Utopieces", ChatFormatting.GOLD),
                 stat("Lignes : ", quote.lines.size() + " / " + QuoteData.MAX_LINES, ChatFormatting.GRAY));
@@ -395,8 +424,8 @@ public final class QuoteMenus {
         }
         QuoteData.Line line = quote.lines.get(index);
 
-        Component title = Component.literal("Ligne " + (index + 1) + " - " + quote.id)
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
+        Component title = Icons.title("Ligne " + (index + 1) + " - " + quote.id,
+                ChatFormatting.YELLOW);
 
         List<OwoMenuServer.PanelRow> rows = List.of(
                 new OwoMenuServer.PanelRow(
@@ -466,8 +495,7 @@ public final class QuoteMenus {
             openHome(player);
             return;
         }
-        Component title = Component.literal("Destinataire - " + quote.id)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Destinataire - " + quote.id, ChatFormatting.AQUA);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
@@ -561,8 +589,8 @@ public final class QuoteMenus {
             return;
         }
 
-        Component title = Component.literal("Devis " + quote.id + " - " + quote.title)
-                .withStyle(s -> s.withColor(QuoteManager.color(quote.status)).withBold(true));
+        Component title = Icons.title("Devis " + quote.id + " - " + quote.title,
+                QuoteManager.color(quote.status));
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(row("Etat", quote.status.label(), QuoteManager.color(quote.status)));
@@ -677,7 +705,10 @@ public final class QuoteMenus {
         OwoMenuServer.openPanel(player, title, rows, footer, sp -> openQuote(sp, id, back), back);
     }
 
-    /** Liste complete des lignes d'un devis, en lecture seule. */
+    /**
+     * Liste complete des lignes d'un devis, en lecture seule. Quantite, prix unitaire et total sont
+     * cales a droite : c'est la lecture en colonne qui permet de verifier le chiffrage.
+     */
     public static void openAllLines(ServerPlayer player, String id, int page, Consumer<ServerPlayer> back) {
         QuoteData data = QuoteData.get(player.server);
         QuoteData.Quote quote = data.quote(id);
@@ -685,8 +716,6 @@ public final class QuoteMenus {
             openHome(player);
             return;
         }
-        Component title = Component.literal("Detail - " + quote.id)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
 
         int perPage = 10;
         int pages = Math.max(1, (quote.lines.size() + perPage - 1) / perPage);
@@ -694,20 +723,49 @@ public final class QuoteMenus {
         int from = cur * perPage;
         int to = Math.min(quote.lines.size(), from + perPage);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Detail - " + quote.id
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GOLD);
+        List<Component> stats = List.of(
+                stat("Total : ", quote.total() + " Utopieces", ChatFormatting.GOLD),
+                stat("Lignes : ", String.valueOf(quote.lines.size()), ChatFormatting.GRAY));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DESIGNATION"), 150, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("QTE"), 24, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("PRIX UNIT."), 60, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("TOTAL"), 66, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (int i = from; i < to; i++) {
             QuoteData.Line line = quote.lines.get(i);
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label((i + 1) + ". " + line.label, ChatFormatting.WHITE),
-                    Icons.label(line.quantity + " x " + line.unitPrice + " = " + line.total(),
-                            ChatFormatting.GOLD), null, null));
+            final int index = i;
+            // La ligne s'ouvre : la colonne coupe une designation longue, et c'est ici le seul ecran
+            // ou le destinataire voit les lignes au-dela de la dixieme. Il doit pouvoir les lire en
+            // entier avant d'accepter ou de payer.
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal((i + 1) + ". " + clip(line.label, 24))
+                            .withStyle(s -> s.withColor(ChatFormatting.WHITE).withItalic(false)),
+                    Component.literal(String.valueOf(line.quantity))
+                            .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)),
+                    Component.literal(String.valueOf(line.unitPrice))
+                            .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
+                    Component.literal(String.valueOf(line.total()))
+                            .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))),
+                    sp -> openLineDetail(sp, id, index, cur, back)));
         }
-        rows.add(row("TOTAL", quote.total() + " Utopieces", ChatFormatting.GOLD));
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal("Aucune ligne chiffree")
+                            .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.empty(), Component.empty(), Component.empty()), null));
+        }
 
-        Consumer<ServerPlayer> prev = pages > 1 ? sp -> openAllLines(sp, id, (cur - 1 + pages) % pages, back) : null;
-        Consumer<ServerPlayer> next = pages > 1 ? sp -> openAllLines(sp, id, (cur + 1) % pages, back) : null;
-        OwoMenuServer.openPanel(player, title, rows, List.of(), false, prev, next,
-                sp -> openAllLines(sp, id, cur, back), sp -> openQuote(sp, id, back));
+        Consumer<ServerPlayer> prev = pages > 1
+                ? sp -> openAllLines(sp, id, (cur - 1 + pages) % pages, back) : null;
+        Consumer<ServerPlayer> next = pages > 1
+                ? sp -> openAllLines(sp, id, (cur + 1) % pages, back) : null;
+        OwoMenuServer.openTable(player, title, stats, List.of(), columns, rows, List.of(),
+                prev, next, sp -> openAllLines(sp, id, cur, back), sp -> openQuote(sp, id, back));
     }
 
     /**
@@ -834,35 +892,60 @@ public final class QuoteMenus {
             }
         }
 
-        Component title = Component.literal("DEVIS DES JOUEURS")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        int pages = Math.max(1, (all.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PAGE_SIZE;
+        int to = Math.min(all.size(), from + PAGE_SIZE);
+
+        Component title = Icons.screenTitle("Devis des joueurs"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 stat(all.size() + " devis - ", open + " en cours, " + settled + " solde(s)",
                         ChatFormatting.AQUA),
                 stat("Volume regle : ", volume + " Utopieces", ChatFormatting.GREEN),
                 stat("Taxe de la mairie : ", data.taxPercent() + " % du reglement", ChatFormatting.GRAY));
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
-                Icons.label("Par joueur", ChatFormatting.AQUA),
-                Icons.lore("Devis emis et recus, joueur par joueur", ChatFormatting.GRAY),
-                sp -> openAdminPlayers(sp, 0)));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPARATOR),
-                Icons.label("Reglages", ChatFormatting.YELLOW),
-                Icons.lore("Taxe et validite par defaut", ChatFormatting.GRAY),
-                QuoteMenus::openAdminSettings));
-        for (QuoteData.Quote quote : all) {
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DEVIS"), 40, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("OBJET"), 68, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("ETAT"), 48, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("MONTANT"), 48, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("EMETTEUR -> DEST."), 100, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (QuoteData.Quote quote : all.subList(Math.min(from, all.size()), to)) {
             String id = quote.id;
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(icon(quote.status)),
-                    Icons.label(quote.id + " - " + quote.title, ChatFormatting.WHITE),
-                    Icons.lore(quote.status.label() + " - " + data.nameOf(quote.issuer) + " -> "
-                                    + data.nameOf(quote.client) + " - " + quote.total() + " Utopieces",
-                            QuoteManager.color(quote.status)),
+            ChatFormatting stateColor = QuoteManager.color(quote.status);
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(quote.id)
+                            .withStyle(s -> s.withColor(ChatFormatting.WHITE).withItalic(false)),
+                    Component.literal(clip(quote.title, 11))
+                            .withStyle(s -> s.withColor(ChatFormatting.WHITE).withItalic(false)),
+                    Component.literal(quote.status.label())
+                            .withStyle(s -> s.withColor(stateColor).withItalic(false)),
+                    Component.literal(String.valueOf(quote.total()))
+                            .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false)),
+                    Component.literal(clip(data.nameOf(quote.issuer) + " -> " + data.nameOf(quote.client), 16))
+                            .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))),
                     sp -> openQuote(sp, id, s2 -> openAdmin(s2, 0))));
         }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal("Aucun devis")
+                            .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty()), null));
+        }
 
-        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PAGE_SIZE,
-                QuoteMenus::openAdmin,
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Par joueur", ChatFormatting.AQUA),
+                        sp -> openAdminPlayers(sp, 0)),
+                new OwoMenuServer.PanelAction(Icons.label("Reglages", ChatFormatting.YELLOW),
+                        QuoteMenus::openAdminSettings));
+
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openAdmin(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openAdmin(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(admin, title, stats, List.of(), columns, rows, footer,
+                onPrev, onNext, sp -> openAdmin(sp, cur),
                 admin.hasPermissions(2) ? com.utopia.menu.AdminMenu::open : QuoteMenus::openHome);
     }
 
@@ -873,8 +956,7 @@ public final class QuoteMenus {
             return;
         }
         QuoteData data = QuoteData.get(admin.server);
-        Component title = Component.literal("Devis par joueur")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Devis par joueur", ChatFormatting.AQUA);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (UUID id : data.participants()) {
@@ -918,8 +1000,7 @@ public final class QuoteMenus {
             spentCash += q.paidCash;
         }
 
-        Component title = Component.literal("Devis de " + name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Devis de " + name, ChatFormatting.AQUA);
         List<Component> stats = List.of(
                 stat("Emis : ", issued.size() + " - encaisse " + billed + " Utopieces"
                         + (billedCash > 0 ? " (dont " + billedCash + " en liquide)" : ""),
@@ -962,8 +1043,7 @@ public final class QuoteMenus {
             return;
         }
         QuoteData data = QuoteData.get(admin.server);
-        Component title = Component.literal("Reglages des devis")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Reglages des devis", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = List.of(
                 new OwoMenuServer.PanelRow(
@@ -1021,6 +1101,46 @@ public final class QuoteMenus {
     private static OwoMenuServer.PanelRow row(String label, String value, ChatFormatting color) {
         return new OwoMenuServer.PanelRow(Icons.label(label, ChatFormatting.GRAY),
                 Icons.label(value, color), null, null);
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    /**
+     * Fiche d'une ligne, en lecture seule : le tableau coupe la designation pour tenir en colonne,
+     * cet ecran la redonne en entier. Le panneau replie le texte au lieu de le tronquer.
+     */
+    private static void openLineDetail(ServerPlayer player, String id, int index, int page,
+                                       Consumer<ServerPlayer> back) {
+        QuoteData.Quote quote = QuoteData.get(player.server).quote(id);
+        if (quote == null || index < 0 || index >= quote.lines.size()) {
+            openAllLines(player, id, page, back);
+            return;
+        }
+        QuoteData.Line line = quote.lines.get(index);
+        List<OwoMenuServer.PanelRow> rows = List.of(
+                row("Designation", line.label, ChatFormatting.WHITE),
+                row("Quantite", String.valueOf(line.quantity), ChatFormatting.AQUA),
+                row("Prix unitaire", line.unitPrice + " Utopieces", ChatFormatting.GRAY),
+                row("Total de la ligne", line.total() + " Utopieces", ChatFormatting.GOLD));
+        OwoMenuServer.openPanel(player,
+                Icons.title("Ligne " + (index + 1) + " - " + quote.id, ChatFormatting.GOLD),
+                rows, List.of(), sp -> openLineDetail(sp, id, index, page, back),
+                sp -> openAllLines(sp, id, page, back));
+    }
+
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
+    }
+
+    /**
+     * Une cellule de tableau ne s'arrete pas d'elle-meme : un objet un peu long y reviendrait sur
+     * trois lignes et deformerait toute la rangee. On coupe court, la fiche du devis dit le reste.
+     */
+    private static String clip(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+        return text.length() <= max ? text : text.substring(0, Math.max(1, max - 2)) + "...";
     }
 
     private static Component stat(String label, String value, ChatFormatting valueColor) {

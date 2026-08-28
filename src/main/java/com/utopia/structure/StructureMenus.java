@@ -33,8 +33,7 @@ public final class StructureMenus {
 
     public static void openList(ServerPlayer admin, int page) {
         StructureData data = StructureData.get(admin.server);
-        Component title = Component.literal("STRUCTURES")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Structures", ChatFormatting.GOLD);
         List<Component> stats = List.of(Component.literal(data.all().size() + " structure(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -72,8 +71,7 @@ public final class StructureMenus {
         Vec3i size = StructureManager.size(admin.getUUID());
         BlockPos min = StructureManager.min(admin.getUUID());
 
-        Component title = Component.literal("Nouvelle structure")
-                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        Component title = Icons.title("Nouvelle structure", ChatFormatting.GREEN);
         List<Component> stats = new ArrayList<>();
         if (size == null) {
             stats.add(Component.literal("Pose les 2 coins (clic gauche / clic droit)")
@@ -161,8 +159,7 @@ public final class StructureMenus {
             openList(admin);
             return;
         }
-        Component title = Component.literal(st.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title(st.name, ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         // A 2 etats une simple bascule suffit ; au-dela, on ouvre un selecteur.
@@ -290,8 +287,7 @@ public final class StructureMenus {
             openList(admin);
             return;
         }
-        Component title = Component.literal("Blocs concernes - " + st.name)
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Blocs concernes - " + st.name, ChatFormatting.LIGHT_PURPLE);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         for (String id : new ArrayList<>(st.blockFilter)) {
@@ -360,8 +356,7 @@ public final class StructureMenus {
             return;
         }
         long now = admin.serverLevel().getDayTime() % 24000L;
-        Component title = Component.literal("Horaires - " + st.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Horaires - " + st.name, ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -392,8 +387,7 @@ public final class StructureMenus {
             return;
         }
         long time = st.stateTime(slot);
-        Component title = Component.literal("Heure - etat " + slot)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Heure - etat " + slot, ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal("Declenchement : " + StructureManager.formatMcTime(time))
                         .withStyle(s -> s.withColor(time >= 0 ? ChatFormatting.GREEN : ChatFormatting.RED)
@@ -467,8 +461,7 @@ public final class StructureMenus {
             openList(admin);
             return;
         }
-        Component title = Component.literal("Choisir l'etat - " + st.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Choisir l'etat - " + st.name, ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal("Actuel : etat " + st.current + " / " + st.stateCount)
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -512,8 +505,7 @@ public final class StructureMenus {
             return;
         }
         boolean defined = st.hasState(slot);
-        Component title = Component.literal(st.name + " - etat " + slot)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title(st.name + " - etat " + slot, ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal(defined
                 ? (st.current == slot ? "Etat defini, actuellement pose" : "Etat defini")
                 : "Etat non capture")
@@ -551,8 +543,7 @@ public final class StructureMenus {
             openList(admin);
             return;
         }
-        Component title = Component.literal("Marchand - " + st.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Marchand - " + st.name, ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -656,8 +647,7 @@ public final class StructureMenus {
             openList(admin);
             return;
         }
-        Component title = Component.literal("Skin - " + st.npcName)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Skin - " + st.npcName, ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal("Actuel : " + skinLabel(st))
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -739,8 +729,7 @@ public final class StructureMenus {
         List<String> found = com.utopia.entity.NpcSkins.search(query);
         String currentName = com.utopia.entity.NpcSkins.nameOf(st.npcSkinValue);
 
-        Component title = Component.literal("Skins - " + st.npcName)
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Skins - " + st.npcName, ChatFormatting.LIGHT_PURPLE);
         List<Component> stats = new ArrayList<>();
         stats.add(Component.literal(query.isBlank()
                         ? found.size() + " skins disponibles"
@@ -813,8 +802,7 @@ public final class StructureMenus {
             openList(admin);
             return;
         }
-        Component title = Component.literal("Articles - " + st.npcName)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Articles - " + st.npcName, ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         for (int i = 0; i < st.trades.size(); i++) {

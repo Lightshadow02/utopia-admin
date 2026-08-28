@@ -48,8 +48,7 @@ public final class ChantierMenus {
             player.sendSystemMessage(Messages.warn("Ce chantier n'existe plus."));
             return;
         }
-        Component title = Component.literal(chantier.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title(chantier.name, ChatFormatting.GOLD);
 
         List<Component> intro = new ArrayList<>();
         if (chantier.presentation != null && !chantier.presentation.isBlank()) {
@@ -154,8 +153,7 @@ public final class ChantierMenus {
             return;
         }
         ChantierData.Goal goal = chantier.goals.get(goalIndex);
-        Component title = Component.literal("Confirmer le don")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Confirmer le don", ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal(qty + " x " + goal.display)
                         .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)),
@@ -205,8 +203,7 @@ public final class ChantierMenus {
             return;
         }
         List<Map.Entry<UUID, Integer>> ranking = chantier.ranking();
-        Component title = Component.literal("Registre - " + chantier.name)
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
+        Component title = Icons.title("Registre - " + chantier.name, ChatFormatting.YELLOW);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -239,8 +236,7 @@ public final class ChantierMenus {
         if (chantier == null) {
             return;
         }
-        Component title = Component.literal(chantier.nameOf(target))
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title(chantier.nameOf(target), ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         List<ChantierData.Contribution> mine = new ArrayList<>();
@@ -274,8 +270,7 @@ public final class ChantierMenus {
 
     public static void openAdmin(ServerPlayer admin, int page) {
         ChantierData data = ChantierData.get(admin.server);
-        Component title = Component.literal("CHANTIERS")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Chantiers", ChatFormatting.GOLD);
         List<Component> stats = List.of(Component.literal(data.all().size() + " chantier(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -339,8 +334,7 @@ public final class ChantierMenus {
             openAdmin(admin);
             return;
         }
-        Component title = Component.literal(chantier.name + " (admin)")
-                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        Component title = Icons.title(chantier.name + " (admin)", ChatFormatting.RED);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -451,8 +445,7 @@ public final class ChantierMenus {
             openAdmin(admin);
             return;
         }
-        Component title = Component.literal("Etat - " + chantier.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Etat - " + chantier.name, ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal("Actuel : " + chantier.state.label())
                         .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)),
@@ -487,8 +480,7 @@ public final class ChantierMenus {
             openAdmin(admin);
             return;
         }
-        Component title = Component.literal("Supprimer " + chantier.name + " ?")
-                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        Component title = Icons.title("Supprimer " + chantier.name + " ?", ChatFormatting.RED);
         List<Component> stats = List.of(Component.literal(
                         "Le PNJ, l'hologramme, la progression et le registre seront perdus definitivement.")
                 .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
@@ -520,8 +512,7 @@ public final class ChantierMenus {
             openAdmin(admin);
             return;
         }
-        Component title = Component.literal("Objectifs - " + chantier.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Objectifs - " + chantier.name, ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         // L'objectif en Utopieces se pose d'un clic, sans avoir a sortir une piece de sa poche : c'est
@@ -632,8 +623,7 @@ public final class ChantierMenus {
             return;
         }
         ChantierData.Goal goal = chantier.goals.get(index);
-        Component title = Component.literal(goal.display)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title(goal.display, ChatFormatting.AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -722,8 +712,7 @@ public final class ChantierMenus {
         List<String> found = com.utopia.entity.NpcSkins.search(query);
         String currentName = com.utopia.entity.NpcSkins.nameOf(chantier.npcSkinValue);
 
-        Component title = Component.literal("Skin - " + chantier.npcName)
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Skin - " + chantier.npcName, ChatFormatting.LIGHT_PURPLE);
         List<Component> stats = List.of(
                 Component.literal(query.isBlank() ? found.size() + " skins disponibles"
                                 : found.size() + " resultat(s) pour \"" + query + "\"")

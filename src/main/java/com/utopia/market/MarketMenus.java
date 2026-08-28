@@ -1,5 +1,8 @@
 package com.utopia.market;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -51,7 +54,7 @@ public final class MarketMenus {
             openStall(player, stall);
             return;
         }
-        Component title = Icons.label("Mon emplacement (" + stall.offers.size() + "/"
+        Component title = Icons.screenTitle("Mon emplacement (" + stall.offers.size() + "/"
                 + MarketManager.MAX_OFFERS_PER_STALL + ")", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
@@ -118,27 +121,39 @@ public final class MarketMenus {
 
     // -------- Achat sur le stand d'un autre --------
 
+    /** Vitrine d'un stand : un tableau, car l'acheteur compare les prix a l'unite d'une ligne a l'autre. */
     private static void openBuy(ServerPlayer player, MarketData.Stall stall) {
         if (stall.owner == null) {
             player.sendSystemMessage(Messages.warn("Cet emplacement est vide."));
             return;
         }
-        Component title = Icons.label("Stand de " + stall.ownerName, ChatFormatting.GOLD);
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Stand de " + stall.ownerName, ChatFormatting.GOLD);
+        List<Component> stats = List.of(Icons.lore(
+                "Prix en Utopieces a l'unite - clique une ligne pour choisir la quantite.",
+                ChatFormatting.DARK_GRAY));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("OBJET"), 158, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("STOCK"), 46, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("PRIX /U"), 96, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (int i = 0; i < stall.offers.size(); i++) {
             final int idx = i;
             MarketData.Offer o = stall.offers.get(i);
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label(o.stack.getCount() + "x " + o.stack.getHoverName().getString(), ChatFormatting.AQUA),
-                    Icons.label(o.price + " Utopieces /unite", ChatFormatting.GOLD),
-                    Icons.label("Acheter", ChatFormatting.GREEN),
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(o.stack.getHoverName().getString(), ChatFormatting.AQUA),
+                    Icons.label(String.valueOf(o.stack.getCount()), ChatFormatting.WHITE),
+                    Icons.label(String.valueOf(o.price), ChatFormatting.GOLD)),
                     sp -> promptBuyQty(sp, stall, idx)));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune offre", ChatFormatting.GRAY),
-                    Icons.label("", ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucune offre", ChatFormatting.RED),
+                    Component.empty(), Component.empty()), null));
         }
-        OwoMenuServer.openPanel(player, title, rows, List.of(), sp -> openBuy(sp, stall), null);
+        OwoMenuServer.openTable(player, title, stats, List.of(), columns, rows, List.of(),
+                null, null, sp -> openBuy(sp, stall), null);
     }
 
     /** Demande la quantite a acheter (1..disponible) puis effectue l'achat au prix unitaire. */
@@ -183,6 +198,10 @@ public final class MarketMenus {
     /** Nombre d'objets en attente affiches par page dans la recuperation. */
     private static final int RECOVERY_PAGE_SIZE = 10;
 
+    /** Dates affichees a l'heure du serveur : les joueurs et les admins sont sur le meme fuseau. */
+    private static final DateTimeFormatter EXPIRY_STAMP =
+            DateTimeFormatter.ofPattern("dd/MM HH:mm").withZone(ZoneId.of("Europe/Paris"));
+
     /** Liste de la recuperation ; {@code onBack} = ou revient le bouton Retour (admin ou maire). */
     public static void openRecovery(ServerPlayer player, Consumer<ServerPlayer> onBack) {
         openRecovery(player, onBack, 0);
@@ -198,37 +217,53 @@ public final class MarketMenus {
         int from = cur * RECOVERY_PAGE_SIZE;
         int to = Math.min(rec.size(), from + RECOVERY_PAGE_SIZE);
 
-        Component title = Component.literal("Recuperation (" + (cur + 1) + "/" + totalPages + ") - "
-                + rec.size() + " objet(s)")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Recuperation (" + (cur + 1) + "/" + totalPages + ") - "
+                + rec.size() + " objet(s)", ChatFormatting.GOLD);
+        List<Component> stats = List.of(Icons.lore(
+                "Clique une ligne pour rendre les objets a leur proprietaire (il doit etre en ligne).",
+                ChatFormatting.DARK_GRAY));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("JOUEUR"), 84, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("OBJET"), 98, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("QUANTITE"), 54, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("EXPIRE LE"), 64, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (MarketData.RecoveryEntry e : rec.subList(from, to)) {
-            rows.add(new OwoMenuServer.PanelRow(
+            rows.add(new OwoMenuServer.TableRow(List.of(
                     Icons.label(e.ownerName(), ChatFormatting.WHITE),
-                    Icons.label(e.stack().getCount() + "x " + e.stack().getHoverName().getString(), ChatFormatting.AQUA),
-                    Icons.label("Rendre", ChatFormatting.GREEN),
+                    Icons.label(e.stack().getHoverName().getString(), ChatFormatting.AQUA),
+                    Icons.label(String.valueOf(e.stack().getCount()), ChatFormatting.GOLD),
+                    Icons.label(EXPIRY_STAMP.format(Instant.ofEpochMilli(e.expiryMillis())), ChatFormatting.GRAY)),
                     sp -> {
                         returnRecovery(sp, e);
                         openRecovery(sp, onBack, cur);
                     }));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucun objet en attente", ChatFormatting.GRAY),
-                    Icons.label("", ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucun objet en attente", ChatFormatting.GRAY),
+                    Component.empty(), Component.empty(), Component.empty()), null));
         }
         final int pages = totalPages;
         Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openRecovery(sp, onBack, (cur - 1 + pages) % pages) : null;
         Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openRecovery(sp, onBack, (cur + 1) % pages) : null;
-        OwoMenuServer.openPanel(player, title, rows, List.of(), false, onPrev, onNext,
-                sp -> openRecovery(sp, onBack, cur), onBack);
+        OwoMenuServer.openTable(player, title, stats, List.of(), columns, rows, List.of(),
+                onPrev, onNext, sp -> openRecovery(sp, onBack, cur), onBack);
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     // -------- Menu du compte de la mairie (/maire) --------
 
     public static void openMaire(ServerPlayer player) {
         long balance = EconomyManager.getBalance(player.server, MarketData.MAIRIE_UUID);
-        Component title = Component.literal("MAIRIE - Compte")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Mairie", ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal("Solde de la mairie : ")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
@@ -333,8 +368,7 @@ public final class MarketMenus {
     /** Menu de configuration d'un stand (Shift + clic droit) : op = emplacements + expiration ; maire = expiration. */
     public static void openStallAdmin(ServerPlayer player, MarketData.Stall stall) {
         boolean isOp = player.hasPermissions(2);
-        Component title = Component.literal("Stand - configuration")
-                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        Component title = Icons.title("Stand - configuration", ChatFormatting.RED);
         List<Component> stats = List.of(
                 Component.literal((stall.isFree() ? "Libre" : "Occupe par " + stall.ownerName)
                         + " - " + stall.offers.size() + " offre(s)")

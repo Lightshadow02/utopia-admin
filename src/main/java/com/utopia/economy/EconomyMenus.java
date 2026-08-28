@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.mojang.authlib.GameProfile;
 import com.utopia.data.BalTopData;
@@ -35,13 +36,10 @@ public final class EconomyMenus {
         return gp.map(GameProfile::getName).filter(n -> n != null).orElse(id.toString().substring(0, 8));
     }
 
-    private static ItemStack head(MinecraftServer server, UUID id, Component name, List<Component> lore) {
-        ServerPlayer online = server.getPlayerList().getPlayer(id);
-        if (online != null) {
-            return Icons.playerHead(online, name, lore);
-        }
-        Optional<GameProfile> gp = server.getProfileCache().get(id);
-        return gp.isPresent() ? Icons.playerHead(gp.get(), name, lore) : Icons.icon(Items.PLAYER_HEAD, name, lore);
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     /** Entrees par page dans les selecteurs de joueurs. */
@@ -52,26 +50,49 @@ public final class EconomyMenus {
         openAdminMenu(admin, 0);
     }
 
+    /**
+     * Tableau des joueurs en ligne : soldes et pieces en main cales a droite les uns sous les
+     * autres, pour voir d'un coup d'oeil qui sort du lot. La ligne entiere ouvre le panneau du
+     * joueur.
+     */
     public static void openAdminMenu(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
-        Component title = Icons.label("Economie - joueurs", ChatFormatting.DARK_AQUA);
+        List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
+
+        int pages = Math.max(1, (players.size() + PICKER_PAGE_SIZE - 1) / PICKER_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PICKER_PAGE_SIZE;
+        int to = Math.min(players.size(), from + PICKER_PAGE_SIZE);
+
+        Component title = Icons.screenTitle("Economie"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.DARK_AQUA);
         List<Component> stats = List.of(
                 Icons.lore("Joueurs hors ligne : /money give|take|set", ChatFormatting.GRAY));
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        for (ServerPlayer target : server.getPlayerList().getPlayers()) {
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("JOUEUR"), 96, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("SOLDE"), 88, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("PIECES EN MAIN"), 116, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (ServerPlayer target : players.subList(Math.min(from, players.size()), to)) {
             UUID id = target.getUUID();
-            String name = target.getGameProfile().getName();
-            entries.add(new OwoMenuServer.HubEntry(
-                    head(server, id, Icons.label(name, ChatFormatting.WHITE), List.of()),
-                    Icons.label(name, ChatFormatting.WHITE),
-                    Icons.lore("Solde : " + EconomyManager.format(EconomyManager.getBalance(server, id)),
-                            ChatFormatting.GOLD),
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.lore(target.getGameProfile().getName(), ChatFormatting.WHITE),
+                    Icons.lore(String.valueOf(EconomyManager.getBalance(server, id)), ChatFormatting.GOLD),
+                    Icons.lore(String.valueOf(EconomyManager.countCoins(target)), ChatFormatting.AQUA)),
                     sp -> openPlayerEco(sp, id)));
         }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.lore("Aucun joueur en ligne", ChatFormatting.RED),
+                    Component.empty(), Component.empty()), null));
+        }
 
-        OwoMenuServer.openHubPaged(admin, title, stats, entries, page, PICKER_PAGE_SIZE,
-                EconomyMenus::openAdminMenu, com.utopia.menu.AdminMenu::open);
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openAdminMenu(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openAdminMenu(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(admin, title, stats, List.of(), columns, rows, List.of(),
+                onPrev, onNext, sp -> openAdminMenu(sp, cur), com.utopia.menu.AdminMenu::open);
     }
 
     /** Panneau d'un joueur (ecran riche) : saisir un montant, puis Ajouter ou Retirer. */
@@ -80,7 +101,7 @@ public final class EconomyMenus {
         String name = nameOf(server, targetId);
         long balance = EconomyManager.getBalance(server, targetId);
 
-        Component title = Icons.label("Solde : " + name, ChatFormatting.GOLD);
+        Component title = Icons.title("Solde de " + name, ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 stat("Joueur : ", name, ChatFormatting.AQUA),
                 stat("Solde : ", balance + " Utopieces", ChatFormatting.GOLD));
@@ -130,7 +151,7 @@ public final class EconomyMenus {
         long balance = EconomyManager.getBalance(server, player.getUUID());
         int coins = EconomyManager.countCoins(player);
 
-        Component title = Icons.label("Banque", ChatFormatting.GOLD);
+        Component title = Icons.screenTitle("Banque", ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 stat("Solde en banque : ", balance + " Utopieces", ChatFormatting.GOLD),
                 stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA));
@@ -179,7 +200,7 @@ public final class EconomyMenus {
 
     private static void openPayPicker(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
-        Component title = Icons.label("Payer qui ?", ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Payer qui ?", ChatFormatting.DARK_AQUA);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {

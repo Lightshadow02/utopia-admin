@@ -44,6 +44,12 @@ public final class SavingsMenus {
         openRegistry(player, 0);
     }
 
+    /**
+     * Registre en tableau : une ligne par livret, soldes et taux cales a droite les uns sous les
+     * autres pour que le banquier compare sans survoler chaque tete. Le bareme et l'ouverture d'un
+     * livret restent en tete, le journal et l'epargne personnelle en pied : ce ne sont pas des
+     * livrets, ils n'ont rien a faire dans la liste.
+     */
     public static void openRegistry(ServerPlayer player, int page) {
         if (!SavingsManager.canKeepRegistry(player)) {
             player.sendSystemMessage(Messages.warn("Seul le banquier tient le registre des livrets."));
@@ -52,17 +58,20 @@ public final class SavingsMenus {
         }
         MinecraftServer server = player.server;
         SavingsData data = SavingsData.get(server);
+        List<SavingsData.Account> accounts = data.ranking();
 
-        Component title = Component.literal("REGISTRE DES LIVRETS")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        int pages = Math.max(1, (accounts.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * PAGE_SIZE;
+        int to = Math.min(accounts.size(), from + PAGE_SIZE);
+
+        Component title = Icons.screenTitle("Registre des livrets"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GOLD);
 
         List<Component> stats = new ArrayList<>();
-        stats.add(stat("Taux de base : ", SavingsManager.rate(data.baseRate()) + " par nuit",
-                ChatFormatting.GOLD));
-        stats.add(stat("Interets verses a minuit (heure de Paris) - ",
-                data.tiers().size() + " palier(s) au bareme", ChatFormatting.GRAY));
         stats.add(stat(data.accounts().size() + " livret(s) - total epargne : ",
                 data.totalSaved() + " Utopieces", ChatFormatting.AQUA));
+        stats.add(Icons.lore("Interets verses a minuit, heure de Paris.", ChatFormatting.GRAY));
         if (data.lastRunDay() > 0) {
             stats.add(stat("Derniere nuit (" + SavingsManager.day(data.lastRunDay()) + ") : ",
                     "+" + data.lastRunTotal() + " Utopieces", ChatFormatting.GREEN));
@@ -74,40 +83,59 @@ public final class SavingsMenus {
         }
 
         boolean admin = SavingsManager.canSetRate(player);
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
-                Icons.label("Ouvrir un livret", ChatFormatting.GREEN),
-                Icons.lore("Creer le livret d'un joueur", ChatFormatting.GRAY),
-                sp -> openAccountPicker(sp, 0)));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PAPER),
-                Icons.label("Bareme des taux", ChatFormatting.YELLOW),
-                Icons.lore(admin ? "Taux de base, paliers, plafond" : "Consultation seule", ChatFormatting.GRAY),
-                SavingsMenus::openScale));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BOOK),
-                Icons.label("Journal des operations", ChatFormatting.YELLOW),
-                Icons.lore("Depots, retraits, interets", ChatFormatting.GRAY),
-                sp -> openJournal(sp, 0)));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_INGOT),
-                Icons.label("Mon livret", ChatFormatting.AQUA),
-                Icons.lore("Votre propre epargne", ChatFormatting.GRAY),
-                SavingsMenus::openOwn));
+        List<OwoMenuServer.PanelRow> controls = List.of(
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Bareme des taux", ChatFormatting.GRAY),
+                        Icons.label("base " + SavingsManager.rate(data.baseRate()) + " - "
+                                + data.tiers().size() + " palier(s)", ChatFormatting.GOLD),
+                        Icons.label(admin ? "Regler" : "Consulter", ChatFormatting.YELLOW),
+                        SavingsMenus::openScale),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Ouvrir un livret", ChatFormatting.GRAY),
+                        Icons.label("creer le livret d'un joueur", ChatFormatting.DARK_GRAY),
+                        Icons.label("Ouvrir", ChatFormatting.GREEN),
+                        sp -> openAccountPicker(sp, 0)));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("JOUEUR"), 86, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("SOLDE"), 70, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("TAUX"), 62, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("CETTE NUIT"), 78, OwoMenuServer.Column.RIGHT));
 
         long today = SavingsManager.today();
-        for (SavingsData.Account account : data.ranking()) {
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (SavingsData.Account account : accounts.subList(Math.min(from, accounts.size()), to)) {
             UUID owner = account.owner;
-            String name = data.nameOf(owner);
             SavingsData.DayEntry last = account.lastEntry();
             long gained = last != null && last.day == today ? last.interest : 0;
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
-                    Icons.label(name, ChatFormatting.WHITE),
-                    Icons.lore(account.balance + " Utopieces - " + SavingsManager.rate(
-                            data.rateFor(account.balance)) + "/nuit - cette nuit +" + gained,
-                            ChatFormatting.GRAY),
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(data.nameOf(owner), ChatFormatting.WHITE),
+                    Icons.label(String.valueOf(account.balance), ChatFormatting.GOLD),
+                    Icons.label(SavingsManager.rate(data.rateFor(account.balance)),
+                            ChatFormatting.GREEN),
+                    Icons.label("+" + gained,
+                            gained > 0 ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY)),
                     sp -> openAccount(sp, owner)));
         }
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucun livret", ChatFormatting.RED),
+                    Component.empty(), Component.empty(), Component.empty()), null));
+        }
 
-        OwoMenuServer.openHubPaged(player, title, stats, entries, page, PAGE_SIZE,
-                SavingsMenus::openRegistry,
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Journal des operations", ChatFormatting.YELLOW),
+                        sp -> openJournal(sp, 0)),
+                new OwoMenuServer.PanelAction(Icons.label("Mon livret", ChatFormatting.AQUA),
+                        SavingsMenus::openOwn));
+
+        java.util.function.Consumer<ServerPlayer> prev = pages > 1
+                ? sp -> openRegistry(sp, (cur - 1 + pages) % pages) : null;
+        java.util.function.Consumer<ServerPlayer> next = pages > 1
+                ? sp -> openRegistry(sp, (cur + 1) % pages) : null;
+
+        OwoMenuServer.openTable(player, title, stats, controls, columns, rows, footer, prev, next,
+                sp -> openRegistry(sp, cur),
                 player.hasPermissions(2) ? com.utopia.menu.AdminMenu::open : null);
     }
 
@@ -132,8 +160,7 @@ public final class SavingsMenus {
         double rate = data.rateFor(account.balance);
         SavingsData.DayEntry last = account.lastEntry();
 
-        Component title = Component.literal("Livret de " + name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Livret de " + name, ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(row("Solde du livret", account.balance + " Utopieces", ChatFormatting.GOLD));
@@ -293,7 +320,7 @@ public final class SavingsMenus {
                                             : Messages.warn("Ecriture reservee a l'administration."));
                                     openAccount(sp, owner);
                                 })));
-        OwoMenuServer.openHub(admin, Icons.label("Ecriture admin - " + name, ChatFormatting.LIGHT_PURPLE),
+        OwoMenuServer.openHub(admin, Icons.title("Ecriture admin - " + name, ChatFormatting.LIGHT_PURPLE),
                 List.of(Icons.lore("A n'utiliser que pour corriger une erreur.", ChatFormatting.DARK_GRAY)),
                 entries, sp -> promptAdjust(sp, owner), sp -> openAccount(sp, owner));
     }
@@ -326,39 +353,53 @@ public final class SavingsMenus {
         List<SavingsData.DayEntry> all = new ArrayList<>(account.history);
         Collections.reverse(all); // le plus recent en premier
 
-        Component title = Component.literal(self ? "Mon suivi quotidien" : "Suivi - " + name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
-
         int pages = Math.max(1, (all.size() + LINES_PER_PAGE - 1) / LINES_PER_PAGE);
         final int cur = Math.max(0, Math.min(page, pages - 1));
         int from = cur * LINES_PER_PAGE;
         int to = Math.min(all.size(), from + LINES_PER_PAGE);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title((self ? "Mon suivi quotidien" : "Suivi - " + name)
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.AQUA);
+
+        List<Component> stats = new ArrayList<>();
+        stats.add(stat("Solde du livret : ", account.balance + " Utopieces", ChatFormatting.GOLD));
+        stats.add(stat("Taux applique aujourd'hui : ",
+                SavingsManager.rate(data.rateFor(account.balance)) + " par nuit", ChatFormatting.GREEN));
+        if (all.isEmpty()) {
+            stats.add(Icons.lore("Le suivi commence a la premiere nuit d'interets.",
+                    ChatFormatting.DARK_GRAY));
+        }
+
+        // Le taux a sa colonne : c'est lui qui justifie le montant d'interets de la nuit, et il
+        // change avec les paliers. Le lire dans l'en-tete donnerait celui d'aujourd'hui, pas celui
+        // qui a reellement ete servi ce jour-la.
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DATE"), 64, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("TAUX"), 40, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("INTERETS"), 56, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("DEPOTS"), 46, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("RETRAITS"), 54, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("SOLDE"), 48, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (SavingsData.DayEntry e : all.subList(Math.min(from, all.size()), to)) {
-            StringBuilder value = new StringBuilder();
-            value.append("+").append(e.interest).append(" d'interets");
-            if (e.rate > 0) {
-                value.append(" (").append(SavingsManager.rate(e.rate)).append(")");
-            }
-            if (e.deposits > 0) {
-                value.append(" - depot +").append(e.deposits);
-            }
-            if (e.withdrawals > 0) {
-                value.append(" - retrait -").append(e.withdrawals);
-            }
-            value.append(" - solde ").append(e.closing);
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label(SavingsManager.day(e.day), ChatFormatting.DARK_GRAY),
-                    Icons.label(value.toString(),
-                            e.interest > 0 ? ChatFormatting.GREEN : ChatFormatting.WHITE),
-                    null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(SavingsManager.day(e.day), ChatFormatting.GRAY),
+                    Icons.label(e.rate > 0 ? SavingsManager.rate(e.rate) : "-",
+                            e.rate > 0 ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                    Icons.label("+" + e.interest,
+                            e.interest > 0 ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                    Icons.label(e.deposits > 0 ? "+" + e.deposits : "-",
+                            e.deposits > 0 ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY),
+                    Icons.label(e.withdrawals > 0 ? "-" + e.withdrawals : "-",
+                            e.withdrawals > 0 ? ChatFormatting.YELLOW : ChatFormatting.DARK_GRAY),
+                    Icons.label(String.valueOf(e.closing), ChatFormatting.GOLD)), null));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label("Aucune journee enregistree", ChatFormatting.GRAY),
-                    Icons.label("Le suivi commence a la premiere nuit", ChatFormatting.DARK_GRAY),
-                    null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucun jour", ChatFormatting.GRAY),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty(),
+                    Component.empty()), null));
         }
 
         java.util.function.Consumer<ServerPlayer> prev = pages > 1
@@ -366,7 +407,7 @@ public final class SavingsMenus {
         java.util.function.Consumer<ServerPlayer> next = pages > 1
                 ? sp -> openTracking(sp, owner, (cur + 1) % pages) : null;
 
-        OwoMenuServer.openPanel(player, title, rows, List.of(), false, prev, next,
+        OwoMenuServer.openTable(player, title, stats, List.of(), columns, rows, List.of(), prev, next,
                 sp -> openTracking(sp, owner, cur),
                 self ? SavingsMenus::openOwn : sp -> openAccount(sp, owner));
     }
@@ -385,31 +426,35 @@ public final class SavingsMenus {
         List<SavingsData.LogEntry> all = new ArrayList<>(data.journal());
         Collections.reverse(all);
 
-        Component title = Component.literal("Journal des operations")
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
-
         int pages = Math.max(1, (all.size() + LINES_PER_PAGE - 1) / LINES_PER_PAGE);
         final int cur = Math.max(0, Math.min(page, pages - 1));
         int from = cur * LINES_PER_PAGE;
         int to = Math.min(all.size(), from + LINES_PER_PAGE);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Journal des operations"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.YELLOW);
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("DATE"), 98, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("OPERATION"), 210, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (SavingsData.LogEntry e : all.subList(Math.min(from, all.size()), to)) {
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label(com.utopia.job.JobManager.stamp(e.millis()), ChatFormatting.DARK_GRAY),
-                    Icons.label(e.text(), ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label(com.utopia.job.JobManager.stamp(e.millis()), ChatFormatting.GRAY),
+                    Icons.label(e.text(), ChatFormatting.WHITE)), null));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune operation", ChatFormatting.GRAY),
-                    Icons.label("", ChatFormatting.WHITE), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucune operation", ChatFormatting.GRAY), Component.empty()), null));
         }
         java.util.function.Consumer<ServerPlayer> prev = pages > 1
                 ? sp -> openJournal(sp, (cur - 1 + pages) % pages) : null;
         java.util.function.Consumer<ServerPlayer> next = pages > 1
                 ? sp -> openJournal(sp, (cur + 1) % pages) : null;
 
-        OwoMenuServer.openPanel(player, title, rows, List.of(), false, prev, next,
-                sp -> openJournal(sp, cur), SavingsMenus::openRegistry);
+        OwoMenuServer.openTable(player, title, List.of(), List.of(), columns, rows, List.of(),
+                prev, next, sp -> openJournal(sp, cur), SavingsMenus::openRegistry);
     }
 
     // ==============================================================================================
@@ -420,8 +465,7 @@ public final class SavingsMenus {
         SavingsData data = SavingsData.get(player.server);
         boolean admin = SavingsManager.canSetRate(player);
 
-        Component title = Component.literal("Bareme des taux")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Bareme des taux", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -498,8 +542,7 @@ public final class SavingsMenus {
         }
         SavingsData.Tier tier = data.tiers().get(index);
 
-        Component title = Component.literal("Palier - " + tier.threshold + " Utopieces")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Palier - " + tier.threshold + " Utopieces", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = List.of(
                 new OwoMenuServer.PanelRow(
@@ -584,8 +627,7 @@ public final class SavingsMenus {
         MinecraftServer server = player.server;
         SavingsData data = SavingsData.get(server);
 
-        Component title = Component.literal("Ouvrir un livret")
-                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        Component title = Icons.title("Ouvrir un livret", ChatFormatting.GREEN);
         List<Component> stats = List.of(Component.literal(
                         "Le livret commence a zero ; les interets tombent des la nuit suivante.")
                 .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
@@ -665,8 +707,7 @@ public final class SavingsMenus {
         SavingsData data = SavingsData.get(player.server);
         SavingsData.Account account = data.account(player.getUUID());
 
-        Component title = Component.literal("MON LIVRET D'EPARGNE")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Mon livret d'epargne", ChatFormatting.GOLD);
 
         if (account == null) {
             OwoMenuServer.openProgress(player, title,
@@ -738,6 +779,12 @@ public final class SavingsMenus {
     private static OwoMenuServer.PanelRow row(String label, String value, ChatFormatting color) {
         return new OwoMenuServer.PanelRow(Icons.label(label, ChatFormatting.GRAY),
                 Icons.label(value, color), null, null);
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     private static Component stat(String label, String value, ChatFormatting valueColor) {

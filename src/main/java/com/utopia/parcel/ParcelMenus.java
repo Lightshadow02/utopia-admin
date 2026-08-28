@@ -53,11 +53,6 @@ public final class ParcelMenus {
         return ParcelData.get(server).get(id);
     }
 
-    /** Icone selon la categorie : laine bleue pour l'habitation, orange pour le commerce. */
-    private static net.minecraft.world.level.ItemLike typeIcon(Parcel p) {
-        return p.isAdmin() ? Items.RED_WOOL : p.type().wool();
-    }
-
     /** Ligne de lore "Requis : <item>" pour l'achat, ou une ligne vide si aucun item exige. */
     private static Component typeReqLore(Parcel p) {
         var req = ParcelManager.requiredBuyItem(p);
@@ -127,7 +122,8 @@ public final class ParcelMenus {
 
         // Style "panneau de reglages" (comme le menu admin) : libelle + valeur + bouton.
         int total = owned.size();
-        Component title = Icons.label("Parcelle " + p.id() + " (" + (i + 1) + "/" + total + ")", ChatFormatting.GREEN);
+        Component title = Icons.title("Parcelle " + p.id() + " (" + (i + 1) + "/" + total + ")",
+                ChatFormatting.GREEN);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -211,8 +207,8 @@ public final class ParcelMenus {
     }
 
     /**
-     * Liste filtrable de ses propres parcelles : plus pratique que les fleches des qu'on en possede
-     * plusieurs. Un clic ouvre la fiche de la parcelle choisie.
+     * Liste filtrable de ses propres parcelles, en tableau : plus pratique que les fleches des qu'on
+     * en possede plusieurs. Un clic n'importe ou sur la ligne ouvre la fiche de la parcelle.
      */
     public static void openMyParcelsList(ServerPlayer player, int page) {
         MinecraftServer server = player.server;
@@ -222,41 +218,69 @@ public final class ParcelMenus {
         ParcelFilter filter = ParcelFilter.of(player, ParcelFilter.MINE);
         List<Parcel> shown = filter.apply(owned);
 
-        Component title = Icons.label("Mes parcelles", ChatFormatting.GREEN);
+        int pages = Math.max(1, (shown.size() + ADMIN_PAGE_SIZE - 1) / ADMIN_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
+        int from = cur * ADMIN_PAGE_SIZE;
+        int to = Math.min(shown.size(), from + ADMIN_PAGE_SIZE);
+
+        Component title = Icons.screenTitle("Mes parcelles"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GREEN);
+
         List<Component> stats = new ArrayList<>();
         stats.add(Component.literal(filter.active()
                         ? shown.size() + " parcelle(s) sur " + owned.size() + " correspondent"
                         : owned.size() + " parcelle(s) possedee(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        for (Parcel p : shown) {
+        // Les criteres reviennent toujours en premiere page : le rang d'une parcelle change des que
+        // le filtre change.
+        Consumer<ServerPlayer> reopen = sp -> openMyParcelsList(sp, 0);
+        List<OwoMenuServer.PanelRow> controls = List.of(
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Recherche", filter.active() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                        Icons.label(filter.summary(), ChatFormatting.DARK_GRAY),
+                        Icons.label("Filtrer", ChatFormatting.YELLOW),
+                        sp -> openFilter(sp, ParcelFilter.MINE, reopen)),
+                kindRow(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
+                        ParcelFilter.MINE, reopen),
+                kindRow(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
+                        ParcelFilter.MINE, reopen));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("PARCELLE"), 58, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("CATEGORIE"), 66, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("ETAT"), 176, OwoMenuServer.Column.LEFT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (Parcel p : shown.subList(Math.min(from, shown.size()), to)) {
             String pid = p.id();
-            Component label = Component.literal(pid)
-                    .withStyle(x -> x.withColor(p.type().color()).withItalic(false));
-            if (p.forSale()) {
-                label = label.copy().append(Component.literal("  en vente " + EconomyManager.format(p.price()))
-                        .withStyle(x -> x.withColor(ChatFormatting.GREEN).withItalic(false)));
-            }
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(typeIcon(p)), label,
-                    Icons.lore(p.type().label() + " - " + p.members().size() + " membre(s) - "
-                                    + p.regionCount() + " region(s)", ChatFormatting.GRAY),
+            Component state = p.forSale()
+                    ? Component.literal("en vente " + EconomyManager.format(p.price()))
+                            .withStyle(x -> x.withColor(ChatFormatting.GREEN).withItalic(false))
+                    : Component.literal(p.members().size() + " membre(s) - " + p.regionCount() + " region(s)")
+                            .withStyle(x -> x.withColor(ChatFormatting.GRAY).withItalic(false));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(pid).withStyle(x -> x.withColor(p.type().color()).withItalic(false)),
+                    Component.literal(p.type().label())
+                            .withStyle(x -> x.withColor(p.type().color()).withItalic(false)),
+                    state),
                     sp -> openMyParcelsFor(sp, pid)));
         }
-        if (shown.isEmpty()) {
+        if (rows.isEmpty()) {
             stats.add(Component.literal("Aucune parcelle ne correspond a la recherche.")
                     .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal("Aucun resultat")
+                            .withStyle(x -> x.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.empty(), Component.empty()), null));
         }
 
-        Consumer<ServerPlayer> reopen = sp -> openMyParcelsList(sp, 0);
-        OwoMenuServer.openHubPaged(player, title, stats,
-                List.of(filterEntry(filter, ParcelFilter.MINE, reopen),
-                        kindEntry(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
-                                ParcelFilter.MINE, reopen),
-                        kindEntry(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
-                                ParcelFilter.MINE, reopen)),
-                entries, page, ADMIN_PAGE_SIZE, ParcelMenus::openMyParcelsList,
-                com.utopia.menu.MainMenu::open);
+        Consumer<ServerPlayer> onPrev = pages > 1
+                ? sp -> openMyParcelsList(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1
+                ? sp -> openMyParcelsList(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(player, title, stats, controls, columns, rows, List.of(),
+                onPrev, onNext, sp -> openMyParcelsList(sp, cur), com.utopia.menu.MainMenu::open);
     }
 
     /**
@@ -292,7 +316,7 @@ public final class ParcelMenus {
             return;
         }
 
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
+        UtopiaGui gui = new UtopiaGui(3, Icons.title("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
 
         List<Component> info = new ArrayList<>();
         info.add(Icons.lore("Categorie : " + (p.isAdmin() ? "Zone administrative" : p.type().label()),
@@ -351,7 +375,7 @@ public final class ParcelMenus {
                 Icons.label("A la Mairie", ChatFormatting.GRAY),
                 Icons.label(EconomyManager.format(refund) + " (75%)", ChatFormatting.GOLD),
                 Icons.label("Vendre", ChatFormatting.YELLOW),
-                sp -> openConfirm(sp, Icons.label("Vendre a la Mairie ?", ChatFormatting.GOLD),
+                sp -> openConfirm(sp, Icons.title("Vendre a la Mairie ?", ChatFormatting.GOLD),
                         List.of(Icons.lore("Rembourse " + EconomyManager.format(refund) + " ; la parcelle repart en vente Mairie", ChatFormatting.GRAY)),
                         s2 -> {
                             Parcel cur = getParcel(server, parcelId);
@@ -385,7 +409,7 @@ public final class ParcelMenus {
                     openSellMenu(sp, parcelId);
                 } : null));
 
-        OwoMenuServer.openPanel(player, Icons.label("Vendre - " + p.id(), ChatFormatting.GOLD),
+        OwoMenuServer.openPanel(player, Icons.title("Vendre - " + p.id(), ChatFormatting.GOLD),
                 rows, List.of(), sp -> openSellMenu(sp, parcelId), sp -> backToParcelMenu(sp, parcelId));
     }
 
@@ -457,7 +481,7 @@ public final class ParcelMenus {
         if (reqItem != null) {
             info.add(Icons.lore("Requis : " + new ItemStack(reqItem).getHoverName().getString() + " (consomme)", ChatFormatting.LIGHT_PURPLE));
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Acheter " + p.id() + " ?", ChatFormatting.DARK_AQUA));
+        UtopiaGui gui = new UtopiaGui(3, Icons.title("Acheter " + p.id() + " ?", ChatFormatting.DARK_AQUA));
         gui.set(4, Icons.icon(EconomyManager.coinItem(), Icons.label("Prix : " + EconomyManager.format(price), ChatFormatting.GOLD), info));
         gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("OUI, acheter pour " + EconomyManager.format(price), ChatFormatting.GREEN), List.of()),
                 sp -> {
@@ -487,21 +511,21 @@ public final class ParcelMenus {
     // ----------------------------------------------------------------------------------- membres
 
     public static void openMembersMenu(ServerPlayer player, String parcelId) {
+        openMembersMenu(player, parcelId, 0);
+    }
+
+    public static void openMembersMenu(ServerPlayer player, String parcelId, int page) {
         MinecraftServer server = player.server;
         Parcel p = getParcel(server, parcelId);
         if (p == null || !canManage(player, p)) {
             player.sendSystemMessage(Messages.error("Acces refuse."));
             return;
         }
-        Component title = Icons.label("Membres - " + p.id(), ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Membres - " + p.id(), ChatFormatting.DARK_AQUA);
         List<Component> stats = List.of(Component.literal(p.members().size() + " membre(s)")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LIME_DYE),
-                Icons.label("+ Ajouter un membre", ChatFormatting.GREEN),
-                Icons.lore("Choisir un joueur en ligne", ChatFormatting.GRAY),
-                sp -> openAddMemberMenu(sp, parcelId)));
         for (var entry : p.members().entrySet()) {
             UUID memberId = entry.getKey();
             int count = entry.getValue().size();
@@ -512,8 +536,16 @@ public final class ParcelMenus {
                     sp -> openMemberEditMenu(sp, parcelId, memberId)));
         }
 
-        OwoMenuServer.openHub(player, title, stats, entries,
-                sp -> openMembersMenu(sp, parcelId), sp -> backToParcelMenu(sp, parcelId));
+        // Une parcelle tres partagee depassait les 52 slots d'action : le surplus disparaissait en
+        // silence, seul un avertissement dans les logs le signalait. Le bouton d'ajout est epingle,
+        // hors pagination : sinon il n'existerait que sur la premiere page.
+        OwoMenuServer.HubEntry addEntry = new OwoMenuServer.HubEntry(new ItemStack(Items.LIME_DYE),
+                Icons.label("+ Ajouter un membre", ChatFormatting.GREEN),
+                Icons.lore("Choisir un joueur en ligne", ChatFormatting.GRAY),
+                sp -> openAddMemberMenu(sp, parcelId));
+        OwoMenuServer.openHubPaged(player, title, stats, List.of(addEntry), entries, page,
+                ADMIN_PAGE_SIZE, (sp, pg) -> openMembersMenu(sp, parcelId, pg),
+                sp -> backToParcelMenu(sp, parcelId));
     }
 
     public static void openMemberEditMenu(ServerPlayer player, String parcelId, UUID memberId) {
@@ -529,7 +561,7 @@ public final class ParcelMenus {
             return;
         }
 
-        Component title = Icons.label("Droits de " + nameOf(server, memberId), ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Droits de " + nameOf(server, memberId), ChatFormatting.DARK_AQUA);
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         for (Parcel.Flag flag : FLAGS) {
             boolean on = flags.contains(flag);
@@ -542,7 +574,7 @@ public final class ParcelMenus {
 
         List<OwoMenuServer.PanelAction> footer = List.of(
                 new OwoMenuServer.PanelAction(Icons.label("Retirer le membre", ChatFormatting.RED),
-                        sp -> openConfirm(sp, Icons.label("Retirer ce membre ?", ChatFormatting.RED),
+                        sp -> openConfirm(sp, Icons.title("Retirer ce membre ?", ChatFormatting.RED),
                                 List.of(Icons.lore(nameOf(server, memberId) + " perdra tous ses droits", ChatFormatting.GRAY)),
                                 s2 -> {
                                     Parcel cur = getParcel(server, parcelId);
@@ -586,6 +618,10 @@ public final class ParcelMenus {
     }
 
     public static void openAddMemberMenu(ServerPlayer player, String parcelId) {
+        openAddMemberMenu(player, parcelId, 0);
+    }
+
+    public static void openAddMemberMenu(ServerPlayer player, String parcelId, int page) {
         MinecraftServer server = player.server;
         Parcel p = getParcel(server, parcelId);
         if (p == null || !canManage(player, p)) {
@@ -614,8 +650,11 @@ public final class ParcelMenus {
                     }));
         }
 
-        OwoMenuServer.openHub(player, Icons.label("Ajouter un membre", ChatFormatting.DARK_AQUA),
-                List.of(), entries, sp -> openAddMemberMenu(sp, parcelId), sp -> openMembersMenu(sp, parcelId));
+        // Cet ecran liste tous les joueurs en ligne : au-dela de 52 connectes, les derniers
+        // devenaient purement et simplement inajoutables.
+        OwoMenuServer.openHubPaged(player, Icons.title("Ajouter un membre", ChatFormatting.DARK_AQUA),
+                List.of(), entries, page, ADMIN_PAGE_SIZE,
+                (sp, pg) -> openAddMemberMenu(sp, parcelId, pg), sp -> openMembersMenu(sp, parcelId));
     }
 
 
@@ -631,7 +670,7 @@ public final class ParcelMenus {
         boolean shop = ParcelFilter.SHOP.equals(context);
         boolean mine = ParcelFilter.MINE.equals(context);
 
-        Component title = Icons.label("Recherche de parcelles", ChatFormatting.DARK_AQUA);
+        Component title = Icons.title("Recherche de parcelles", ChatFormatting.DARK_AQUA);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -731,31 +770,9 @@ public final class ParcelMenus {
     }
 
     /**
-     * Bouton d'acces direct a une categorie : un clic n'affiche que celle-ci, un second clic remet
-     * tout. Bleu pour l'habitation, orange pour le commerce, comme partout ailleurs.
+     * Bouton d'acces direct a une categorie, en ligne de commande : un clic n'affiche que celle-ci,
+     * un second clic remet tout. Bleu pour l'habitation, orange pour le commerce, comme ailleurs.
      */
-    private static OwoMenuServer.HubEntry kindEntry(ParcelFilter filter, ParcelFilter.Kind kind,
-                                                    Parcel.Type type, String context,
-                                                    Consumer<ServerPlayer> back) {
-        boolean on = filter.kind == kind;
-        // Banniere et non laine : un bouton de filtre ne doit pas se confondre avec une parcelle,
-        // alors qu'ils partagent la meme couleur de categorie.
-        net.minecraft.world.item.Item icon = kind == ParcelFilter.Kind.COMMERCE
-                ? Items.ORANGE_BANNER : Items.BLUE_BANNER;
-        return new OwoMenuServer.HubEntry(new ItemStack(icon),
-                Component.literal(on ? "Seulement les " + kindTitle(kind).toLowerCase(java.util.Locale.ROOT)
-                                : "Voir les " + kindTitle(kind).toLowerCase(java.util.Locale.ROOT))
-                        .withStyle(x -> x.withColor(type.color()).withBold(on).withItalic(false)),
-                Icons.lore(on ? "Filtre actif - clic pour tout revoir" : "N'afficher que cette categorie",
-                        on ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                sp -> {
-                    ParcelFilter f = ParcelFilter.of(sp, context);
-                    f.kind = f.kind == kind ? ParcelFilter.Kind.TOUTES : kind;
-                    back.accept(sp);
-                });
-    }
-
-    /** Meme bouton, en ligne de panneau (menu d'administration). */
     private static OwoMenuServer.PanelRow kindRow(ParcelFilter filter, ParcelFilter.Kind kind,
                                                   Parcel.Type type, String context,
                                                   Consumer<ServerPlayer> back) {
@@ -774,15 +791,6 @@ public final class ParcelMenus {
 
     private static String kindTitle(ParcelFilter.Kind kind) {
         return kind == ParcelFilter.Kind.COMMERCE ? "Commerces" : "Habitations";
-    }
-
-    /** Entree "Filtrer / rechercher" placee en tete des listes. */
-    private static OwoMenuServer.HubEntry filterEntry(ParcelFilter filter, String context,
-                                                      Consumer<ServerPlayer> back) {
-        return new OwoMenuServer.HubEntry(new ItemStack(Items.SPYGLASS),
-                Icons.label("Filtrer / rechercher", filter.active() ? ChatFormatting.GREEN : ChatFormatting.YELLOW),
-                Icons.lore(filter.summary(), ChatFormatting.GRAY),
-                sp -> openFilter(sp, context, back));
     }
 
     // ----------------------------------------------------------------------------------- shop joueur
@@ -811,9 +819,8 @@ public final class ParcelMenus {
         int from = cur * SHOP_PAGE_SIZE;
         int to = Math.min(sale.size(), from + SHOP_PAGE_SIZE);
 
-        Component title = Component.literal("PARCELLES EN VENTE"
-                        + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""))
-                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        Component title = Icons.screenTitle("Parcelles en vente"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.GREEN);
 
         List<Component> stats = List.of(Component.literal("Votre budget : ")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
@@ -873,7 +880,7 @@ public final class ParcelMenus {
                 onPrev, onNext, sp -> openShop(sp, cur), com.utopia.menu.MainMenu::open);
     }
 
-    /** En-tete de colonne : gris clair, en petites capitales, pour se distinguer des donnees. */
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
     private static Component head(String text) {
         return Component.literal(text)
                 .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
@@ -881,8 +888,7 @@ public final class ParcelMenus {
 
     // ----------------------------------------------------------------------------------- admin : toutes les parcelles
 
-    /** Toutes les parcelles (triees par ID). Clic gauche = menu admin, clic droit = teleportation. */
-    /** Nombre de parcelles affichees par page dans le menu admin global. */
+    /** Lignes affichees par page dans les listes paginees (parcelles, membres, joueurs). */
     private static final int ADMIN_PAGE_SIZE = 10;
 
     /** Parcelles affichees par page dans la boutique (hors lignes de filtre et budget). */
@@ -893,8 +899,9 @@ public final class ParcelMenus {
     }
 
     /**
-     * Menu admin global (style panneau owo, pagine) : une ligne par parcelle + actions de creation.
-     * Remplace l'ancienne grille de coffre qui s'etalait sur l'ecran et plafonnait a 45 parcelles.
+     * Inventaire d'administration en tableau : les criteres de recherche en tete, une ligne par
+     * parcelle, les creations en pied. Prix et surfaces cales a droite se comparent d'une ligne a
+     * l'autre, ce que l'ancienne liste de libelles ne permettait pas.
      */
     public static void openAdminAll(ServerPlayer admin, int page) {
         MinecraftServer server = admin.server;
@@ -902,44 +909,68 @@ public final class ParcelMenus {
         ParcelFilter filter = ParcelFilter.of(admin, ParcelFilter.ADMIN);
         List<Parcel> all = filter.apply(source);
 
-        int totalPages = Math.max(1, (all.size() + ADMIN_PAGE_SIZE - 1) / ADMIN_PAGE_SIZE);
-        final int cur = Math.max(0, Math.min(page, totalPages - 1));
+        int pages = Math.max(1, (all.size() + ADMIN_PAGE_SIZE - 1) / ADMIN_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, pages - 1));
         int from = cur * ADMIN_PAGE_SIZE;
         int to = Math.min(all.size(), from + ADMIN_PAGE_SIZE);
 
-        Component title = Icons.label("Parcelles (" + (cur + 1) + "/" + totalPages + ") - "
-                + (filter.active() ? all.size() + " sur " + source.size() : all.size() + " au total"),
-                ChatFormatting.DARK_AQUA);
+        Component title = Icons.screenTitle("Parcelles"
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.DARK_AQUA);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
-        rows.add(new OwoMenuServer.PanelRow(
-                Icons.label("Recherche", filter.active() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                Icons.label(filter.summary(), ChatFormatting.DARK_GRAY),
-                Icons.label("Filtrer", ChatFormatting.YELLOW),
-                sp -> openFilter(sp, ParcelFilter.ADMIN, ParcelMenus::openAdminAll)));
-        rows.add(kindRow(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
-                ParcelFilter.ADMIN, ParcelMenus::openAdminAll));
-        rows.add(kindRow(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
-                ParcelFilter.ADMIN, ParcelMenus::openAdminAll));
-        for (Parcel p : all.subList(from, to)) {
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal(filter.active()
+                        ? all.size() + " parcelle(s) sur " + source.size() + " correspondent"
+                        : all.size() + " parcelle(s) au total")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
+
+        List<OwoMenuServer.PanelRow> controls = List.of(
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Recherche", filter.active() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                        Icons.label(filter.summary(), ChatFormatting.DARK_GRAY),
+                        Icons.label("Filtrer", ChatFormatting.YELLOW),
+                        sp -> openFilter(sp, ParcelFilter.ADMIN, ParcelMenus::openAdminAll)),
+                kindRow(filter, ParcelFilter.Kind.HABITATION, Parcel.Type.HABITATION,
+                        ParcelFilter.ADMIN, ParcelMenus::openAdminAll),
+                kindRow(filter, ParcelFilter.Kind.COMMERCE, Parcel.Type.COMMERCE,
+                        ParcelFilter.ADMIN, ParcelMenus::openAdminAll));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("PARCELLE"), 52, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("CATEGORIE"), 60, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("PROPRIETAIRE"), 86, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("PRIX"), 56, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("SURFACE"), 46, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (Parcel p : all.subList(Math.min(from, all.size()), to)) {
             String pid = p.id();
-            String value = p.isAdmin() ? "protegee, hors shop"
-                    : (p.isOwned() ? p.ownerName() : "Mairie")
-                            + (p.forSale() ? " - " + EconomyManager.format(p.price()) : "");
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label((p.isAdmin() ? "[ADMIN] " : "[" + p.type().label() + "] ") + pid,
-                            p.isAdmin() ? ChatFormatting.RED : p.type().color()),
-                    Icons.label(value, p.isAdmin() ? ChatFormatting.RED
-                            : p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY),
-                    Icons.label("Gerer", ChatFormatting.YELLOW),
+            ChatFormatting kindColor = p.isAdmin() ? ChatFormatting.RED : p.type().color();
+            ChatFormatting ownerColor = p.isOwned() ? ChatFormatting.WHITE : ChatFormatting.GRAY;
+            ChatFormatting priceColor = p.forSale() ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY;
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(pid).withStyle(x -> x.withColor(kindColor).withItalic(false)),
+                    Component.literal(p.isAdmin() ? "Admin" : p.type().label())
+                            .withStyle(x -> x.withColor(kindColor).withItalic(false)),
+                    Component.literal(p.isAdmin() ? "-" : (p.isOwned() ? p.ownerName() : "Mairie"))
+                            .withStyle(x -> x.withColor(ownerColor).withItalic(false)),
+                    // Le prix ne vaut que sur une annonce : ailleurs c'est le reliquat de la
+                    // derniere mise en vente, et une zone admin ne passe jamais par la boutique.
+                    // Sans cela, l'etat "en vente" ne tenait plus qu'a une nuance de couleur.
+                    Component.literal(p.isAdmin() || !p.forSale() ? "-" : String.valueOf(p.price()))
+                            .withStyle(x -> x.withColor(priceColor).withItalic(false)),
+                    Component.literal(String.valueOf(p.approxFootprint()))
+                            .withStyle(x -> x.withColor(ChatFormatting.DARK_GRAY).withItalic(false))),
                     sp -> openAdminParcel(sp, pid)));
         }
-        if (all.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label(filter.active() ? "Aucun resultat" : "Aucune parcelle",
-                            filter.active() ? ChatFormatting.RED : ChatFormatting.GRAY),
-                    Icons.label(filter.active() ? "elargissez la recherche" : "trace au wand puis Creer",
-                            ChatFormatting.DARK_GRAY), null, null));
+        if (rows.isEmpty()) {
+            stats.add(Component.literal(filter.active()
+                            ? "Aucun resultat : elargissez la recherche."
+                            : "Aucune parcelle : trace une zone au wand puis Creer.")
+                    .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(filter.active() ? "Aucun resultat" : "Aucune parcelle")
+                            .withStyle(x -> x.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.empty(), Component.empty(), Component.empty(), Component.empty()), null));
         }
 
         // Actions : outil de trace + creation par type (trace d'abord la zone au wand).
@@ -957,12 +988,10 @@ public final class ParcelMenus {
                 new OwoMenuServer.PanelAction(Icons.label("+ Admin", ChatFormatting.RED),
                         sp -> promptCreate(sp, "Admin", true, null)));
 
-        final int pages = totalPages;
         Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openAdminAll(sp, (cur - 1 + pages) % pages) : null;
         Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openAdminAll(sp, (cur + 1) % pages) : null;
-
-        OwoMenuServer.openPanel(admin, title, rows, footer, false, onPrev, onNext,
-                sp -> openAdminAll(sp, cur), com.utopia.menu.AdminMenu::open);
+        OwoMenuServer.openTable(admin, title, stats, controls, columns, rows, footer,
+                onPrev, onNext, sp -> openAdminAll(sp, cur), com.utopia.menu.AdminMenu::open);
     }
 
     /** Demande un identifiant puis cree une parcelle du type voulu a partir du trace au wand. */
@@ -1009,7 +1038,7 @@ public final class ParcelMenus {
                 Icons.label("Categorie", ChatFormatting.GRAY),
                 Icons.label(p.type().label(), p.type().color()),
                 Icons.label("Modifier", ChatFormatting.YELLOW),
-                sp -> openConfirm(sp, Icons.label("Passer en " + other.label() + " ?", ChatFormatting.GOLD),
+                sp -> openConfirm(sp, Icons.title("Passer en " + other.label() + " ?", ChatFormatting.GOLD),
                         List.of(Icons.lore(p.type().label() + " -> " + other.label(), ChatFormatting.GRAY)),
                         s2 -> {
                             Parcel cur = getParcel(server, parcelId);
@@ -1050,7 +1079,7 @@ public final class ParcelMenus {
                 Icons.label("Statut", ChatFormatting.GRAY),
                 Icons.label("Normale", ChatFormatting.WHITE),
                 Icons.label("-> Admin", ChatFormatting.RED),
-                sp -> openConfirm(sp, Icons.label("Marquer comme Admin ?", ChatFormatting.RED),
+                sp -> openConfirm(sp, Icons.title("Marquer comme Admin ?", ChatFormatting.RED),
                         List.of(Icons.lore("Protegee, hors shop, sans proprietaire", ChatFormatting.GRAY)),
                         s2 -> {
                             Parcel cur = getParcel(server, parcelId);
@@ -1073,7 +1102,7 @@ public final class ParcelMenus {
                             com.utopia.gui.Menus.close(sp);
                         }),
                 new OwoMenuServer.PanelAction(Icons.label("Remettre en vente", ChatFormatting.GOLD),
-                        sp -> openConfirm(sp, Icons.label("Remettre en vente ?", ChatFormatting.GOLD),
+                        sp -> openConfirm(sp, Icons.title("Remettre en vente ?", ChatFormatting.GOLD),
                                 List.of(Icons.lore("Reliste a " + EconomyManager.format(p.lastPaid()), ChatFormatting.GRAY)),
                                 s2 -> {
                                     Parcel cur = getParcel(server, parcelId);
@@ -1087,7 +1116,7 @@ public final class ParcelMenus {
                 new OwoMenuServer.PanelAction(Icons.label("Supprimer", ChatFormatting.RED),
                         sp -> openDeleteConfirm(sp, parcelId)));
 
-        OwoMenuServer.openPanel(admin, Icons.label("Parcelle " + p.id(), ChatFormatting.DARK_RED),
+        OwoMenuServer.openPanel(admin, Icons.title("Parcelle " + p.id(), ChatFormatting.DARK_RED),
                 rows, footer, sp -> openAdminParcel(sp, parcelId), ParcelMenus::openAdminAll);
     }
 
@@ -1107,7 +1136,8 @@ public final class ParcelMenus {
     /** Menu compact d'une zone Admin : apercu, TP, droits globaux, statut, suppression. */
     private static void openAdminZoneMenu(ServerPlayer admin, String parcelId, Parcel p) {
         MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Zone Admin : " + p.id(), ChatFormatting.DARK_RED)).iconOnly(true);
+        UtopiaGui gui = new UtopiaGui(3, Icons.title("Zone Admin : " + p.id(), ChatFormatting.DARK_RED))
+                .iconOnly(true);
 
         gui.set(4, Icons.icon(Items.BEDROCK, Icons.label("Zone Admin : " + p.id(), ChatFormatting.RED), List.of(
                 Icons.lore("Protegee (anti-grief), hors shop", ChatFormatting.GRAY),
@@ -1140,7 +1170,7 @@ public final class ParcelMenus {
                 sp -> openAdminPublicFlags(sp, parcelId));
         gui.button(16, Icons.icon(Items.GRASS_BLOCK, Icons.label("Retirer le statut Admin", ChatFormatting.YELLOW),
                 List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY))),
-                sp -> openConfirm(sp, Icons.label("Retirer le statut Admin ?", ChatFormatting.YELLOW),
+                sp -> openConfirm(sp, Icons.title("Retirer le statut Admin ?", ChatFormatting.YELLOW),
                         List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY)),
                         s2 -> {
                             Parcel cur = getParcel(server, parcelId);
@@ -1167,7 +1197,7 @@ public final class ParcelMenus {
             admin.sendSystemMessage(Messages.error("Parcelle introuvable."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Droits de tous : " + p.id(), ChatFormatting.DARK_RED));
+        UtopiaGui gui = new UtopiaGui(3, Icons.title("Droits de tous : " + p.id(), ChatFormatting.DARK_RED));
         gui.set(4, Icons.icon(Items.PAPER, Icons.label("Ce que TOUT LE MONDE peut faire", ChatFormatting.AQUA), List.of(
                 Icons.lore("Clique un droit pour l'activer / le couper", ChatFormatting.GRAY),
                 Icons.lore("Par defaut : interagir OUI, detruire NON", ChatFormatting.DARK_GRAY))));
@@ -1227,7 +1257,7 @@ public final class ParcelMenus {
             openAdminAll(admin);
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Supprimer " + p.id() + " ?", ChatFormatting.DARK_RED));
+        UtopiaGui gui = new UtopiaGui(3, Icons.title("Supprimer " + p.id() + " ?", ChatFormatting.DARK_RED));
         gui.set(4, Icons.icon(Items.BARRIER, Icons.label("Suppression definitive", ChatFormatting.RED), List.of(
                 Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY),
                 Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY),
@@ -1256,7 +1286,7 @@ public final class ParcelMenus {
         if (p == null) {
             return;
         }
-        Component title = Icons.label("Transferer " + p.id() + " a...", ChatFormatting.DARK_RED);
+        Component title = Icons.title("Transferer " + p.id() + " a...", ChatFormatting.DARK_RED);
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
@@ -1296,7 +1326,7 @@ public final class ParcelMenus {
             player.sendSystemMessage(Messages.error("Acces refuse."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(4, Icons.label("Deplacer l'hologramme : " + p.id(), ChatFormatting.DARK_AQUA))
+        UtopiaGui gui = new UtopiaGui(4, Icons.title("Deplacer l'hologramme : " + p.id(), ChatFormatting.DARK_AQUA))
                 .gridLayout(true);
         // Centre de la boussole : le decalage actuel (compact, une seule ligne).
         gui.set(12, Icons.icon(Items.ARMOR_STAND,
@@ -1359,7 +1389,7 @@ public final class ParcelMenus {
                 Icons.lore("Parcelle " + p.id(), ChatFormatting.GRAY),
                 Icons.lore("Prix actuel : " + EconomyManager.format(p.price()), ChatFormatting.GRAY));
 
-        UtopiaGui gui = new UtopiaGui(3, Icons.label("Prix de " + p.id(), ChatFormatting.DARK_RED));
+        UtopiaGui gui = new UtopiaGui(3, Icons.title("Prix de " + p.id(), ChatFormatting.DARK_RED));
         gui.set(4, Icons.icon(EconomyManager.coinItem(),
                 Icons.label("Prix actuel : " + EconomyManager.format(p.price()), ChatFormatting.GOLD), List.of()));
 

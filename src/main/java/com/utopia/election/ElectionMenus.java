@@ -1,7 +1,9 @@
 package com.utopia.election;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.utopia.data.ElectionData;
 import com.utopia.data.ElectionData.Election;
@@ -33,8 +35,7 @@ public final class ElectionMenus {
         ElectionData data = ElectionData.get(server);
         Election el = data.current();
 
-        Component title = Component.literal("ELECTIONS")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Elections", ChatFormatting.GOLD);
         List<Component> stats = new ArrayList<>();
         stats.add(Component.literal(stateLabel(el)).withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
         stats.add(Component.literal(data.holoConfigured()
@@ -145,8 +146,7 @@ public final class ElectionMenus {
             openAdminMenu(player);
             return;
         }
-        Component title = Component.literal("Candidats - " + el.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Candidats - " + el.name, ChatFormatting.AQUA);
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         for (String c : el.candidates) {
             final String cand = c;
@@ -183,8 +183,7 @@ public final class ElectionMenus {
             openAdminMenu(player);
             return;
         }
-        Component title = Component.literal("Ajouter un candidat")
-                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        Component title = Icons.title("Ajouter un candidat", ChatFormatting.GREEN);
         List<Component> stats = List.of(Component.literal("Clique un joueur, ou ajoute un nom personnalise")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
@@ -232,29 +231,71 @@ public final class ElectionMenus {
         openAdminMenu(player);
     }
 
+    /** Candidats affiches par page dans l'etat du vote. */
+    private static final int STATE_PAGE_SIZE = 10;
+
     private static void openState(ServerPlayer player) {
+        openState(player, 0);
+    }
+
+    /**
+     * Classement en tableau : les voix se lisent calees a droite les unes sous les autres, l'ecart
+     * entre candidats saute aux yeux sans avoir a lire chaque ligne.
+     */
+    private static void openState(ServerPlayer player, int page) {
         Election el = ElectionData.get(player.server).current();
         if (el == null) {
             openAdminMenu(player);
             return;
         }
-        Component title = Component.literal("Etat - " + el.name)
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
-        rows.add(new OwoMenuServer.PanelRow(Icons.label("Temps restant", ChatFormatting.GRAY),
-                Icons.label(Messages.formatDuration(Math.max(0, el.endMillis - System.currentTimeMillis()) / 1000),
-                        ChatFormatting.AQUA), null, null));
-        rows.add(new OwoMenuServer.PanelRow(Icons.label("Votants", ChatFormatting.GRAY),
-                Icons.label(String.valueOf(el.votes.size()), ChatFormatting.AQUA), null, null));
-        List<ElectionManager.Scored> scored = ElectionManager.scores(el);
-        for (int i = scored.size() - 1; i >= 0; i--) { // du plus haut au plus bas pour la lecture admin
-            ElectionManager.Scored sc = scored.get(i);
-            rows.add(new OwoMenuServer.PanelRow(
+        List<ElectionManager.Scored> ranked = new ArrayList<>(ElectionManager.scores(el));
+        Collections.reverse(ranked); // du plus haut au plus bas pour la lecture admin
+
+        int totalPages = Math.max(1, (ranked.size() + STATE_PAGE_SIZE - 1) / STATE_PAGE_SIZE);
+        final int cur = Math.max(0, Math.min(page, totalPages - 1));
+        int from = cur * STATE_PAGE_SIZE;
+        int to = Math.min(ranked.size(), from + STATE_PAGE_SIZE);
+
+        Component title = Icons.title("Etat - " + el.name
+                + (totalPages > 1 ? " (" + (cur + 1) + "/" + totalPages + ")" : ""), ChatFormatting.YELLOW);
+
+        List<OwoMenuServer.PanelRow> controls = List.of(
+                new OwoMenuServer.PanelRow(Icons.label("Temps restant", ChatFormatting.GRAY),
+                        Icons.label(Messages.formatDuration(
+                                Math.max(0, el.endMillis - System.currentTimeMillis()) / 1000),
+                                ChatFormatting.AQUA), null, null),
+                new OwoMenuServer.PanelRow(Icons.label("Votants", ChatFormatting.GRAY),
+                        Icons.label(String.valueOf(el.votes.size()), ChatFormatting.AQUA), null, null));
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("CANDIDAT"), 160, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("VOIX"), 60, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("PART"), 80, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
+        for (ElectionManager.Scored sc : ranked.subList(Math.min(from, ranked.size()), to)) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
                     Icons.label(sc.name(), ChatFormatting.WHITE),
-                    Icons.label(sc.votes() + " voix (" + sc.percent() + "%)", ChatFormatting.GOLD),
-                    null, null));
+                    Icons.label(String.valueOf(sc.votes()), ChatFormatting.GOLD),
+                    Icons.label(sc.percent() + "%", ChatFormatting.YELLOW)), null));
         }
-        OwoMenuServer.openPanel(player, title, rows, List.of(), ElectionMenus::openState, ElectionMenus::openAdminMenu);
+        if (rows.isEmpty()) {
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Icons.label("Aucun candidat", ChatFormatting.GRAY),
+                    Component.empty(), Component.empty()), null));
+        }
+
+        final int pages = totalPages;
+        Consumer<ServerPlayer> onPrev = pages > 1 ? sp -> openState(sp, (cur - 1 + pages) % pages) : null;
+        Consumer<ServerPlayer> onNext = pages > 1 ? sp -> openState(sp, (cur + 1) % pages) : null;
+        OwoMenuServer.openTable(player, title, List.of(), controls, columns, rows, List.of(),
+                onPrev, onNext, sp -> openState(sp, cur), ElectionMenus::openAdminMenu);
+    }
+
+    /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     private static void captureHologram(ServerPlayer player) {
@@ -268,8 +309,7 @@ public final class ElectionMenus {
     }
 
     private static void openTest(ServerPlayer player) {
-        Component title = Component.literal("Tester l'affichage")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Tester l'affichage", ChatFormatting.AQUA);
         List<Component> stats = List.of(Component.literal(
                 ElectionData.get(player.server).holoConfigured()
                         ? "Visible par les admins uniquement"
@@ -319,15 +359,19 @@ public final class ElectionMenus {
     // ============================================================
 
     public static void openVote(ServerPlayer player) {
+        openVote(player, 0);
+    }
+
+    public static void openVote(ServerPlayer player, int page) {
         Election el = ElectionData.get(player.server).current();
         if (el == null || el.status != Status.OPEN) {
             player.sendSystemMessage(Messages.info("Aucune election en cours."));
             return;
         }
         String myVote = el.votes.get(player.getUUID());
-        Component title = Component.literal(el.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Vote", ChatFormatting.GOLD);
         List<Component> stats = List.of(
+                Component.literal(el.name).withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),
                 Component.literal(myVote == null ? "Tu n'as pas encore vote." : "Ton vote : " + myVote)
                         .withStyle(s -> s.withColor(myVote == null ? ChatFormatting.GRAY : ChatFormatting.GREEN).withItalic(false)),
                 Component.literal("Modifiable jusqu'a la cloture - reste "
@@ -357,6 +401,7 @@ public final class ElectionMenus {
                         }
                     }));
         }
-        OwoMenuServer.openHub(player, title, stats, entries, ElectionMenus::openVote, null);
+        OwoMenuServer.openHubPaged(player, title, stats, entries, page, 12,
+                ElectionMenus::openVote, null);
     }
 }

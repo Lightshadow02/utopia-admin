@@ -66,8 +66,7 @@ public final class BetMenus {
         }
         Draft draft = DRAFTS.computeIfAbsent(player.getUUID(), k -> new Draft());
 
-        Component title = Component.literal("CREER UN PARI")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.screenTitle("Creer un pari", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(new OwoMenuServer.PanelRow(
@@ -158,8 +157,7 @@ public final class BetMenus {
             openCreate(player);
             return;
         }
-        Component title = Component.literal("Propositions")
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
+        Component title = Icons.title("Propositions", ChatFormatting.AQUA);
         List<Component> stats = List.of(
                 Component.literal(draft.options.size() + " proposition(s) - deux au minimum")
                         .withStyle(s -> s.withColor(draft.options.size() < 2 ? ChatFormatting.RED
@@ -224,8 +222,7 @@ public final class BetMenus {
             openCreate(player);
             return;
         }
-        Component title = Component.literal("Recapitulatif du pari")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Recapitulatif du pari", ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         rows.add(row("Nom", draft.name, ChatFormatting.WHITE));
@@ -310,8 +307,7 @@ public final class BetMenus {
         long myStake = bet.stakeOf(player.getUUID());
         String myOption = bet.choice.get(player.getUUID());
 
-        Component title = Component.literal(bet.name)
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title(bet.name, ChatFormatting.GOLD);
 
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
         if (!bet.description.isBlank()) {
@@ -392,15 +388,15 @@ public final class BetMenus {
         };
     }
 
-    /** Liste des parieurs : qui a choisi quoi, et pour combien. */
+    /**
+     * Liste des parieurs : qui a choisi quoi, et pour combien. En tableau, car on vient ici pour
+     * comparer les mises entre elles ; calees a droite, elles se lisent les unes sous les autres.
+     */
     public static void openBettors(ServerPlayer player, String betId, int page) {
         BetData.Bet bet = BetData.get(player.server).bet(betId);
         if (bet == null) {
             return;
         }
-        Component title = Component.literal("Parieurs - " + bet.name)
-                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withBold(true));
-
         List<Map.Entry<UUID, String>> all = new ArrayList<>(bet.choice.entrySet());
         int perPage = 10;
         int pages = Math.max(1, (all.size() + perPage - 1) / perPage);
@@ -408,22 +404,45 @@ public final class BetMenus {
         int from = cur * perPage;
         int to = Math.min(all.size(), from + perPage);
 
-        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        Component title = Icons.title("Parieurs - " + bet.name
+                + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.AQUA);
+
+        List<OwoMenuServer.Column> columns = List.of(
+                new OwoMenuServer.Column(head("JOUEUR"), 86, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("PROPOSITION"), 148, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("MISE"), 66, OwoMenuServer.Column.RIGHT));
+
+        List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (Map.Entry<UUID, String> e : all.subList(Math.min(from, all.size()), to)) {
             BetData.Option option = bet.option(e.getValue());
-            rows.add(new OwoMenuServer.PanelRow(
-                    Icons.label(nameOf(bet, e.getKey()), ChatFormatting.WHITE),
-                    Icons.label((option == null ? e.getValue() : option.label) + " - "
-                            + bet.stakeOf(e.getKey()) + " Utopieces", ChatFormatting.GOLD), null, null));
+            boolean won = e.getValue().equals(bet.winner);
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal(nameOf(bet, e.getKey()))
+                            .withStyle(x -> x.withColor(ChatFormatting.WHITE).withItalic(false)),
+                    Component.literal(option == null ? e.getValue() : option.label)
+                            .withStyle(x -> x.withColor(won ? ChatFormatting.GREEN : ChatFormatting.AQUA)
+                                    .withItalic(false)),
+                    Component.literal(String.valueOf(bet.stakeOf(e.getKey())))
+                            .withStyle(x -> x.withColor(ChatFormatting.GOLD).withItalic(false))), null));
         }
         if (rows.isEmpty()) {
-            rows.add(new OwoMenuServer.PanelRow(Icons.label("Aucune mise", ChatFormatting.GRAY),
-                    Icons.label("soyez le premier", ChatFormatting.DARK_GRAY), null, null));
+            rows.add(new OwoMenuServer.TableRow(List.of(
+                    Component.literal("Aucune mise")
+                            .withStyle(x -> x.withColor(ChatFormatting.RED).withItalic(false)),
+                    Component.literal("soyez le premier")
+                            .withStyle(x -> x.withColor(ChatFormatting.DARK_GRAY).withItalic(false)),
+                    Component.empty()), null));
         }
         Consumer<ServerPlayer> prev = pages > 1 ? sp -> openBettors(sp, betId, (cur - 1 + pages) % pages) : null;
         Consumer<ServerPlayer> next = pages > 1 ? sp -> openBettors(sp, betId, (cur + 1) % pages) : null;
-        OwoMenuServer.openPanel(player, title, rows, List.of(), false, prev, next,
-                sp -> openBettors(sp, betId, cur), sp -> openBookmaker(sp, betId));
+        OwoMenuServer.openTable(player, title, List.of(), List.of(), columns, rows, List.of(),
+                prev, next, sp -> openBettors(sp, betId, cur), sp -> openBookmaker(sp, betId));
+    }
+
+    /** En-tete de colonne : bleu sombre, en capitales, pour se distinguer des donnees. */
+    private static Component head(String text) {
+        return Component.literal(text)
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_AQUA).withBold(true).withItalic(false));
     }
 
     static String nameOf(BetData.Bet bet, UUID player) {
@@ -493,8 +512,7 @@ public final class BetMenus {
         long back = Math.round(stake * odds);
         long token = BetManager.newToken(player);
 
-        Component title = Component.literal("Confirmer la mise")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Confirmer la mise", ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal(amount + " Utopieces sur \"" + option.label + "\"")
                         .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)),
@@ -543,8 +561,7 @@ public final class BetMenus {
             openBookmaker(player, betId);
             return;
         }
-        Component title = Component.literal("Fermer les mises maintenant")
-                .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true));
+        Component title = Icons.title("Fermer les mises maintenant", ChatFormatting.YELLOW);
         List<Component> stats = List.of(
                 Component.literal("Plus aucune mise ne sera acceptee et les cotes seront figees.")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
@@ -582,8 +599,7 @@ public final class BetMenus {
             openBookmaker(player, betId);
             return;
         }
-        Component title = Component.literal("Designer le vainqueur")
-                .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true));
+        Component title = Icons.title("Designer le vainqueur", ChatFormatting.GREEN);
         List<Component> stats = List.of(
                 Component.literal("Cagnotte : " + bet.pot() + " Utopieces")
                         .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false)),
@@ -614,8 +630,7 @@ public final class BetMenus {
             openResolve(player, betId);
             return;
         }
-        Component title = Component.literal("Confirmer le resultat")
-                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
+        Component title = Icons.title("Confirmer le resultat", ChatFormatting.GOLD);
         List<Component> stats = List.of(
                 Component.literal(bet.name).withStyle(s -> s.withColor(ChatFormatting.WHITE).withItalic(false)),
                 Component.literal("Vainqueur : " + option.label)
@@ -659,8 +674,7 @@ public final class BetMenus {
             openBookmaker(player, betId);
             return;
         }
-        Component title = Component.literal("Annuler le pari")
-                .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true));
+        Component title = Icons.title("Annuler le pari", ChatFormatting.RED);
         List<Component> stats = List.of(
                 Component.literal("Toutes les mises seront integralement remboursees.")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)),
@@ -700,8 +714,7 @@ public final class BetMenus {
             openBookmaker(player, betId);
             return;
         }
-        Component title = Component.literal("Bookmaker - " + bet.name)
-                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true));
+        Component title = Icons.title("Bookmaker - " + bet.name, ChatFormatting.LIGHT_PURPLE);
         List<OwoMenuServer.PanelRow> rows = List.of(
                 new OwoMenuServer.PanelRow(
                         Icons.label("Position", ChatFormatting.GRAY),
