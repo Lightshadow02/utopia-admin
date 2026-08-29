@@ -61,16 +61,33 @@ public final class ParcelData extends SavedData {
     }
 
     /** Parcelle contenant cette position, ou nul. */
+    /**
+     * Parcelle a cet endroit. Une parcelle ordinaire l'emporte sur une zone administrative qui la
+     * recouvrirait : "la parcelle ou je me tiens" designe la mienne, pas le terrain public sur
+     * lequel elle a ete decoupee.
+     */
     public Parcel parcelAt(ResourceLocation dim, int x, int y, int z) {
+        Parcel claimed = claimedParcelAt(dim, x, y, z);
+        if (claimed != null) {
+            return claimed;
+        }
+        return adminParcelAt(dim, x, y, z);
+    }
+
+    /** Parcelle ADMINISTRATIVE contenant cette position, ou nul (priorite sur les parcelles normales). */
+    /**
+     * Premiere parcelle ordinaire a cet endroit, zones administratives exclues. Sert a distinguer
+     * un terrain vendu du terrain public qui l'entoure : les deux peuvent se superposer.
+     */
+    public Parcel claimedParcelAt(ResourceLocation dim, int x, int y, int z) {
         for (Parcel p : parcels.values()) {
-            if (p.contains(dim, x, y, z)) {
+            if (!p.isAdmin() && p.contains(dim, x, y, z)) {
                 return p;
             }
         }
         return null;
     }
 
-    /** Parcelle ADMINISTRATIVE contenant cette position, ou nul (priorite sur les parcelles normales). */
     public Parcel adminParcelAt(ResourceLocation dim, int x, int y, int z) {
         for (Parcel p : parcels.values()) {
             if (p.isAdmin() && p.contains(dim, x, y, z)) {

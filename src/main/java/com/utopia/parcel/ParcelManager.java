@@ -455,6 +455,23 @@ public final class ParcelManager {
      * Le joueur peut-il effectuer l'action {@code flag} a cette position ?
      * Vrai hors parcelle (zone libre) ou si bypass op ; sinon selon proprietaire/membre.
      */
+    /**
+     * Le terrain est-il public, c'est-a-dire tenu par une zone administrative sans parcelle vendue
+     * par-dessus ? C'est la que vivent les betes sauvages : on doit pouvoir y chasser et y elever.
+     */
+    public static boolean isPublicGround(ServerPlayer player, ServerLevel level, BlockPos pos) {
+        ResourceLocation dim = level.dimension().location();
+        int x = pos.getX();
+        int y = pos.getY();
+        int z = pos.getZ();
+        ParcelData data = ParcelData.get(player.server);
+        if (data.adminParcelAt(dim, x, y, z) == null) {
+            return false;
+        }
+        Parcel claimed = data.claimedParcelAt(dim, x, y, z);
+        return claimed == null || !claimed.isOwned();
+    }
+
     public static boolean isActionAllowed(ServerPlayer player, ServerLevel level, BlockPos pos, Parcel.Flag flag) {
         if (canBypass(player)) {
             return true;
@@ -469,19 +486,27 @@ public final class ParcelManager {
             return !room.frozen() && room.isOccupant(player.getUUID());
         }
         ParcelData data = ParcelData.get(player.server);
-        // Zones administratives prioritaires : acces selon leurs droits publics (par defaut interagir, pas detruire).
         Parcel adminP = data.adminParcelAt(dim, x, y, z);
+        Parcel parcel = data.claimedParcelAt(dim, x, y, z);
+
+        if (parcel != null) {
+            if (parcel.licenseFrozen()) {
+                return false; // licence commerciale expiree : gel total (les op passent par canBypass)
+            }
+            // Une parcelle VENDUE se gouverne elle-meme, meme posee sur une zone administrative :
+            // sans cela son acheteur n'aurait aucun droit chez lui, la zone decidant a sa place.
+            if (parcel.isOwned()) {
+                return parcel.allows(player.getUUID(), flag);
+            }
+            // Pas encore vendue : la zone administrative garde la main sur le terrain, ce qui protege
+            // le sol tant que personne ne l'a acquis.
+            return adminP != null ? adminP.allows(player.getUUID(), flag)
+                    : parcel.allows(player.getUUID(), flag);
+        }
         if (adminP != null) {
             return adminP.allows(player.getUUID(), flag);
         }
-        Parcel parcel = data.parcelAt(dim, x, y, z);
-        if (parcel == null) {
-            return true; // zone libre
-        }
-        if (parcel.licenseFrozen()) {
-            return false; // licence commerciale expiree : gel total (les op sont deja passes via canBypass)
-        }
-        return parcel.allows(player.getUUID(), flag);
+        return true; // zone libre
     }
 
     /**

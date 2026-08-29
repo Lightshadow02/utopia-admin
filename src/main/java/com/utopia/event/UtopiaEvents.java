@@ -275,6 +275,14 @@ public final class UtopiaEvents {
             return;
         }
         BlockPos pos = event.getTarget().blockPosition();
+        // Sur le terrain public d'une zone administrative, les betes sont du gibier : c'est la qu'on
+        // chasse et qu'on eleve. Le droit de construire y est coupe par defaut, il ne peut donc pas
+        // servir d'arbitre ici. Villageois, cadres et supports restent proteges, ils ne sont pas des
+        // animaux. Une parcelle vendue posee sur la zone garde ses propres regles.
+        if (event.getTarget() instanceof net.minecraft.world.entity.animal.Animal
+                && ParcelManager.isPublicGround(sp, level, pos)) {
+            return;
+        }
         if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
             event.setCanceled(true);
             sp.sendSystemMessage(Messages.error("Vous ne pouvez pas attaquer les entites de cette parcelle."));
