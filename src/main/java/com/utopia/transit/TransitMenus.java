@@ -69,19 +69,31 @@ public final class TransitMenus {
         if (captain == null) {
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.title(captain.name, ChatFormatting.GOLD)).gridLayout(true);
+        int open = 0;
+        for (TransitData.Direction d : TransitData.Direction.values()) {
+            if (data.isUsable(d)) {
+                open++;
+            }
+        }
+
+        // Cases d'icones et non chips : elles ont toutes la meme largeur, donc les colonnes vides se
+        // reduisent a rien de facon symetrique et la croix en est vraiment une. Avec des chips de
+        // largeurs differentes, le cap Nord se retrouvait decale de la largeur du bouton Ouest.
+        UtopiaGui gui = new UtopiaGui(3, Icons.title(captain.name + " - " + open + " cap(s) ouvert(s)",
+                ChatFormatting.GOLD)).gridLayout(true).iconOnly(true);
 
         // Centre purement informatif : volontairement non cliquable.
         gui.set(SLOT_CENTRE, Icons.icon(Items.COMPASS,
-                Icons.label("Choisissez votre destination", ChatFormatting.GOLD),
-                List.of(Icons.lore("Quatre caps vers le continent de ressources", ChatFormatting.GRAY))));
+                Icons.label("Choisissez votre cap", ChatFormatting.GOLD),
+                List.of(Icons.lore("Survolez une fleche pour voir sa destination", ChatFormatting.GRAY),
+                        Icons.lore("Quatre caps vers le continent de ressources",
+                                ChatFormatting.DARK_GRAY))));
 
         cap(gui, SLOT_NORD, TransitData.Direction.NORD, captainId, data);
         cap(gui, SLOT_EST, TransitData.Direction.EST, captainId, data);
         cap(gui, SLOT_SUD, TransitData.Direction.SUD, captainId, data);
         cap(gui, SLOT_OUEST, TransitData.Direction.OUEST, captainId, data);
 
-        gui.fillEmpty();
         Menus.open(player, gui);
     }
 
@@ -90,13 +102,16 @@ public final class TransitMenus {
                             String captainId, TransitData data) {
         boolean usable = data.isUsable(direction);
         String label = direction.arrow() + " " + direction.label();
+        // En mode icone, l'infobulle est le seul texte : elle porte le cap et son etat.
         if (!usable) {
             gui.set(slot, Icons.icon(Items.BARRIER, Icons.label(label, ChatFormatting.DARK_GRAY),
-                    List.of(Icons.lore("Destination indisponible", ChatFormatting.RED))));
+                    List.of(Icons.lore("Quai ferme a la navigation", ChatFormatting.RED))));
             return;
         }
         gui.button(slot, Icons.icon(Items.ARROW, Icons.label(label, ChatFormatting.AQUA),
-                        List.of(Icons.lore("Embarquer vers le " + direction.label(), ChatFormatting.GRAY))),
+                        List.of(Icons.lore("Embarquer vers le " + direction.label(), ChatFormatting.GRAY),
+                                Icons.lore("Le navire appareille en quelques secondes",
+                                        ChatFormatting.DARK_GRAY))),
                 sp -> depart(sp, TransitData.get(sp.server).destination(direction),
                         "le " + direction.label(), captainId));
     }
@@ -115,14 +130,14 @@ public final class TransitMenus {
                         : "Aucune traversee possible pour le moment.")
                 .withStyle(s -> s.withColor(usable ? ChatFormatting.GRAY : ChatFormatting.RED).withItalic(false)));
 
-        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(usable ? Items.OAK_BOAT : Items.BARRIER),
-                Icons.label("Retourner sur Utopia", usable ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY),
-                Icons.lore(usable ? "Embarquer pour l'ile principale" : "Traversee indisponible",
-                        usable ? ChatFormatting.GRAY : ChatFormatting.RED),
-                sp -> depart(sp, TransitData.get(sp.server).returnPoint(), "Utopia", captainId)));
-
-        OwoMenuServer.openHub(player, title, stats, entries, sp -> openReturn(sp, captainId), null);
+        // Une seule action possible : autant poser la question franchement plutot que d'etaler un
+        // ecran de liste pour un unique bouton.
+        OwoMenuServer.openConfirm(player, title, stats,
+                Icons.label(usable ? "Retourner sur Utopia" : "Traversee indisponible",
+                        usable ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY),
+                !usable ? sp -> openReturn(sp, captainId)
+                        : sp -> depart(sp, TransitData.get(sp.server).returnPoint(), "Utopia", captainId),
+                null);
     }
 
     /** Embarquement effectif : verifie le quai puis emmene le joueur, ou explique pourquoi c'est impossible. */
