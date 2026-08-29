@@ -78,6 +78,10 @@ public final class MainMenu {
                         runAs(sp, "spawn");
                     }));
         }
+        if (Config.MENU_SERVERS.get()) {
+            entries.add(entry(Items.END_PORTAL_FRAME, "Changer de serveur", ChatFormatting.LIGHT_PURPLE,
+                    "Rejoindre un autre serveur du reseau", MainMenu::openServers));
+        }
         if (Config.MENU_QUESTS.get()) {
             entries.add(entry(Items.WRITTEN_BOOK, "Quetes", ChatFormatting.YELLOW, "Livre de quetes",
                     sp -> {
@@ -132,6 +136,45 @@ public final class MainMenu {
 
     /** Entrees par page dans le selecteur de joueurs. */
     private static final int PICKER_PAGE_SIZE = 12;
+
+    /**
+     * Serveurs du reseau. Le changement passe par le proxy Velocity : le mod lui envoie une demande
+     * de connexion, le client ne voit rien. Le serveur ou l'on se trouve deja est montre mais pas
+     * proposable, pour qu'on comprenne ou l'on est plutot que de le voir disparaitre de la liste.
+     */
+    public static void openServers(ServerPlayer player) {
+        String current = Config.SERVERS_CURRENT.get().trim();
+        Component title = Icons.title("Changer de serveur", ChatFormatting.LIGHT_PURPLE);
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (String raw : Config.SERVERS_LIST.get()) {
+            String[] parts = raw.split("\\|", -1);
+            String id = parts[0].trim();
+            if (id.isEmpty()) {
+                continue;
+            }
+            String label = parts.length > 1 && !parts[1].isBlank() ? parts[1].trim() : id;
+            String hint = parts.length > 2 ? parts[2].trim() : "";
+            boolean here = id.equalsIgnoreCase(current);
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(here ? Items.LIME_DYE : Items.ENDER_PEARL),
+                    Icons.label(label, here ? ChatFormatting.GREEN : ChatFormatting.AQUA),
+                    Icons.lore(here ? "Vous y etes deja" : (hint.isEmpty() ? "Rejoindre ce serveur" : hint),
+                            here ? ChatFormatting.GRAY : ChatFormatting.DARK_GRAY),
+                    here ? null : sp -> {
+                        Menus.close(sp);
+                        sp.sendSystemMessage(Messages.info("Connexion a " + label + "..."));
+                        com.utopia.api.UtopiaProxyAPI.connectToServer(sp, id);
+                    }));
+        }
+
+        List<Component> stats = entries.isEmpty()
+                ? List.of(Icons.lore("Aucun serveur configure (menu.servers.list).", ChatFormatting.RED))
+                : List.of(Icons.lore("Le changement est immediat : votre inventaire vous suit.",
+                        ChatFormatting.DARK_GRAY));
+
+        OwoMenuServer.openHub(player, title, stats, entries, MainMenu::openServers, MainMenu::open);
+    }
 
     /** Selecteur (pagine) de joueur en ligne -> envoie une demande /tpa. */
     public static void openTpaPicker(ServerPlayer player) {

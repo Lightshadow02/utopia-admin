@@ -72,6 +72,10 @@ public final class Config {
     // Menu central
     public static final ModConfigSpec.ConfigValue<String> MENU_QUEST_COMMAND;
 
+    /** Serveurs du reseau proposes dans le menu central. */
+    public static final ModConfigSpec.ConfigValue<String> SERVERS_CURRENT;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SERVERS_LIST;
+
     /** Boutons du menu central : chacun peut etre retire sans toucher au code. */
     public static final ModConfigSpec.BooleanValue MENU_PARCELS;
     public static final ModConfigSpec.BooleanValue MENU_SHOP;
@@ -81,6 +85,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue MENU_TPA;
     public static final ModConfigSpec.BooleanValue MENU_SPAWN;
     public static final ModConfigSpec.BooleanValue MENU_QUESTS;
+    public static final ModConfigSpec.BooleanValue MENU_SERVERS;
 
     /** Boutons du menu d'administration. */
     public static final ModConfigSpec.BooleanValue ADMIN_PARCELS;
@@ -271,7 +276,25 @@ public final class Config {
         MENU_TPA = BUILDER.comment("Bouton \"Se teleporter\".").define("tpa", true);
         MENU_SPAWN = BUILDER.comment("Bouton \"Retour au spawn\".").define("spawn", true);
         MENU_QUESTS = BUILDER.comment("Bouton \"Quetes\".").define("quests", true);
+        MENU_SERVERS = BUILDER.comment("Bouton \"Changer de serveur\".").define("servers", true);
         BUILDER.pop(); // entries
+
+        BUILDER.comment("Serveurs du reseau, proposes par le bouton \"Changer de serveur\".",
+                        "Necessite un proxy Velocity ou BungeeCord devant le serveur.")
+                .push("servers");
+        SERVERS_CURRENT = BUILDER
+                .comment("Nom de CE serveur dans le proxy. Il sera montre comme celui ou l'on se trouve",
+                        "au lieu d'etre propose. Vide = inconnu, tous les serveurs restent proposables.")
+                .define("current", "utopia");
+        SERVERS_LIST = BUILDER
+                .comment("Un serveur par ligne : \"nom dans le proxy | libelle affiche | sous-titre\".",
+                        "Le nom doit correspondre exactement a celui declare dans velocity.toml.")
+                .defineListAllowEmpty("list",
+                        List.of("hub | Hub | Retour au lobby du reseau",
+                                "utopia | Utopia | Le serveur principal"),
+                        () -> "hub | Hub | Retour au lobby",
+                        Config::validateServerEntry);
+        BUILDER.pop(); // servers
         BUILDER.pop(); // menu
 
         BUILDER.comment("Menu d'administration (/admin). Un bouton retire ici disparait de l'ecran ;")
@@ -342,6 +365,11 @@ public final class Config {
             }
         }
         return true;
+    }
+
+    /** Valide une entree de serveur : le nom dans le proxy est obligatoire, le reste facultatif. */
+    private static boolean validateServerEntry(final Object obj) {
+        return obj instanceof String raw && !raw.split("\\|", -1)[0].trim().isEmpty();
     }
 
     /** Valide une entree de palier "jour | items | commandes" : seul le champ "jour" est obligatoire et doit etre un entier. */
