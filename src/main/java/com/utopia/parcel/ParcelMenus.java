@@ -53,12 +53,6 @@ public final class ParcelMenus {
         return ParcelData.get(server).get(id);
     }
 
-    /** Ligne de lore "Requis : <item>" pour l'achat, ou une ligne vide si aucun item exige. */
-    private static Component typeReqLore(Parcel p) {
-        var req = ParcelManager.requiredBuyItem(p);
-        return req == null ? Icons.lore(" ", ChatFormatting.DARK_GRAY)
-                : Icons.lore("Requis : " + new ItemStack(req).getHoverName().getString(), ChatFormatting.LIGHT_PURPLE);
-    }
 
     private static boolean canManage(ServerPlayer player, Parcel parcel) {
         return parcel.isOwner(player.getUUID()) || ParcelManager.canBypass(player);
@@ -316,48 +310,65 @@ public final class ParcelMenus {
             return;
         }
 
-        UtopiaGui gui = new UtopiaGui(3, Icons.title("Parcelle : " + p.name(), ChatFormatting.DARK_AQUA));
-
-        List<Component> info = new ArrayList<>();
-        info.add(Icons.lore("Categorie : " + (p.isAdmin() ? "Zone administrative" : p.type().label()),
-                p.isAdmin() ? ChatFormatting.RED : p.type().color()));
-        info.add(Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY));
-        info.add(Icons.lore("En vente : " + (p.forSale() ? "oui (" + EconomyManager.format(p.price()) + ")" : "non"),
-                p.forSale() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
-        info.add(Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY));
-        gui.set(4, Icons.icon(Items.PAPER, Icons.label("Parcelle " + p.id(), ChatFormatting.AQUA), info));
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Categorie", ChatFormatting.GRAY),
+                Icons.label(p.isAdmin() ? "Zone administrative" : p.type().label(),
+                        p.isAdmin() ? ChatFormatting.RED : p.type().color()),
+                null, null));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Proprietaire", ChatFormatting.GRAY),
+                Icons.label(p.isOwned() ? p.ownerName() : "Mairie",
+                        p.isOwned() ? ChatFormatting.WHITE : ChatFormatting.GRAY),
+                null, null));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("En vente", ChatFormatting.GRAY),
+                Icons.label(p.forSale() ? "oui - " + EconomyManager.format(p.price()) : "non",
+                        p.forSale() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                null, null));
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Regions / membres", ChatFormatting.GRAY),
+                Icons.label(p.regionCount() + " / " + p.members().size(), ChatFormatting.AQUA),
+                null, null));
 
         if (manage) {
-            gui.button(11, Icons.icon(Items.PLAYER_HEAD, Icons.label("Gerer les membres", ChatFormatting.YELLOW),
-                    List.of(Icons.lore("Ajouter/retirer des joueurs et leurs droits", ChatFormatting.GRAY))),
-                    sp -> openMembersMenu(sp, parcelId));
-            gui.button(15, Icons.icon(EconomyManager.coinItem(), Icons.label("Vendre la parcelle", ChatFormatting.GOLD),
-                    List.of(Icons.lore("A la Mairie (75%) ou via les joueurs", ChatFormatting.GRAY))),
-                    sp -> openSellMenu(sp, parcelId));
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Membres", ChatFormatting.GRAY),
+                    Icons.label("ajouter, retirer, regler les droits", ChatFormatting.DARK_GRAY),
+                    Icons.label("Gerer", ChatFormatting.YELLOW),
+                    sp -> openMembersMenu(sp, parcelId)));
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Vendre", ChatFormatting.GRAY),
+                    Icons.label("a la mairie (75 %) ou aux joueurs", ChatFormatting.DARK_GRAY),
+                    Icons.label("Vendre", ChatFormatting.GOLD),
+                    sp -> openSellMenu(sp, parcelId)));
             if (p.forSale()) {
-                gui.button(13, Icons.icon(Items.ARMOR_STAND, Icons.label("Deplacer l'hologramme", ChatFormatting.AQUA),
-                        List.of(Icons.lore("Fleches pour ajuster X / Y / Z", ChatFormatting.GRAY))),
-                        sp -> openHoloMove(sp, parcelId, false));
+                rows.add(new OwoMenuServer.PanelRow(
+                        Icons.label("Hologramme a vendre", ChatFormatting.GRAY),
+                        Icons.label("ajuster sa position", ChatFormatting.DARK_GRAY),
+                        Icons.label("Deplacer", ChatFormatting.AQUA),
+                        sp -> openHoloMove(sp, parcelId, false)));
             }
         } else if (p.forSale()) {
-            gui.button(15, Icons.icon(Items.EMERALD, Icons.label("Acheter", ChatFormatting.GREEN),
-                    List.of(Icons.lore("Prix : " + EconomyManager.format(p.price()), ChatFormatting.GOLD),
-                            Icons.lore("Clic pour acheter", ChatFormatting.GRAY))),
-                    sp -> openBuyConfirm(sp, parcelId));
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Achat", ChatFormatting.GRAY),
+                    Icons.label(EconomyManager.format(p.price()), ChatFormatting.GOLD),
+                    Icons.label("Acheter", ChatFormatting.GREEN),
+                    sp -> openBuyConfirm(sp, parcelId)));
         }
-        // Apercu des delimitations (pour tous).
-        gui.button(22, Icons.icon(Items.GLOWSTONE_DUST, Icons.label("Voir les delimitations", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Affiche le contour 30 s (particules)", ChatFormatting.GRAY))),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        ParcelHolograms.startPreview(sp, cur);
-                    }
-                    com.utopia.gui.Menus.close(sp);
-                });
 
-        gui.fillEmpty();
-        Menus.open(player, gui);
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Voir les delimitations", ChatFormatting.YELLOW),
+                        sp -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur != null) {
+                                ParcelHolograms.startPreview(sp, cur);
+                            }
+                            com.utopia.gui.Menus.close(sp);
+                        }));
+
+        OwoMenuServer.openPanel(player, Icons.title("Parcelle " + p.name(), ChatFormatting.DARK_AQUA),
+                rows, footer, sp -> openParcelMenuFor(sp, parcelId), null);
     }
 
     // ----------------------------------------------------------------------------------- vente
@@ -475,15 +486,16 @@ public final class ParcelMenus {
         long price = p.price();
         var reqItem = ParcelManager.requiredBuyItem(p);
         List<Component> info = new ArrayList<>();
-        info.add(Icons.lore("Type : " + p.type().label(),
-                p.type().color()));
+        info.add(Icons.lore("Prix : " + EconomyManager.format(price), ChatFormatting.GOLD));
+        info.add(Icons.lore("Type : " + p.type().label(), p.type().color()));
         info.add(Icons.lore("Votre solde : " + EconomyManager.format(EconomyManager.getBalance(server, player.getUUID())), ChatFormatting.GRAY));
         if (reqItem != null) {
             info.add(Icons.lore("Requis : " + new ItemStack(reqItem).getHoverName().getString() + " (consomme)", ChatFormatting.LIGHT_PURPLE));
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.title("Acheter " + p.id() + " ?", ChatFormatting.DARK_AQUA));
-        gui.set(4, Icons.icon(EconomyManager.coinItem(), Icons.label("Prix : " + EconomyManager.format(price), ChatFormatting.GOLD), info));
-        gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("OUI, acheter pour " + EconomyManager.format(price), ChatFormatting.GREEN), List.of()),
+        OwoMenuServer.openConfirm(player,
+                Icons.title("Acheter " + p.id() + " ?", ChatFormatting.DARK_AQUA),
+                info,
+                Icons.label("Acheter pour " + EconomyManager.format(price), ChatFormatting.GREEN),
                 sp -> {
                     Parcel cur = getParcel(server, parcelId);
                     if (cur == null) {
@@ -492,20 +504,20 @@ public final class ParcelMenus {
                     long pr = cur.price();
                     var req = ParcelManager.requiredBuyItem(cur);
                     switch (ParcelManager.purchase(sp, cur)) {
-                        case INSUFFICIENT -> sp.sendSystemMessage(Messages.error("Solde insuffisant (" + EconomyManager.format(pr) + ")."));
+                        case INSUFFICIENT -> sp.sendSystemMessage(Messages.error("Solde insuffisant ("
+                                + EconomyManager.format(pr) + ")."));
                         case NOT_FOR_SALE -> sp.sendSystemMessage(Messages.error("Plus en vente."));
                         case ALREADY_OWNER -> sp.sendSystemMessage(Messages.error("Vous la possedez deja."));
                         case MISSING_ITEM -> sp.sendSystemMessage(Messages.error("Il te faut "
-                                + (req != null ? new ItemStack(req).getHoverName().getString() : "le document requis")
+                                + (req != null ? new ItemStack(req).getHoverName().getString()
+                                        : "le document requis")
                                 + " pour acheter cette parcelle " + cur.type().label() + "."));
-                        default -> sp.sendSystemMessage(Messages.success("Vous avez achete " + cur.name() + " pour " + EconomyManager.format(pr) + " !"));
+                        default -> sp.sendSystemMessage(Messages.success("Vous avez achete " + cur.name()
+                                + " pour " + EconomyManager.format(pr) + " !"));
                     }
                     com.utopia.gui.Menus.close(sp);
-                });
-        gui.button(15, Icons.icon(Items.BARRIER, Icons.label("Annuler", ChatFormatting.RED), List.of()),
-                com.utopia.gui.Menus::close);
-        gui.fillEmpty();
-        Menus.open(player, gui);
+                },
+                ParcelMenus::openShop);
     }
 
     // ----------------------------------------------------------------------------------- membres
@@ -1120,73 +1132,72 @@ public final class ParcelMenus {
                 rows, footer, sp -> openAdminParcel(sp, parcelId), ParcelMenus::openAdminAll);
     }
 
-    /** Petit ecran de confirmation generique (Confirmer / Annuler) avec une icone d'info. */
+    /** Confirmation : on passe par l'ecran commun du mod, pour n'en avoir qu'une seule forme. */
     private static void openConfirm(ServerPlayer admin, Component title, List<Component> lore,
                                     Consumer<ServerPlayer> onYes, Consumer<ServerPlayer> onCancel) {
-        UtopiaGui gui = new UtopiaGui(3, title);
-        gui.set(4, Icons.icon(Items.PAPER, title, lore));
-        gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("Confirmer", ChatFormatting.GREEN), List.of()),
-                onYes::accept);
-        gui.button(15, Icons.icon(Items.RED_DYE, Icons.label("Annuler", ChatFormatting.RED), List.of()),
-                onCancel::accept);
-        gui.fillEmpty();
-        Menus.open(admin, gui);
+        OwoMenuServer.openConfirm(admin, title, lore,
+                Icons.label("Confirmer", ChatFormatting.GREEN), onYes, onCancel);
     }
 
     /** Menu compact d'une zone Admin : apercu, TP, droits globaux, statut, suppression. */
     private static void openAdminZoneMenu(ServerPlayer admin, String parcelId, Parcel p) {
         MinecraftServer server = admin.server;
-        UtopiaGui gui = new UtopiaGui(3, Icons.title("Zone Admin : " + p.id(), ChatFormatting.DARK_RED))
-                .iconOnly(true);
+        List<OwoMenuServer.PanelRow> rows = List.of(
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Nature", ChatFormatting.GRAY),
+                        Icons.label("protegee (anti-grief), hors boutique", ChatFormatting.RED),
+                        null, null),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Regions", ChatFormatting.GRAY),
+                        Icons.label(String.valueOf(p.regionCount()), ChatFormatting.AQUA),
+                        null, null),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Droits de tous", ChatFormatting.GRAY),
+                        Icons.label(publicFlagsSummary(p), ChatFormatting.AQUA),
+                        Icons.label("Regler", ChatFormatting.YELLOW),
+                        sp -> openAdminPublicFlags(sp, parcelId)),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Statut administratif", ChatFormatting.GRAY),
+                        Icons.label("redevient une parcelle de la mairie", ChatFormatting.DARK_GRAY),
+                        Icons.label("Retirer", ChatFormatting.YELLOW),
+                        sp -> openConfirm(sp,
+                                Icons.title("Retirer le statut Admin ?", ChatFormatting.YELLOW),
+                                List.of(Icons.lore("La zone redevient une parcelle normale de la mairie.",
+                                        ChatFormatting.GRAY)),
+                                s2 -> {
+                                    Parcel cur = getParcel(server, parcelId);
+                                    if (cur != null) {
+                                        ParcelManager.makeAdmin(cur, false);
+                                        ParcelData.get(server).setDirty();
+                                        s2.sendSystemMessage(Messages.success("Parcelle " + cur.id()
+                                                + " n'est plus admin."));
+                                    }
+                                    openAdminParcel(s2, parcelId);
+                                },
+                                s2 -> openAdminParcel(s2, parcelId))));
 
-        gui.set(4, Icons.icon(Items.BEDROCK, Icons.label("Zone Admin : " + p.id(), ChatFormatting.RED), List.of(
-                Icons.lore("Protegee (anti-grief), hors shop", ChatFormatting.GRAY),
-                Icons.lore("Regions : " + p.regionCount(), ChatFormatting.DARK_GRAY),
-                Icons.lore("Droits de tous : " + publicFlagsSummary(p), ChatFormatting.AQUA))));
-
-        // Supprimer : icone en haut a DROITE (slot 8), avec confirmation.
-        gui.button(8, Icons.icon(Items.BARRIER, Icons.label("Supprimer la zone", ChatFormatting.RED),
-                List.of(Icons.lore("Suppression definitive (confirmation)", ChatFormatting.GRAY))),
-                sp -> openDeleteConfirm(sp, parcelId));
-
-        gui.button(10, Icons.icon(Items.GLOWSTONE_DUST, Icons.label("Voir les delimitations (30s)", ChatFormatting.YELLOW), List.of()),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        ParcelHolograms.startPreview(sp, cur);
-                    }
-                    com.utopia.gui.Menus.close(sp);
-                });
-        gui.button(12, Icons.icon(Items.ENDER_PEARL, Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE), List.of()),
-                sp -> {
-                    Parcel cur = getParcel(server, parcelId);
-                    if (cur != null) {
-                        teleportTo(sp, cur);
-                    }
-                    com.utopia.gui.Menus.close(sp);
-                });
-        gui.button(14, Icons.icon(Items.PLAYER_HEAD, Icons.label("Droits de TOUS les joueurs", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Ce que tout le monde peut faire ici", ChatFormatting.GRAY))),
-                sp -> openAdminPublicFlags(sp, parcelId));
-        gui.button(16, Icons.icon(Items.GRASS_BLOCK, Icons.label("Retirer le statut Admin", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY))),
-                sp -> openConfirm(sp, Icons.title("Retirer le statut Admin ?", ChatFormatting.YELLOW),
-                        List.of(Icons.lore("Redevient une parcelle normale (Mairie)", ChatFormatting.GRAY)),
-                        s2 -> {
+        List<OwoMenuServer.PanelAction> footer = List.of(
+                new OwoMenuServer.PanelAction(Icons.label("Delimitations", ChatFormatting.YELLOW),
+                        sp -> {
                             Parcel cur = getParcel(server, parcelId);
                             if (cur != null) {
-                                ParcelManager.makeAdmin(cur, false);
-                                ParcelData.get(server).setDirty();
-                                s2.sendSystemMessage(Messages.success("Parcelle " + cur.id() + " n'est plus admin."));
+                                ParcelHolograms.startPreview(sp, cur);
                             }
-                            openAdminParcel(s2, parcelId);
-                        },
-                        s2 -> openAdminParcel(s2, parcelId)));
+                            com.utopia.gui.Menus.close(sp);
+                        }),
+                new OwoMenuServer.PanelAction(Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE),
+                        sp -> {
+                            Parcel cur = getParcel(server, parcelId);
+                            if (cur != null) {
+                                teleportTo(sp, cur);
+                            }
+                            com.utopia.gui.Menus.close(sp);
+                        }),
+                new OwoMenuServer.PanelAction(Icons.label("Supprimer la zone", ChatFormatting.RED),
+                        sp -> openDeleteConfirm(sp, parcelId)));
 
-        // Retour : fleche en bas a gauche (slot 18).
-        gui.button(18, Icons.icon(Items.ARROW, Icons.label("< Retour", ChatFormatting.YELLOW), List.of()),
-                sp -> openAdminAll(sp));
-        Menus.open(admin, gui);
+        OwoMenuServer.openPanel(admin, Icons.title("Zone Admin " + p.id(), ChatFormatting.DARK_RED),
+                rows, footer, sp -> openAdminParcel(sp, parcelId), ParcelMenus::openAdminAll);
     }
 
     /** Droits accordes a TOUS les joueurs sur une zone Admin (interagir, detruire, etc.). */
@@ -1197,18 +1208,20 @@ public final class ParcelMenus {
             admin.sendSystemMessage(Messages.error("Parcelle introuvable."));
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.title("Droits de tous : " + p.id(), ChatFormatting.DARK_RED));
-        gui.set(4, Icons.icon(Items.PAPER, Icons.label("Ce que TOUT LE MONDE peut faire", ChatFormatting.AQUA), List.of(
-                Icons.lore("Clique un droit pour l'activer / le couper", ChatFormatting.GRAY),
-                Icons.lore("Par defaut : interagir OUI, detruire NON", ChatFormatting.DARK_GRAY))));
-        int[] slots = { 10, 11, 12, 13, 14 };
-        Parcel.Flag[] flags = Parcel.Flag.values();
-        for (int i = 0; i < flags.length; i++) {
-            Parcel.Flag flag = flags[i];
+        List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("Ce que tout le monde peut faire", ChatFormatting.AQUA),
+                Icons.label("par defaut : interagir oui, detruire non", ChatFormatting.DARK_GRAY),
+                null, null));
+        for (Parcel.Flag flag : Parcel.Flag.values()) {
             boolean on = p.publicAllows(flag);
-            gui.button(slots[i], Icons.icon(on ? Items.LIME_DYE : Items.GRAY_DYE,
-                    Icons.label(flagLabel(flag) + " : " + (on ? "OUI" : "non"), on ? ChatFormatting.GREEN : ChatFormatting.RED),
-                    List.of(Icons.lore(flagDesc(flag), ChatFormatting.GRAY))),
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label(flagLabel(flag) + " : " + (on ? "oui" : "non"),
+                            on ? ChatFormatting.GREEN : ChatFormatting.RED),
+                    // La description dit ce que le droit couvre reellement : "Machines" seul ne
+                    // permet pas de decider s'il faut l'ouvrir a tout le monde.
+                    Icons.label(flagDesc(flag), ChatFormatting.DARK_GRAY),
+                    Icons.label(on ? "Couper" : "Activer", ChatFormatting.YELLOW),
                     sp -> {
                         Parcel cur = getParcel(server, parcelId);
                         if (cur != null) {
@@ -1216,12 +1229,13 @@ public final class ParcelMenus {
                             ParcelData.get(server).setDirty();
                         }
                         openAdminPublicFlags(sp, parcelId);
-                    });
+                    }));
         }
-        gui.button(22, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
+
+        OwoMenuServer.openPanel(admin,
+                Icons.title("Droits de tous : " + p.id(), ChatFormatting.DARK_RED),
+                rows, List.of(), sp -> openAdminPublicFlags(sp, parcelId),
                 sp -> openAdminParcel(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(admin, gui);
     }
 
     private static String publicFlagsSummary(Parcel p) {
@@ -1257,23 +1271,22 @@ public final class ParcelMenus {
             openAdminAll(admin);
             return;
         }
-        UtopiaGui gui = new UtopiaGui(3, Icons.title("Supprimer " + p.id() + " ?", ChatFormatting.DARK_RED));
-        gui.set(4, Icons.icon(Items.BARRIER, Icons.label("Suppression definitive", ChatFormatting.RED), List.of(
-                Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"), ChatFormatting.GRAY),
-                Icons.lore("Regions : " + p.regionCount() + " | membres : " + p.members().size(), ChatFormatting.DARK_GRAY),
-                Icons.lore("Cette action est irreversible.", ChatFormatting.RED))));
-        gui.button(11, Icons.icon(Items.LIME_DYE, Icons.label("OUI, supprimer", ChatFormatting.GREEN), List.of()),
+        OwoMenuServer.openConfirm(admin,
+                Icons.title("Supprimer " + p.id() + " ?", ChatFormatting.DARK_RED),
+                List.of(Icons.lore("Proprietaire : " + (p.isOwned() ? p.ownerName() : "Mairie"),
+                                ChatFormatting.GRAY),
+                        Icons.lore("Regions : " + p.regionCount() + " - membres : " + p.members().size(),
+                                ChatFormatting.DARK_GRAY),
+                        Icons.lore("Cette action est irreversible.", ChatFormatting.RED)),
+                Icons.label("Supprimer definitivement", ChatFormatting.RED),
                 sp -> {
                     if (getParcel(server, parcelId) != null) {
                         ParcelData.get(server).remove(parcelId);
                         sp.sendSystemMessage(Messages.success("Parcelle " + parcelId + " supprimee."));
                     }
                     openAdminAll(sp);
-                });
-        gui.button(15, Icons.icon(Items.RED_DYE, Icons.label("Annuler", ChatFormatting.RED), List.of()),
+                },
                 sp -> openAdminParcel(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(admin, gui);
     }
 
     private static void openTransferPicker(ServerPlayer admin, String parcelId) {
@@ -1389,40 +1402,56 @@ public final class ParcelMenus {
                 Icons.lore("Parcelle " + p.id(), ChatFormatting.GRAY),
                 Icons.lore("Prix actuel : " + EconomyManager.format(p.price()), ChatFormatting.GRAY));
 
-        UtopiaGui gui = new UtopiaGui(3, Icons.title("Prix de " + p.id(), ChatFormatting.DARK_RED));
-        gui.set(4, Icons.icon(EconomyManager.coinItem(),
-                Icons.label("Prix actuel : " + EconomyManager.format(p.price()), ChatFormatting.GOLD), List.of()));
+        List<OwoMenuServer.PanelRow> rows = List.of(
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Prix actuel", ChatFormatting.GRAY),
+                        Icons.label(EconomyManager.format(p.price()), ChatFormatting.GOLD),
+                        null, null),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Etat", ChatFormatting.GRAY),
+                        Icons.label(p.forSale() ? "en vente" : "hors vente",
+                                p.forSale() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                        null, null),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Definir le prix", ChatFormatting.GRAY),
+                        Icons.label("sans toucher a l'etat de vente", ChatFormatting.DARK_GRAY),
+                        Icons.label("Definir", ChatFormatting.YELLOW),
+                        sp -> Menus.promptAmount(sp,
+                                Icons.title("Definir le prix de " + parcelId, ChatFormatting.DARK_RED),
+                                info, Icons.label("Definir", ChatFormatting.GREEN), def, 1, 100_000_000L,
+                                price -> {
+                                    Parcel cur = getParcel(server, parcelId);
+                                    if (cur != null) {
+                                        cur.setPrice(price);
+                                        ParcelData.get(server).setDirty();
+                                        sp.sendSystemMessage(Messages.success("Prix de " + cur.id()
+                                                + " : " + EconomyManager.format(price) + "."));
+                                    }
+                                    openAdminParcel(sp, parcelId);
+                                })),
+                new OwoMenuServer.PanelRow(
+                        Icons.label("Definir et mettre en vente", ChatFormatting.GRAY),
+                        Icons.label("la parcelle rejoint la boutique", ChatFormatting.DARK_GRAY),
+                        Icons.label("Mettre en vente", ChatFormatting.GOLD),
+                        sp -> Menus.promptAmount(sp,
+                                Icons.title("Prix et vente de " + parcelId, ChatFormatting.DARK_RED),
+                                info, Icons.label("Mettre en vente", ChatFormatting.GREEN), def, 1,
+                                100_000_000L,
+                                price -> {
+                                    Parcel cur = getParcel(server, parcelId);
+                                    if (cur != null) {
+                                        cur.setPrice(price);
+                                        cur.setForSale(true);
+                                        ParcelData.get(server).setDirty();
+                                        sp.sendSystemMessage(Messages.success(cur.id() + " en vente pour "
+                                                + EconomyManager.format(price) + "."));
+                                    }
+                                    openAdminParcel(sp, parcelId);
+                                })));
 
-        gui.button(11, Icons.icon(Items.PAPER, Icons.label("Definir le prix", ChatFormatting.YELLOW),
-                List.of(Icons.lore("Change le prix sans toucher a l'etat de vente", ChatFormatting.GRAY))),
-                sp -> Menus.promptAmount(sp, Icons.label("Definir le prix de " + parcelId, ChatFormatting.DARK_RED),
-                        info, Icons.label("Definir", ChatFormatting.GREEN), def, 1, 100_000_000L,
-                        price -> {
-                            Parcel cur = getParcel(server, parcelId);
-                            if (cur != null) {
-                                cur.setPrice(price);
-                                ParcelData.get(server).setDirty();
-                                sp.sendSystemMessage(Messages.success("Prix de " + cur.id() + " : " + EconomyManager.format(price) + "."));
-                            }
-                            openAdminParcel(sp, parcelId);
-                        }));
-        gui.button(15, Icons.icon(Items.GOLD_BLOCK, Icons.label("Definir + mettre en vente", ChatFormatting.GOLD), List.of()),
-                sp -> Menus.promptAmount(sp, Icons.label("Prix + vente de " + parcelId, ChatFormatting.DARK_RED),
-                        info, Icons.label("Definir + vente", ChatFormatting.GREEN), def, 1, 100_000_000L,
-                        price -> {
-                            Parcel cur = getParcel(server, parcelId);
-                            if (cur != null) {
-                                cur.setPrice(price);
-                                cur.setForSale(true);
-                                ParcelData.get(server).setDirty();
-                                sp.sendSystemMessage(Messages.success(cur.id() + " en vente pour " + EconomyManager.format(price) + "."));
-                            }
-                            openAdminParcel(sp, parcelId);
-                        }));
-        gui.button(22, Icons.icon(Items.ARROW, Icons.label("Retour", ChatFormatting.YELLOW), List.of()),
+        OwoMenuServer.openPanel(admin, Icons.title("Prix de " + p.id(), ChatFormatting.DARK_RED),
+                rows, List.of(), sp -> openAdminPriceMenu(sp, parcelId),
                 sp -> openAdminParcel(sp, parcelId));
-        gui.fillEmpty();
-        Menus.open(admin, gui);
     }
 
     private static void teleportTo(ServerPlayer player, Parcel parcel) {

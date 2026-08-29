@@ -340,6 +340,29 @@ public final class OwoMenuServer {
                 MenuS2CPayload.of(new OpenAmountPayload(id, title, info, confirmLabel, defaultValue, min, max)));
     }
 
+    /**
+     * Ecran de confirmation, unique pour tout le mod. Il existait auparavant trois formes
+     * concurrentes — grille d'icones, hub a deux entrees, panneau avec pied de page — donc trois
+     * facons de repondre a la meme question. Une seule : le titre pose la question, les lignes
+     * exposent ce qui va se passer, deux boutons tranchent.
+     *
+     * @param onCancel egalement branche sur le bouton Retour, pour que la fuite mene au meme endroit
+     */
+    public static void openConfirm(ServerPlayer player, Component title, List<Component> lines,
+                                   Component confirmLabel, Consumer<ServerPlayer> onConfirm,
+                                   Consumer<ServerPlayer> onCancel) {
+        List<HubEntry> entries = List.of(
+                new HubEntry(new ItemStack(net.minecraft.world.item.Items.LIME_DYE), confirmLabel,
+                        Component.empty(), onConfirm),
+                new HubEntry(new ItemStack(net.minecraft.world.item.Items.BARRIER),
+                        Component.literal("Annuler")
+                                .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.RED)
+                                        .withItalic(false)),
+                        Component.empty(),
+                        onCancel == null ? sp -> close(sp) : onCancel));
+        openHub(player, title, lines, entries, null, onCancel);
+    }
+
     /** Une colonne d'un tableau : son en-tete, sa largeur en pixels, son alignement (0/1/2). */
     public record Column(Component header, int width, int align) {
         public static final int LEFT = 0;
