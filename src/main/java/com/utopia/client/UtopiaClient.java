@@ -28,6 +28,8 @@ public final class UtopiaClient {
         // Lecteur de musique personnalise (jour / nuit / grotte) sur le bus de jeu.
         NeoForge.EVENT_BUS.addListener(ClientMusicManager::onClientTick);
         NeoForge.EVENT_BUS.addListener(ClientMusicManager::onSelectMusic);
+        // Rend son echelle au joueur des qu'il quitte le dernier menu du mod.
+        NeoForge.EVENT_BUS.addListener(com.utopia.client.owo.GuiScaleLock::onClientTick);
     }
 
     private static void onRegisterScreens(RegisterMenuScreensEvent event) {

@@ -29,7 +29,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * optionnel a droite), une rangee de boutons d'action en pied de page, et un retour. Aligne en
  * colonnes facon tableau. Dessine en code via {@link OwoStyle}.
  */
-public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private static final int LABEL_W = 128;
     private static final int VALUE_W = 124;

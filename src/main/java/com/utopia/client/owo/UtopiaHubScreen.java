@@ -33,7 +33,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * Tout est dessine en code via {@link OwoStyle} (aucune texture). Les actions repassent par le canal
  * de menu existant : un clic envoie un {@link MenuClickPayload} avec l'{@code id} du bouton.
  */
-public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private static final int BUTTON_WIDTH = 158;
     private static final int COLS = 2;
@@ -91,7 +91,8 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> {
             stats.gap(3);
             stats.horizontalAlignment(HorizontalAlignment.CENTER);
             for (Component line : data.stats()) {
-                stats.child(Components.label(line).shadow(true));
+                // Bornee : sans maxWidth une ligne longue sort du panneau au lieu de se replier.
+                stats.child(Components.label(line).shadow(true).maxWidth(BUTTON_WIDTH * COLS - 5));
             }
             panel.child(stats);
         }

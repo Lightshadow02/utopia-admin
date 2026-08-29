@@ -41,7 +41,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * "flat + bordure" avec survol, et defilement quand le contenu est trop grand. Tout dessine en
  * code (aucune texture). Les vitres grises de remplissage sont masquees.
  */
-public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private static final int COLS = 9;
 

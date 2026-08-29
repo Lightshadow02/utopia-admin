@@ -26,7 +26,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Ecran owo de saisie de texte : champ a remplir + boutons Confirmer / Annuler. */
-public class UtopiaTextScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaTextScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private final OpenTextPayload data;
     private boolean closeSent = false;

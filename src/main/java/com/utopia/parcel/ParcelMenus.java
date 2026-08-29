@@ -854,11 +854,11 @@ public final class ParcelMenus {
                         ParcelFilter.SHOP, ParcelMenus::openShop));
 
         List<OwoMenuServer.Column> columns = List.of(
-                new OwoMenuServer.Column(head("PARCELLE"), 46, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("PARCELLE"), 56, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("CATEGORIE"), 62, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("PRIX"), 62, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("VENDEUR"), 86, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("SURFACE"), 46, OwoMenuServer.Column.RIGHT));
+                new OwoMenuServer.Column(head("SURFACE"), 50, OwoMenuServer.Column.RIGHT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (Parcel p : sale.subList(Math.min(from, sale.size()), to)) {
@@ -947,11 +947,11 @@ public final class ParcelMenus {
                         ParcelFilter.ADMIN, ParcelMenus::openAdminAll));
 
         List<OwoMenuServer.Column> columns = List.of(
-                new OwoMenuServer.Column(head("PARCELLE"), 52, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("CATEGORIE"), 60, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("PARCELLE"), 56, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("CATEGORIE"), 62, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("PROPRIETAIRE"), 86, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("PRIX"), 56, OwoMenuServer.Column.RIGHT),
-                new OwoMenuServer.Column(head("SURFACE"), 46, OwoMenuServer.Column.RIGHT));
+                new OwoMenuServer.Column(head("SURFACE"), 50, OwoMenuServer.Column.RIGHT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (Parcel p : all.subList(Math.min(from, all.size()), to)) {

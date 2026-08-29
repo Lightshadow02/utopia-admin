@@ -30,7 +30,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * sombre et une partie remplie proportionnelle), a la maniere d'une barre de lecture, et non comme une
  * suite de caracteres. La barre mise en avant (Utopieces) est plus haute et plus large que les autres.
  */
-public class UtopiaProgressScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaProgressScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private static final int PANEL_W = 320;
     private static final int BAR_W = 300;

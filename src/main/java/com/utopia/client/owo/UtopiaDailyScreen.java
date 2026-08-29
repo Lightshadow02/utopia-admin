@@ -35,7 +35,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * carte "prochaine recompense" et pied de page (mois precedent/suivant, reclamer, retour, fermer).
  * Entierement dessine en code via {@link OwoStyle}.
  */
-public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaDailyScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private static final int CELL = 44;
     private static final int COLS = 7;

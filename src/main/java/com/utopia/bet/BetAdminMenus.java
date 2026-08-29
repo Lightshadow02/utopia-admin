@@ -179,7 +179,7 @@ public final class BetAdminMenus {
                 new OwoMenuServer.Column(head("PARI"), 40, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("NOM"), 84, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("ETAT"), 52, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("CAGNOTTE"), 48, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("CAGNOTTE"), 56, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("CREATEUR"), 76, OwoMenuServer.Column.LEFT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();
@@ -458,7 +458,7 @@ public final class BetAdminMenus {
                 new OwoMenuServer.Column(head("CHOIX"), 60, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("MISE"), 42, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("RETOUR"), 46, OwoMenuServer.Column.RIGHT),
-                new OwoMenuServer.Column(head("BENEFICE"), 52, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("BENEFICE"), 54, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("ETAT"), 50, OwoMenuServer.Column.LEFT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();

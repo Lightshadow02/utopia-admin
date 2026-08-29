@@ -18,7 +18,12 @@ public final class OwoMenuClient {
     }
 
     public static void handleOpen(OpenMenuPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaOwoMenuScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaOwoMenuScreen(payload));
+        });
     }
 
     public static void handleClose(CloseMenuPayload payload, IPayloadContext context) {
@@ -39,32 +44,67 @@ public final class OwoMenuClient {
     }
 
     public static void handleHub(OpenHubPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaHubScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaHubScreen(payload));
+        });
     }
 
     public static void handleDaily(OpenDailyPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaDailyScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaDailyScreen(payload));
+        });
     }
 
     public static void handlePanel(OpenPanelPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaPanelScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaPanelScreen(payload));
+        });
     }
 
     /** Ecran de progression (barres graphiques) : chantiers communautaires. */
     public static void handleProgress(com.utopia.net.OpenProgressPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaProgressScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaProgressScreen(payload));
+        });
     }
 
     /** Ecran tableau : une colonne par donnee, ligne entiere cliquable. */
     public static void handleTable(com.utopia.net.OpenTablePayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaTableScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaTableScreen(payload));
+        });
     }
 
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaAmountScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaAmountScreen(payload));
+        });
     }
 
     public static void handleTextPrompt(OpenTextPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> Minecraft.getInstance().setScreen(new UtopiaTextScreen(payload)));
+        context.enqueueWork(() -> {
+            // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()
+            // relancerait init() en pleine construction du layout.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(new UtopiaTextScreen(payload));
+        });
     }
 }

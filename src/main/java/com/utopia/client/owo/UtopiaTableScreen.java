@@ -34,7 +34,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * <p>Il n'y a pas de bouton par ligne : la ligne entiere se clique, ce qui laisse toute la largeur
  * aux donnees et evite la colonne d'actions qui repete le meme mot vingt fois.
  */
-public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     /** Espace entre deux cellules. */
     private static final int CELL_GAP = 6;
@@ -100,7 +100,9 @@ public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> {
             stats.padding(Insets.of(4, 4, 6, 6));
             stats.gap(2);
             for (Component line : data.stats()) {
-                stats.child(Components.label(line).shadow(true));
+                // Bornee : sans maxWidth une ligne un peu longue sort du panneau par la droite au
+                // lieu de passer a la ligne, et l'information disparait de l'ecran.
+                stats.child(Components.label(line).shadow(true).maxWidth(rowWidth - 12));
             }
             panel.child(stats);
         }

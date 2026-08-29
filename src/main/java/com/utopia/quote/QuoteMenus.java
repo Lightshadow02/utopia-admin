@@ -732,7 +732,7 @@ public final class QuoteMenus {
         List<OwoMenuServer.Column> columns = List.of(
                 new OwoMenuServer.Column(head("DESIGNATION"), 150, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("QTE"), 24, OwoMenuServer.Column.RIGHT),
-                new OwoMenuServer.Column(head("PRIX UNIT."), 60, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("PRIX UNIT."), 64, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("TOTAL"), 66, OwoMenuServer.Column.RIGHT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();
@@ -909,8 +909,8 @@ public final class QuoteMenus {
                 new OwoMenuServer.Column(head("DEVIS"), 40, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("OBJET"), 68, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("ETAT"), 48, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("MONTANT"), 48, OwoMenuServer.Column.RIGHT),
-                new OwoMenuServer.Column(head("EMETTEUR -> DEST."), 100, OwoMenuServer.Column.LEFT));
+                new OwoMenuServer.Column(head("MONTANT"), 50, OwoMenuServer.Column.RIGHT),
+                new OwoMenuServer.Column(head("PARTIES"), 100, OwoMenuServer.Column.LEFT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (QuoteData.Quote quote : all.subList(Math.min(from, all.size()), to)) {

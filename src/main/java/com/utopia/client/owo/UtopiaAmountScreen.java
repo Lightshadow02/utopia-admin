@@ -26,7 +26,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Ecran owo de saisie d'un montant : champ numerique a remplir + boutons Confirmer / Annuler. */
-public class UtopiaAmountScreen extends BaseOwoScreen<FlowLayout> {
+public class UtopiaAmountScreen extends BaseOwoScreen<FlowLayout> implements GuiScaleLock.Scaled {
 
     private final OpenAmountPayload data;
     private boolean closeSent = false;
