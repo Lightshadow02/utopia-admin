@@ -423,7 +423,7 @@ public final class UtopiaEvents {
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);
             com.utopia.structure.StructureManager.syncShopNpcs(server);
-            com.utopia.structure.MongolManager.tick(server); // remise a zero du quota a minuit
+            com.utopia.structure.MongolManager.tick(server); // renouvellement de sa place
             com.utopia.transit.TransitManager.syncNpcs(server); // capitaines a leur poste
             com.utopia.chantier.ChantierManager.sync(server);  // PNJ + hologramme Top 3
             com.utopia.hologram.HologramManager.sync(server);  // panneaux libres de l'administration

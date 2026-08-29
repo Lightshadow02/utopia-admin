@@ -46,38 +46,54 @@ public final class MainMenu {
 
         // Gros boutons d'acces rapide.
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(entry(Items.GRASS_BLOCK, "Mes parcelles", ChatFormatting.GREEN, "Gerer / vendre",
-                sp -> ParcelMenus.openMyParcels(sp, 0)));
-        entries.add(entry(Items.EMERALD, "Boutique", ChatFormatting.GREEN, "Acheter une parcelle",
-                ParcelMenus::openShop));
+        if (Config.MENU_PARCELS.get()) {
+            entries.add(entry(Items.GRASS_BLOCK, "Mes parcelles", ChatFormatting.GREEN, "Gerer / vendre",
+                    sp -> ParcelMenus.openMyParcels(sp, 0)));
+        }
+        if (Config.MENU_SHOP.get()) {
+            entries.add(entry(Items.EMERALD, "Boutique", ChatFormatting.GREEN, "Acheter une parcelle",
+                    ParcelMenus::openShop));
+        }
         // Banque retiree du /menu : elle s'ouvre desormais par clic droit sur la carte bancaire.
-        entries.add(entry(Items.CHEST, "Recompense", ChatFormatting.GOLD, "Ta recompense du jour",
-                DailyMenus::openPlayerMenu));
-        entries.add(entry(Items.WRITABLE_BOOK, "Mes devis", ChatFormatting.YELLOW, quoteSublabel(server, player),
-                com.utopia.quote.QuoteMenus::openHome));
-        entries.add(entry(Items.GOLD_NUGGET, "Creer un pari", ChatFormatting.GOLD, betSublabel(server, player),
-                com.utopia.bet.BetMenus::openCreate));
-        entries.add(entry(Items.ENDER_PEARL, "Se teleporter", ChatFormatting.LIGHT_PURPLE, "Vers un joueur (/tpa)",
-                MainMenu::openTpaPicker));
-        entries.add(entry(Items.COMPASS, "Retour au spawn", ChatFormatting.AQUA, "Spawn du serveur",
-                sp -> {
-                    Menus.close(sp);
-                    runAs(sp, "spawn");
-                }));
-        entries.add(entry(Items.WRITTEN_BOOK, "Quetes", ChatFormatting.YELLOW, "Livre de quetes",
-                sp -> {
-                    String cmd = Config.MENU_QUEST_COMMAND.get();
-                    if (cmd == null || cmd.isBlank()) {
-                        sp.sendSystemMessage(Messages.warn("Bouton Quetes non configure (config menu.questCommand)."));
-                        return;
-                    }
-                    cmd = cmd.trim();
-                    if (cmd.equals("ftbquests")) {
-                        cmd = "ftbquests open_book"; // auto-correction de l'ancienne valeur incomplete
-                    }
-                    Menus.close(sp);
-                    runAsOp(sp, cmd); // permission elevee : le livre s'ouvre meme pour les non-op
-                }));
+        if (Config.MENU_DAILY.get()) {
+            entries.add(entry(Items.CHEST, "Recompense", ChatFormatting.GOLD, "Ta recompense du jour",
+                    DailyMenus::openPlayerMenu));
+        }
+        if (Config.MENU_QUOTES.get()) {
+            entries.add(entry(Items.WRITABLE_BOOK, "Mes devis", ChatFormatting.YELLOW, quoteSublabel(server, player),
+                    com.utopia.quote.QuoteMenus::openHome));
+        }
+        if (Config.MENU_BETS.get()) {
+            entries.add(entry(Items.GOLD_NUGGET, "Creer un pari", ChatFormatting.GOLD, betSublabel(server, player),
+                    com.utopia.bet.BetMenus::openCreate));
+        }
+        if (Config.MENU_TPA.get()) {
+            entries.add(entry(Items.ENDER_PEARL, "Se teleporter", ChatFormatting.LIGHT_PURPLE, "Vers un joueur (/tpa)",
+                    MainMenu::openTpaPicker));
+        }
+        if (Config.MENU_SPAWN.get()) {
+            entries.add(entry(Items.COMPASS, "Retour au spawn", ChatFormatting.AQUA, "Spawn du serveur",
+                    sp -> {
+                        Menus.close(sp);
+                        runAs(sp, "spawn");
+                    }));
+        }
+        if (Config.MENU_QUESTS.get()) {
+            entries.add(entry(Items.WRITTEN_BOOK, "Quetes", ChatFormatting.YELLOW, "Livre de quetes",
+                    sp -> {
+                        String cmd = Config.MENU_QUEST_COMMAND.get();
+                        if (cmd == null || cmd.isBlank()) {
+                            sp.sendSystemMessage(Messages.warn("Bouton Quetes non configure (config menu.questCommand)."));
+                            return;
+                        }
+                        cmd = cmd.trim();
+                        if (cmd.equals("ftbquests")) {
+                            cmd = "ftbquests open_book"; // auto-correction de l'ancienne valeur incomplete
+                        }
+                        Menus.close(sp);
+                        runAsOp(sp, cmd); // permission elevee : le livre s'ouvre meme pour les non-op
+                    }));
+        }
 
         OwoMenuServer.openHub(player, title, stats, entries, MainMenu::open, null);
     }

@@ -72,6 +72,40 @@ public final class Config {
     // Menu central
     public static final ModConfigSpec.ConfigValue<String> MENU_QUEST_COMMAND;
 
+    /** Boutons du menu central : chacun peut etre retire sans toucher au code. */
+    public static final ModConfigSpec.BooleanValue MENU_PARCELS;
+    public static final ModConfigSpec.BooleanValue MENU_SHOP;
+    public static final ModConfigSpec.BooleanValue MENU_DAILY;
+    public static final ModConfigSpec.BooleanValue MENU_QUOTES;
+    public static final ModConfigSpec.BooleanValue MENU_BETS;
+    public static final ModConfigSpec.BooleanValue MENU_TPA;
+    public static final ModConfigSpec.BooleanValue MENU_SPAWN;
+    public static final ModConfigSpec.BooleanValue MENU_QUESTS;
+
+    /** Boutons du menu d'administration. */
+    public static final ModConfigSpec.BooleanValue ADMIN_PARCELS;
+    public static final ModConfigSpec.BooleanValue ADMIN_ECONOMY;
+    public static final ModConfigSpec.BooleanValue ADMIN_DAILY;
+    public static final ModConfigSpec.BooleanValue ADMIN_ROOMS;
+    public static final ModConfigSpec.BooleanValue ADMIN_INNKEEPERS;
+    public static final ModConfigSpec.BooleanValue ADMIN_MARKET;
+    public static final ModConfigSpec.BooleanValue ADMIN_MARKETRECOVERY;
+    public static final ModConfigSpec.BooleanValue ADMIN_MAIRE;
+    public static final ModConfigSpec.BooleanValue ADMIN_INVENTORIES;
+    public static final ModConfigSpec.BooleanValue ADMIN_WARPS;
+    public static final ModConfigSpec.BooleanValue ADMIN_ELECTIONS;
+    public static final ModConfigSpec.BooleanValue ADMIN_JOBS;
+    public static final ModConfigSpec.BooleanValue ADMIN_HOLOGRAMS;
+    public static final ModConfigSpec.BooleanValue ADMIN_BETS;
+    public static final ModConfigSpec.BooleanValue ADMIN_QUOTES;
+    public static final ModConfigSpec.BooleanValue ADMIN_SAVINGS;
+    public static final ModConfigSpec.BooleanValue ADMIN_CHANTIERS;
+    public static final ModConfigSpec.BooleanValue ADMIN_TRANSIT;
+    public static final ModConfigSpec.BooleanValue ADMIN_STRUCTURES;
+
+    /** Heure a laquelle le marchand ambulant retrouve sa place (0-23, heure de Paris). */
+    public static final ModConfigSpec.IntValue MERCHANT_RESET_HOUR;
+
     public static final ModConfigSpec SPEC;
 
     static {
@@ -226,7 +260,54 @@ public final class Config {
         MENU_QUEST_COMMAND = BUILDER
                 .comment("Commande lancee par le bouton 'Quetes' du /menu (ex: 'ftbquests open_book'). Vide = bouton inactif.")
                 .define("questCommand", "ftbquests open_book");
-        BUILDER.pop();
+
+        BUILDER.comment("Boutons du menu central : mettre a false pour en retirer un.")
+                .push("entries");
+        MENU_PARCELS = BUILDER.comment("Bouton \"Mes parcelles\".").define("parcels", true);
+        MENU_SHOP = BUILDER.comment("Bouton \"Boutique\".").define("shop", true);
+        MENU_DAILY = BUILDER.comment("Bouton \"Recompense\".").define("daily", true);
+        MENU_QUOTES = BUILDER.comment("Bouton \"Mes devis\".").define("quotes", true);
+        MENU_BETS = BUILDER.comment("Bouton \"Creer un pari\".").define("bets", true);
+        MENU_TPA = BUILDER.comment("Bouton \"Se teleporter\".").define("tpa", true);
+        MENU_SPAWN = BUILDER.comment("Bouton \"Retour au spawn\".").define("spawn", true);
+        MENU_QUESTS = BUILDER.comment("Bouton \"Quetes\".").define("quests", true);
+        BUILDER.pop(); // entries
+        BUILDER.pop(); // menu
+
+        BUILDER.comment("Menu d'administration (/admin). Un bouton retire ici disparait de l'ecran ;")
+                .comment("la commande correspondante, elle, reste accessible.")
+                .push("admin");
+        BUILDER.comment("Boutons du menu d'administration : mettre a false pour en retirer un.")
+                .push("entries");
+        ADMIN_PARCELS = BUILDER.comment("Bouton \"Parcelles\".").define("parcels", true);
+        ADMIN_ECONOMY = BUILDER.comment("Bouton \"Economie\".").define("economy", true);
+        ADMIN_DAILY = BUILDER.comment("Bouton \"Recompenses (daily)\".").define("daily", true);
+        ADMIN_ROOMS = BUILDER.comment("Bouton \"Auberge / chambres\".").define("rooms", true);
+        ADMIN_INNKEEPERS = BUILDER.comment("Bouton \"Aubergistes\".").define("innkeepers", true);
+        ADMIN_MARKET = BUILDER.comment("Bouton \"Marche : definir un stand\".").define("market", true);
+        ADMIN_MARKETRECOVERY = BUILDER.comment("Bouton \"Recuperation marche\".").define("marketRecovery", true);
+        ADMIN_MAIRE = BUILDER.comment("Bouton \"Maire\".").define("maire", true);
+        ADMIN_INVENTORIES = BUILDER.comment("Bouton \"Inventaires\".").define("inventories", true);
+        ADMIN_WARPS = BUILDER.comment("Bouton \"Warps\".").define("warps", true);
+        ADMIN_ELECTIONS = BUILDER.comment("Bouton \"Elections\".").define("elections", true);
+        ADMIN_JOBS = BUILDER.comment("Bouton \"Metiers et salaires\".").define("jobs", true);
+        ADMIN_HOLOGRAMS = BUILDER.comment("Bouton \"Hologrammes\".").define("holograms", true);
+        ADMIN_BETS = BUILDER.comment("Bouton \"Paris\".").define("bets", true);
+        ADMIN_QUOTES = BUILDER.comment("Bouton \"Devis des joueurs\".").define("quotes", true);
+        ADMIN_SAVINGS = BUILDER.comment("Bouton \"Livrets d'epargne\".").define("savings", true);
+        ADMIN_CHANTIERS = BUILDER.comment("Bouton \"Chantiers\".").define("chantiers", true);
+        ADMIN_TRANSIT = BUILDER.comment("Bouton \"Capitaines Transit\".").define("transit", true);
+        ADMIN_STRUCTURES = BUILDER.comment("Bouton \"Structures\".").define("structures", true);
+        BUILDER.pop(); // entries
+        BUILDER.pop(); // admin
+
+        BUILDER.comment("Marchand ambulant : le PNJ qui rachete les items du jour.").push("merchant");
+        MERCHANT_RESET_HOUR = BUILDER
+                .comment("Heure a laquelle il retrouve sa place quotidienne et sa reserve commune,",
+                        "en heure de Paris. 0 = minuit. Une annonce part sur le serveur a ce moment",
+                        "si sa reserve avait ete epuisee.")
+                .defineInRange("resetHour", 0, 0, 23);
+        BUILDER.pop(); // merchant
 
         SPEC = BUILDER.build();
     }

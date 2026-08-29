@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.utopia.Config;
 import com.utopia.daily.DailyMenus;
 import com.utopia.data.MarketData;
 import com.utopia.data.RoomData;
@@ -43,93 +44,131 @@ public final class AdminMenu {
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GRASS_BLOCK),
-                Icons.label("Parcelles", ChatFormatting.GREEN),
-                Icons.lore("Gerer toutes les parcelles", ChatFormatting.GRAY),
-                ParcelMenus::openAdminAll));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_INGOT),
-                Icons.label("Economie", ChatFormatting.GOLD),
-                Icons.lore("Soldes des joueurs en ligne", ChatFormatting.GRAY),
-                EconomyMenus::openAdminMenu));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST),
-                Icons.label("Recompenses (daily)", ChatFormatting.GOLD),
-                Icons.lore("Calendrier et recompenses", ChatFormatting.GRAY),
-                DailyMenus::openAdminMenu));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WHITE_BED),
-                Icons.label("Auberge / chambres", ChatFormatting.LIGHT_PURPLE),
-                Icons.lore("Chambres + configuration (outil, bloc d'acces)", ChatFormatting.GRAY),
-                AdminMenu::openAubergeAdmin));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
-                Icons.label("Aubergistes", ChatFormatting.AQUA),
-                Icons.lore("Designer qui peut ouvrir /auberge", ChatFormatting.GRAY),
-                AdminMenu::openAubergistePicker));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.EMERALD_BLOCK),
-                Icons.label("Marche : definir un stand", ChatFormatting.GREEN),
-                Icons.lore("Active le mode, puis CASSE le bloc qui sera le stand", ChatFormatting.GRAY),
-                sp -> {
-                    MarketManager.startStallSelect(sp.getUUID());
-                    sp.sendSystemMessage(Messages.info("Mode actif : casse le bloc qui servira de stand de marche."));
-                    Menus.close(sp);
-                }));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST_MINECART),
-                Icons.label("Recuperation marche", ChatFormatting.GOLD),
-                Icons.lore("Objets expires en attente de restitution", ChatFormatting.GRAY),
-                MarketMenus::openRecoveryAdmin));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLDEN_HELMET),
-                Icons.label("Maire", ChatFormatting.GOLD),
-                Icons.lore("Designer qui accede a /maire (compte de la mairie)", ChatFormatting.GRAY),
-                AdminMenu::openMairePicker));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_CHEST),
-                Icons.label("Inventaires", ChatFormatting.LIGHT_PURPLE),
-                Icons.lore("Basculer entre l'inventaire 1 et 2 (garder sa survie avant le creatif)", ChatFormatting.GRAY),
-                AdminMenu::openInventorySwitch));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPASS),
-                Icons.label("Warps", ChatFormatting.AQUA),
-                Icons.lore("Points de teleportation admin (/setwarp pour en creer)", ChatFormatting.GRAY),
-                AdminMenu::openWarps));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
-                Icons.label("Elections", ChatFormatting.GOLD),
-                Icons.lore("Creer/lancer une election, hologramme des resultats, tests", ChatFormatting.GRAY),
-                com.utopia.election.ElectionMenus::openAdminMenu));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_INGOT),
-                Icons.label("Metiers et salaires", ChatFormatting.GOLD),
-                Icons.lore("Metiers, salaires quotidiens, employes, banquiers", ChatFormatting.GRAY),
-                com.utopia.job.JobMenus::open));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GLOW_ITEM_FRAME),
-                Icons.label("Hologrammes", ChatFormatting.LIGHT_PURPLE),
-                Icons.lore("Panneaux de texte libres : lignes, couleurs, position", ChatFormatting.GRAY),
-                com.utopia.hologram.HologramMenus::open));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
-                Icons.label("Paris", ChatFormatting.GOLD),
-                Icons.lore("Registre complet, controle des cagnottes, paris a surveiller",
-                        ChatFormatting.GRAY),
-                com.utopia.bet.BetAdminMenus::open));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
-                Icons.label("Devis des joueurs", ChatFormatting.YELLOW),
-                Icons.lore("Historique des devis emis et recus, taxe, validite", ChatFormatting.GRAY),
-                com.utopia.quote.QuoteMenus::openAdmin));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
-                Icons.label("Livrets d'epargne", ChatFormatting.GOLD),
-                Icons.lore("Registre des livrets, bareme des taux, suivi quotidien", ChatFormatting.GRAY),
-                com.utopia.savings.SavingsMenus::openRegistry));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SCAFFOLDING),
-                Icons.label("Chantiers", ChatFormatting.GOLD),
-                Icons.lore("Collectes communautaires, PNJ, objectifs, registre", ChatFormatting.GRAY),
-                com.utopia.chantier.ChantierMenus::openAdmin));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.OAK_BOAT),
-                Icons.label("Capitaines Transit", ChatFormatting.AQUA),
-                Icons.lore("Traversees vers le continent, destinations, point de retour", ChatFormatting.GRAY),
-                com.utopia.transit.TransitMenus::openAdmin));
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.STRUCTURE_BLOCK),
-                Icons.label("Structures", ChatFormatting.AQUA),
-                Icons.lore("Zones a 2 etats (bascule manuelle ou auto jour/nuit)", ChatFormatting.GRAY),
-                sp -> {
-                    if (com.utopia.structure.StructureManager.isSelecting(sp.getUUID())) {
-                        com.utopia.structure.StructureMenus.openSelection(sp); // selection en cours
-                    } else {
-                        com.utopia.structure.StructureMenus.openList(sp);
-                    }
-                }));
+        if (Config.ADMIN_PARCELS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GRASS_BLOCK),
+                    Icons.label("Parcelles", ChatFormatting.GREEN),
+                    Icons.lore("Gerer toutes les parcelles", ChatFormatting.GRAY),
+                    ParcelMenus::openAdminAll));
+        }
+        if (Config.ADMIN_ECONOMY.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_INGOT),
+                    Icons.label("Economie", ChatFormatting.GOLD),
+                    Icons.lore("Soldes des joueurs en ligne", ChatFormatting.GRAY),
+                    EconomyMenus::openAdminMenu));
+        }
+        if (Config.ADMIN_DAILY.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST),
+                    Icons.label("Recompenses (daily)", ChatFormatting.GOLD),
+                    Icons.lore("Calendrier et recompenses", ChatFormatting.GRAY),
+                    DailyMenus::openAdminMenu));
+        }
+        if (Config.ADMIN_ROOMS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WHITE_BED),
+                    Icons.label("Auberge / chambres", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore("Chambres + configuration (outil, bloc d'acces)", ChatFormatting.GRAY),
+                    AdminMenu::openAubergeAdmin));
+        }
+        if (Config.ADMIN_INNKEEPERS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
+                    Icons.label("Aubergistes", ChatFormatting.AQUA),
+                    Icons.lore("Designer qui peut ouvrir /auberge", ChatFormatting.GRAY),
+                    AdminMenu::openAubergistePicker));
+        }
+        if (Config.ADMIN_MARKET.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.EMERALD_BLOCK),
+                    Icons.label("Marche : definir un stand", ChatFormatting.GREEN),
+                    Icons.lore("Active le mode, puis CASSE le bloc qui sera le stand", ChatFormatting.GRAY),
+                    sp -> {
+                        MarketManager.startStallSelect(sp.getUUID());
+                        sp.sendSystemMessage(Messages.info("Mode actif : casse le bloc qui servira de stand de marche."));
+                        Menus.close(sp);
+                    }));
+        }
+        if (Config.ADMIN_MARKETRECOVERY.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST_MINECART),
+                    Icons.label("Recuperation marche", ChatFormatting.GOLD),
+                    Icons.lore("Objets expires en attente de restitution", ChatFormatting.GRAY),
+                    MarketMenus::openRecoveryAdmin));
+        }
+        if (Config.ADMIN_MAIRE.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLDEN_HELMET),
+                    Icons.label("Maire", ChatFormatting.GOLD),
+                    Icons.lore("Designer qui accede a /maire (compte de la mairie)", ChatFormatting.GRAY),
+                    AdminMenu::openMairePicker));
+        }
+        if (Config.ADMIN_INVENTORIES.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_CHEST),
+                    Icons.label("Inventaires", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore("Basculer entre l'inventaire 1 et 2 (garder sa survie avant le creatif)", ChatFormatting.GRAY),
+                    AdminMenu::openInventorySwitch));
+        }
+        if (Config.ADMIN_WARPS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPASS),
+                    Icons.label("Warps", ChatFormatting.AQUA),
+                    Icons.lore("Points de teleportation admin (/setwarp pour en creer)", ChatFormatting.GRAY),
+                    AdminMenu::openWarps));
+        }
+        if (Config.ADMIN_ELECTIONS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                    Icons.label("Elections", ChatFormatting.GOLD),
+                    Icons.lore("Creer/lancer une election, hologramme des resultats, tests", ChatFormatting.GRAY),
+                    com.utopia.election.ElectionMenus::openAdminMenu));
+        }
+        if (Config.ADMIN_JOBS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_INGOT),
+                    Icons.label("Metiers et salaires", ChatFormatting.GOLD),
+                    Icons.lore("Metiers, salaires quotidiens, employes, banquiers", ChatFormatting.GRAY),
+                    com.utopia.job.JobMenus::open));
+        }
+        if (Config.ADMIN_HOLOGRAMS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GLOW_ITEM_FRAME),
+                    Icons.label("Hologrammes", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore("Panneaux de texte libres : lignes, couleurs, position", ChatFormatting.GRAY),
+                    com.utopia.hologram.HologramMenus::open));
+        }
+        if (Config.ADMIN_BETS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
+                    Icons.label("Paris", ChatFormatting.GOLD),
+                    Icons.lore("Registre complet, controle des cagnottes, paris a surveiller",
+                            ChatFormatting.GRAY),
+                    com.utopia.bet.BetAdminMenus::open));
+        }
+        if (Config.ADMIN_QUOTES.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                    Icons.label("Devis des joueurs", ChatFormatting.YELLOW),
+                    Icons.lore("Historique des devis emis et recus, taxe, validite", ChatFormatting.GRAY),
+                    com.utopia.quote.QuoteMenus::openAdmin));
+        }
+        if (Config.ADMIN_SAVINGS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLD_NUGGET),
+                    Icons.label("Livrets d'epargne", ChatFormatting.GOLD),
+                    Icons.lore("Registre des livrets, bareme des taux, suivi quotidien", ChatFormatting.GRAY),
+                    com.utopia.savings.SavingsMenus::openRegistry));
+        }
+        if (Config.ADMIN_CHANTIERS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SCAFFOLDING),
+                    Icons.label("Chantiers", ChatFormatting.GOLD),
+                    Icons.lore("Collectes communautaires, PNJ, objectifs, registre", ChatFormatting.GRAY),
+                    com.utopia.chantier.ChantierMenus::openAdmin));
+        }
+        if (Config.ADMIN_TRANSIT.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.OAK_BOAT),
+                    Icons.label("Capitaines Transit", ChatFormatting.AQUA),
+                    Icons.lore("Traversees vers le continent, destinations, point de retour", ChatFormatting.GRAY),
+                    com.utopia.transit.TransitMenus::openAdmin));
+        }
+        if (Config.ADMIN_STRUCTURES.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.STRUCTURE_BLOCK),
+                    Icons.label("Structures", ChatFormatting.AQUA),
+                    Icons.lore("Zones a 2 etats (bascule manuelle ou auto jour/nuit)", ChatFormatting.GRAY),
+                    sp -> {
+                        if (com.utopia.structure.StructureManager.isSelecting(sp.getUUID())) {
+                            com.utopia.structure.StructureMenus.openSelection(sp); // selection en cours
+                        } else {
+                            com.utopia.structure.StructureMenus.openList(sp);
+                        }
+                    }));
+        }
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::open, null);
     }

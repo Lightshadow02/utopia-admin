@@ -126,17 +126,45 @@ public final class MongolManager {
      * A appeler periodiquement : remet le quota a zero au passage de minuit (heure du serveur) et
      * previent les joueurs que le marchand a de nouveau de la place.
      */
+    /**
+     * Journee du marchand. Elle ne suit pas minuit mais l'heure de renouvellement choisie en config :
+     * avant cette heure, on est encore dans la journee de la veille. Le fuseau est celui de Paris,
+     * comme pour les salaires et les livrets, et non celui de la machine.
+     */
+    private static long merchantDay() {
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(com.utopia.job.JobManager.ZONE);
+        int resetHour = com.utopia.Config.MERCHANT_RESET_HOUR.get();
+        return now.toLocalTime().getHour() < resetHour
+                ? now.toLocalDate().minusDays(1).toEpochDay()
+                : now.toLocalDate().toEpochDay();
+    }
+
+    /** Nom du marchand tel que les joueurs le connaissent ; jamais un nom de code. */
+    public static String merchantName(MinecraftServer server) {
+        for (com.utopia.data.StructureData.Struct st
+                : com.utopia.data.StructureData.get(server).all()) {
+            if (st.npcMongol && st.npcName != null && !st.npcName.isBlank()) {
+                return st.npcName;
+            }
+        }
+        return "Le marchand";
+    }
+
     public static void tick(MinecraftServer server) {
         MongolData data = MongolData.get(server);
-        // On n'annonce la reouverture que si le quota avait reellement ete atteint la veille : pas de
+        // On n'annonce la reouverture que si la reserve avait reellement ete epuisee : pas de
         // message au tout premier demarrage, ni les jours ou le marchand n'a jamais ete rempli.
         boolean wasFull = data.initialized() && data.announced();
-        if (data.rollOver(LocalDate.now().toEpochDay()) && wasFull) {
+        if (data.rollOver(merchantDay()) && wasFull) {
+            String name = merchantName(server);
             server.getPlayerList().broadcastSystemMessage(
-                    Component.literal("Le marchand a vide ses reserves : chacun retrouve ses "
-                                    + PERSONAL_QUOTA + " items du jour, et " + DAILY_QUOTA
-                                    + " items de reserve commune sont de nouveau disponibles !")
-                            .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)), false);
+                    Component.literal(name + " a de nouveau de la place : venez le voir !")
+                            .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true))
+                            .append(Component.literal("\n" + PERSONAL_QUOTA
+                                            + " items du jour pour chacun, et " + DAILY_QUOTA
+                                            + " items de reserve commune.")
+                                    .withStyle(s -> s.withColor(ChatFormatting.GRAY).withBold(false))),
+                    false);
         }
     }
 
