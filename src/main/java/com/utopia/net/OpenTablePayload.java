@@ -11,6 +11,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * S2C : ouvre un ecran <b>tableau</b> cote client. Chaque ligne porte autant de cellules qu'il y a
@@ -26,8 +27,12 @@ public record OpenTablePayload(int sessionId, Component title, List<Component> s
                                int refreshId, int backId, int prevId, int nextId)
         implements CustomPacketPayload {
 
-    /** Une ligne : ses cellules, et l'action declenchee par un clic n'importe ou dessus (-1 = inerte). */
-    public record Row(List<Component> cells, int actionId) {
+    /**
+     * Une ligne : une icone facultative posee devant la premiere cellule, ses cellules, et l'action
+     * declenchee par un clic n'importe ou dessus (-1 = inerte). L'icone sert quand la ligne designe
+     * un objet du jeu : un nom d'item se reconnait bien plus vite avec sa texture devant.
+     */
+    public record Row(ItemStack icon, List<Component> cells, int actionId) {
     }
 
     /**
@@ -72,6 +77,7 @@ public record OpenTablePayload(int sessionId, Component title, List<Component> s
         }
         buf.writeVarInt(p.rows.size());
         for (Row row : p.rows) {
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, row.icon());
             LINES.encode(buf, row.cells());
             buf.writeVarInt(row.actionId());
         }
@@ -111,7 +117,8 @@ public record OpenTablePayload(int sessionId, Component title, List<Component> s
         int rn = buf.readVarInt();
         List<Row> rows = new java.util.ArrayList<>(rn);
         for (int i = 0; i < rn; i++) {
-            rows.add(new Row(LINES.decode(buf), buf.readVarInt()));
+            rows.add(new Row(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf), LINES.decode(buf),
+                    buf.readVarInt()));
         }
         int fn = buf.readVarInt();
         List<Action> footer = new java.util.ArrayList<>(fn);

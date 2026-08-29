@@ -114,13 +114,14 @@ public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> implements GuiS
 
         // Ligne d'en-tete des colonnes : elle ne defile pas, elle reste au-dessus du tableau.
         if (!data.headers().isEmpty()) {
-            panel.child(cells(data.headers(), OwoStyle.HEADER, false, -1));
+            panel.child(cells(data.headers(), OwoStyle.HEADER, false, -1,
+                    net.minecraft.world.item.ItemStack.EMPTY));
         }
 
         FlowLayout rows = Containers.verticalFlow(Sizing.content(), Sizing.content());
         rows.gap(2);
         for (OpenTablePayload.Row r : data.rows()) {
-            rows.child(cells(r.cells(), OwoStyle.INFO, r.actionId() >= 0, r.actionId()));
+            rows.child(cells(r.cells(), OwoStyle.INFO, r.actionId() >= 0, r.actionId(), r.icon()));
         }
 
         int estHeight = data.rows().size() * 20 + 4;
@@ -171,7 +172,8 @@ public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> implements GuiS
      * Une rangee de cellules a largeur fixe. {@code clickable} rend la ligne entiere sensible au
      * survol et au clic : c'est ce qui remplace la colonne de boutons.
      */
-    private FlowLayout cells(List<Component> values, Surface surface, boolean clickable, int actionId) {
+    private FlowLayout cells(List<Component> values, Surface surface, boolean clickable, int actionId,
+                            net.minecraft.world.item.ItemStack icon) {
         FlowLayout row = Containers.horizontalFlow(Sizing.fixed(rowWidth), Sizing.content());
         row.surface(surface);
         row.padding(Insets.of(3, 3, 4, 4));
@@ -188,7 +190,16 @@ public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> implements GuiS
                 default -> HorizontalAlignment.LEFT;
             });
             cell.verticalAlignment(VerticalAlignment.CENTER);
-            cell.child(Components.label(values.get(i)).shadow(true).maxWidth(width));
+            if (i == 0 && !icon.isEmpty()) {
+                // L'icone mange sa place dans la premiere colonne : le libelle se replierait sinon.
+                io.wispforest.owo.ui.component.ItemComponent stack = Components.item(icon);
+                stack.setTooltipFromStack(false);
+                stack.margins(Insets.right(3));
+                cell.child(stack);
+                cell.child(Components.label(values.get(i)).shadow(true).maxWidth(Math.max(20, width - 19)));
+            } else {
+                cell.child(Components.label(values.get(i)).shadow(true).maxWidth(width));
+            }
             row.child(cell);
         }
 

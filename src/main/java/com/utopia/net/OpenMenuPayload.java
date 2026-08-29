@@ -18,7 +18,8 @@ import net.minecraft.world.item.ItemStack;
  * (slot par slot) et la liste des slots cliquables (pour le retour visuel).
  */
 public record OpenMenuPayload(int sessionId, Component title, int rows, List<ItemStack> items,
-                              List<Integer> clickable, boolean grid, boolean iconOnly) implements CustomPacketPayload {
+                              List<Integer> clickable, boolean grid, boolean iconOnly,
+                              int cellWidth) implements CustomPacketPayload {
 
     public static final Type<OpenMenuPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(UtopiaMod.MODID, "open_menu"));
@@ -39,6 +40,7 @@ public record OpenMenuPayload(int sessionId, Component title, int rows, List<Ite
         CLICKABLE.encode(buf, p.clickable);
         buf.writeBoolean(p.grid);
         buf.writeBoolean(p.iconOnly);
+        buf.writeVarInt(p.cellWidth);
     }
 
     private static OpenMenuPayload decode(RegistryFriendlyByteBuf buf) {
@@ -49,7 +51,8 @@ public record OpenMenuPayload(int sessionId, Component title, int rows, List<Ite
         List<Integer> clickable = CLICKABLE.decode(buf);
         boolean grid = buf.readBoolean();
         boolean iconOnly = buf.readBoolean();
-        return new OpenMenuPayload(sessionId, title, rows, items, clickable, grid, iconOnly);
+        int cellWidth = buf.readVarInt();
+        return new OpenMenuPayload(sessionId, title, rows, items, clickable, grid, iconOnly, cellWidth);
     }
 
     @Override

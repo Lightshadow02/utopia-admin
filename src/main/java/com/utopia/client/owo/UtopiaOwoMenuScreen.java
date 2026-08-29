@@ -175,7 +175,7 @@ public class UtopiaOwoMenuScreen extends BaseOwoScreen<FlowLayout> implements Gu
                 continue;
             }
             FlowLayout cell = data.iconOnly() ? iconCell(stack, i, clickable.contains(i))
-                    : chip(stack, i, clickable.contains(i), 0);
+                    : chip(stack, i, clickable.contains(i), data.cellWidth());
             grid.child(cell, i / COLS, i % COLS);
         }
         body.child(grid);

@@ -79,15 +79,16 @@ public final class TransitMenus {
         // Cases d'icones et non chips : elles ont toutes la meme largeur, donc les colonnes vides se
         // reduisent a rien de facon symetrique et la croix en est vraiment une. Avec des chips de
         // largeurs differentes, le cap Nord se retrouvait decale de la largeur du bouton Ouest.
+        // Largeur imposee : sans elle chaque case s'ajuste a son libelle, les colonnes vides se
+        // reduisent inegalement et le cap Nord se retrouve decale de la largeur du bouton Ouest.
         UtopiaGui gui = new UtopiaGui(3, Icons.title(captain.name + " - " + open + " cap(s) ouvert(s)",
-                ChatFormatting.GOLD)).gridLayout(true).iconOnly(true);
+                ChatFormatting.GOLD)).gridLayout(true).cellWidth(76);
 
         // Centre purement informatif : volontairement non cliquable.
         gui.set(SLOT_CENTRE, Icons.icon(Items.COMPASS,
-                Icons.label("Choisissez votre cap", ChatFormatting.GOLD),
-                List.of(Icons.lore("Survolez une fleche pour voir sa destination", ChatFormatting.GRAY),
-                        Icons.lore("Quatre caps vers le continent de ressources",
-                                ChatFormatting.DARK_GRAY))));
+                Icons.label("Choisir", ChatFormatting.GOLD),
+                List.of(Icons.lore("Quatre caps vers le continent de ressources",
+                        ChatFormatting.GRAY))));
 
         cap(gui, SLOT_NORD, TransitData.Direction.NORD, captainId, data);
         cap(gui, SLOT_EST, TransitData.Direction.EST, captainId, data);

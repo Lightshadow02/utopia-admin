@@ -85,7 +85,7 @@ public final class OwoMenuServer {
         }
         PacketDistributor.sendToPlayer(player,
                 MenuS2CPayload.of(new OpenMenuPayload(id, gui.title(), gui.rows(), items, clickable,
-                        gui.gridLayout(), gui.iconOnly())));
+                        gui.gridLayout(), gui.iconOnly(), gui.cellWidth())));
     }
 
     /**
@@ -370,8 +370,16 @@ public final class OwoMenuServer {
         public static final int RIGHT = 2;
     }
 
-    /** Une ligne d'un tableau : une cellule par colonne, et l'action du clic (peut etre nulle). */
-    public record TableRow(List<Component> cells, Consumer<ServerPlayer> action) {
+    /**
+     * Une ligne d'un tableau : une cellule par colonne, et l'action du clic (peut etre nulle).
+     * {@code icon} se pose devant la premiere cellule quand la ligne designe un objet du jeu.
+     */
+    public record TableRow(ItemStack icon, List<Component> cells, Consumer<ServerPlayer> action) {
+
+        /** Ligne sans icone : la forme courante, celle des tableaux de chiffres. */
+        public TableRow(List<Component> cells, Consumer<ServerPlayer> action) {
+            this(ItemStack.EMPTY, cells, action);
+        }
     }
 
     /**
@@ -409,7 +417,7 @@ public final class OwoMenuServer {
                 actionId = idCounter++;
                 gui.button(actionId, ItemStack.EMPTY, r.action());
             }
-            netRows.add(new OpenTablePayload.Row(r.cells(), actionId));
+            netRows.add(new OpenTablePayload.Row(r.icon(), r.cells(), actionId));
         }
         List<OpenTablePayload.Action> netFooter = new ArrayList<>(footer.size());
         for (PanelAction a : footer) {

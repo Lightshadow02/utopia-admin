@@ -141,7 +141,7 @@ public final class MarketMenus {
         for (int i = 0; i < stall.offers.size(); i++) {
             final int idx = i;
             MarketData.Offer o = stall.offers.get(i);
-            rows.add(new OwoMenuServer.TableRow(List.of(
+            rows.add(new OwoMenuServer.TableRow(o.stack.copyWithCount(1), List.of(
                     Icons.label(o.stack.getHoverName().getString(), ChatFormatting.AQUA),
                     Icons.label(String.valueOf(o.stack.getCount()), ChatFormatting.WHITE),
                     Icons.label(String.valueOf(o.price), ChatFormatting.GOLD)),
@@ -224,17 +224,19 @@ public final class MarketMenus {
                 ChatFormatting.DARK_GRAY));
 
         List<OwoMenuServer.Column> columns = List.of(
+                // L'objet passe en tete : c'est le sujet de cet ecran, et c'est la seule colonne
+                // qui peut porter son icone.
+                new OwoMenuServer.Column(head("OBJET"), 116, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("QTE"), 34, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("JOUEUR"), 84, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("OBJET"), 98, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("QUANTITE"), 54, OwoMenuServer.Column.RIGHT),
-                new OwoMenuServer.Column(head("EXPIRE LE"), 64, OwoMenuServer.Column.LEFT));
+                new OwoMenuServer.Column(head("EXPIRE LE"), 66, OwoMenuServer.Column.LEFT));
 
         List<OwoMenuServer.TableRow> rows = new ArrayList<>();
         for (MarketData.RecoveryEntry e : rec.subList(from, to)) {
-            rows.add(new OwoMenuServer.TableRow(List.of(
-                    Icons.label(e.ownerName(), ChatFormatting.WHITE),
+            rows.add(new OwoMenuServer.TableRow(e.stack().copyWithCount(1), List.of(
                     Icons.label(e.stack().getHoverName().getString(), ChatFormatting.AQUA),
                     Icons.label(String.valueOf(e.stack().getCount()), ChatFormatting.GOLD),
+                    Icons.label(e.ownerName(), ChatFormatting.WHITE),
                     Icons.label(EXPIRY_STAMP.format(Instant.ofEpochMilli(e.expiryMillis())), ChatFormatting.GRAY)),
                     sp -> {
                         returnRecovery(sp, e);

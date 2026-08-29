@@ -28,6 +28,8 @@ public final class UtopiaGui {
     private boolean editor = false;
     private boolean gridLayout = false;
     private boolean iconOnly = false;
+    /** Largeur imposee aux cases en mode grille, 0 = chacune s'ajuste a son contenu. */
+    private int cellWidth = 0;
     private Consumer<ServerPlayer> onClose = sp -> { };
     private boolean finalized = false;
 
@@ -124,6 +126,20 @@ public final class UtopiaGui {
             this.gridLayout = true;
         }
         return this;
+    }
+
+    /**
+     * Impose une largeur commune aux cases en mode grille. Sans elle, chaque case s'ajuste a son
+     * texte : les colonnes vides se reduisent a rien de facon inegale et une disposition en croix
+     * penche du cote du libelle le plus long.
+     */
+    public UtopiaGui cellWidth(int width) {
+        this.cellWidth = Math.max(0, width);
+        return this;
+    }
+
+    public int cellWidth() {
+        return cellWidth;
     }
 
     public boolean iconOnly() {
