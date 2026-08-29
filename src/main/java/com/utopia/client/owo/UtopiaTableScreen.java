@@ -124,8 +124,14 @@ public class UtopiaTableScreen extends BaseOwoScreen<FlowLayout> implements GuiS
             rows.child(cells(r.cells(), OwoStyle.INFO, r.actionId() >= 0, r.actionId(), r.icon()));
         }
 
+        // La place laissee au tableau depend de ce qu'il y a autour : titre, lignes de statistiques,
+        // criteres de recherche, en-tete de colonnes et barre du bas. Une reserve constante suffisait
+        // tant que les ecrans se ressemblaient ; avec quatre lignes de filtres, elle ne suffit plus
+        // et le panneau depasse de l'ecran par le haut comme par le bas.
+        int chrome = 96 + data.stats().size() * 12 + data.controls().size() * 26
+                + (data.headers().isEmpty() ? 0 : 20);
         int estHeight = data.rows().size() * 20 + 4;
-        int maxHeight = Math.max(80, this.height - 170);
+        int maxHeight = Math.max(60, this.height - chrome);
         if (estHeight > maxHeight) {
             ScrollContainer<FlowLayout> scroll =
                     Containers.verticalScroll(Sizing.content(), Sizing.fixed(maxHeight), rows);

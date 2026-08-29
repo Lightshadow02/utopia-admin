@@ -90,8 +90,10 @@ public class UtopiaPanelScreen extends BaseOwoScreen<FlowLayout> implements GuiS
             rows.child(row(r));
         }
 
+        // Reserve adaptee a ce qui entoure les lignes : titre, pied de page eventuel et barre du bas.
+        int chrome = 110 + (data.footer().isEmpty() || data.inlineFooter() ? 0 : 26);
         int estHeight = data.rows().size() * 26 + 4;
-        int maxHeight = Math.max(80, this.height - 150);
+        int maxHeight = Math.max(60, this.height - chrome);
         if (estHeight > maxHeight) {
             ScrollContainer<FlowLayout> scroll = Containers.verticalScroll(Sizing.content(), Sizing.fixed(maxHeight), rows);
             scroll.scrollbar(ScrollContainer.Scrollbar.flat(OwoStyle.SCROLLBAR));

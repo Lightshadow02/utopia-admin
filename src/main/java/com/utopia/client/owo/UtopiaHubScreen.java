@@ -113,7 +113,9 @@ public class UtopiaHubScreen extends BaseOwoScreen<FlowLayout> implements GuiSca
 
         int rows = (buttons.size() + COLS - 1) / COLS;
         int estHeight = rows * 42 + 6;
-        int maxHeight = Math.max(84, this.height - 170);
+        // Reserve adaptee aux lignes de statistiques, qui peuvent se replier sur plusieurs lignes.
+        int chrome = 116 + data.stats().size() * 12;
+        int maxHeight = Math.max(60, this.height - chrome);
         if (estHeight > maxHeight) {
             ScrollContainer<FlowLayout> scroll = Containers.verticalScroll(Sizing.content(), Sizing.fixed(maxHeight), grid);
             scroll.scrollbar(ScrollContainer.Scrollbar.flat(OwoStyle.SCROLLBAR));
