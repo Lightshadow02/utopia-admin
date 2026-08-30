@@ -112,6 +112,13 @@ public final class BetManager {
 
     /** Enregistre la position et l'orientation de repos du Bookmaker depuis celles du joueur. */
     public static void place(ServerPlayer player, BetData.Bet bet) {
+        if (player.getUUID().equals(bet.creator)) {
+            // Le Bookmaker prend le visage de celui qui ouvre le pari : on le reconnait de loin,
+            // et on sait a qui s'adresser. C'est une copie, elle survit a sa deconnexion.
+            String[] skin = com.utopia.entity.NpcSkins.capture(player);
+            bet.creatorSkinValue = skin[0];
+            bet.creatorSkinSignature = skin[1];
+        }
         bet.dim = player.level().dimension().location().toString();
         bet.x = player.getX();
         bet.y = player.getY();
@@ -625,6 +632,19 @@ public final class BetManager {
                 }
             }
             for (BetData.Bet bet : data.all()) {
+                // Pari ouvert avant que le visage ne soit retenu : on le copie des que son createur
+                // repasse, plutot que de laisser un Bookmaker anonyme jusqu'a la fin du pari.
+                if (bet.creatorSkinValue.isEmpty() && bet.state.active()) {
+                    ServerPlayer creator = server.getPlayerList().getPlayer(bet.creator);
+                    if (creator != null) {
+                        String[] skin = com.utopia.entity.NpcSkins.capture(creator);
+                        if (!skin[0].isEmpty()) {
+                            bet.creatorSkinValue = skin[0];
+                            bet.creatorSkinSignature = skin[1];
+                            data.setDirty();
+                        }
+                    }
+                }
                 com.utopia.entity.BookmakerNpc npc = npcs.remove(bet.id);
                 List<ArmorStand> lines = holos.remove(bet.id);
                 ServerLevel target = bet.isPlaced() ? resolveLevel(server, bet.dim) : null;
@@ -648,11 +668,11 @@ public final class BetManager {
                     npc.setOwnerKey(bet.id);
                     npc.moveTo(bet.x, bet.y, bet.z, bet.restYaw, 0.0f);
                     npc.setRestYaw(bet.restYaw);
-                    npc.applyLook("Bookmaker", "", "", true);
+                    npc.applyLook("Bookmaker", bet.creatorSkinValue, bet.creatorSkinSignature, true);
                     level.addFreshEntity(npc);
                 } else {
                     npc.setRestYaw(bet.restYaw);
-                    npc.applyLook("Bookmaker", "", "", true);
+                    npc.applyLook("Bookmaker", bet.creatorSkinValue, bet.creatorSkinSignature, true);
                     if (npc.distanceToSqr(bet.x, bet.y, bet.z) > SPAWN_EPSILON) {
                         npc.moveTo(bet.x, bet.y, bet.z, npc.getYRot(), 0.0f);
                     }

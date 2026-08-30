@@ -119,6 +119,9 @@ public final class BetData extends SavedData {
         public double y;
         public double z;
         public float restYaw;
+        /** Visage du createur, copie a la publication : le Bookmaker lui ressemble. */
+        public String creatorSkinValue = "";
+        public String creatorSkinSignature = "";
         public double holoDy;                // reglage vertical de l'hologramme
 
         // Mises
@@ -423,6 +426,8 @@ public final class BetData extends SavedData {
             bet.y = b.getDouble("y");
             bet.z = b.getDouble("z");
             bet.restYaw = b.getFloat("yaw");
+            bet.creatorSkinValue = b.getString("skin");
+            bet.creatorSkinSignature = b.getString("skinSig");
             bet.holoDy = b.getDouble("holoDy");
             bet.collected = b.getLong("collected");
             bet.distributed = b.getLong("distributed");
@@ -543,6 +548,8 @@ public final class BetData extends SavedData {
             b.putDouble("y", bet.y);
             b.putDouble("z", bet.z);
             b.putFloat("yaw", bet.restYaw);
+            b.putString("skin", bet.creatorSkinValue);
+            b.putString("skinSig", bet.creatorSkinSignature);
             b.putDouble("holoDy", bet.holoDy);
             b.putLong("collected", bet.collected);
             b.putLong("distributed", bet.distributed);

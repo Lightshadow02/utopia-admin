@@ -104,6 +104,19 @@ public final class NpcSkins {
     }
 
     /** Nom lisible : "adolf_hitler1" -> "Adolf hitler1". */
+    /**
+     * Copie la propriete "textures" d'un joueur : {@code [valeur, signature]}, ou deux chaines vides
+     * si le serveur tourne en mode hors ligne. C'est une <b>copie</b>, pas une reference : le PNJ
+     * garde ce visage quand le joueur se deconnecte ou change de skin.
+     */
+    public static String[] capture(net.minecraft.server.level.ServerPlayer player) {
+        for (com.mojang.authlib.properties.Property prop
+                : player.getGameProfile().getProperties().get("textures")) {
+            return new String[] { prop.value(), prop.signature() == null ? "" : prop.signature() };
+        }
+        return new String[] { "", "" };
+    }
+
     public static String label(String name) {
         String pretty = name.replace('_', ' ').trim();
         return pretty.isEmpty() ? name : Character.toUpperCase(pretty.charAt(0)) + pretty.substring(1);
