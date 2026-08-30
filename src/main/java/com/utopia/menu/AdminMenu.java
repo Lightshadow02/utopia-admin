@@ -127,6 +127,12 @@ public final class AdminMenu {
                             ChatFormatting.GRAY),
                     com.utopia.npc.NpcMenus::open));
         }
+        if (Config.ADMIN_NPCS.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARMOR_STAND),
+                    Icons.label("Statues", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore("Personnages decoratifs a l'effigie d'un joueur", ChatFormatting.GRAY),
+                    com.utopia.npc.NpcMenus::open));
+        }
         if (Config.ADMIN_HOLOGRAMS.get()) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GLOW_ITEM_FRAME),
                     Icons.label("Hologrammes", ChatFormatting.LIGHT_PURPLE),

@@ -428,6 +428,7 @@ public final class UtopiaEvents {
             com.utopia.chantier.ChantierManager.sync(server);  // PNJ + hologramme Top 3
             com.utopia.hologram.HologramManager.sync(server);  // panneaux libres de l'administration
             com.utopia.npc.NpcManager.sync(server);            // statues decoratives
+            com.utopia.npc.NpcManager.sync(server);            // statues decoratives
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.
         com.utopia.election.ElectionManager.tick(server);
