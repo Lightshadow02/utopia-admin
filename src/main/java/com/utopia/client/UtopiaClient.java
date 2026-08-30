@@ -53,6 +53,9 @@ public final class UtopiaClient {
         // Bookmaker : son nom est affiche, la cagnotte est un hologramme au-dessus.
         event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.BOOKMAKER_NPC.get(),
                 ctx -> new StallNpcRenderer<com.utopia.entity.BookmakerNpc>(ctx, true));
+        // Statue decorative : le nom s'affiche ou non selon son reglage.
+        event.registerEntityRenderer(com.utopia.entity.UtopiaEntities.DECOR_NPC.get(),
+                ctx -> new StallNpcRenderer<com.utopia.entity.DecorNpc>(ctx, true));
     }
 
     /** POC : /utopiaui ouvre l'ecran owo-ui de demonstration cote client. */

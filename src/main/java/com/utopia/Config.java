@@ -72,6 +72,9 @@ public final class Config {
     // Menu central
     public static final ModConfigSpec.ConfigValue<String> MENU_QUEST_COMMAND;
 
+    /** Prix unitaire minimal d'une offre sur le marche flottant. */
+    public static final ModConfigSpec.IntValue MARKET_MIN_PRICE;
+
     /** Serveurs du reseau proposes dans le menu central. */
     public static final ModConfigSpec.ConfigValue<String> SERVERS_CURRENT;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> SERVERS_LIST;
@@ -107,6 +110,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_CHANTIERS;
     public static final ModConfigSpec.BooleanValue ADMIN_TRANSIT;
     public static final ModConfigSpec.BooleanValue ADMIN_STRUCTURES;
+    public static final ModConfigSpec.BooleanValue ADMIN_NPCS;
 
     /** Heure a laquelle le marchand ambulant retrouve sa place (0-23, heure de Paris). */
     public static final ModConfigSpec.IntValue MERCHANT_RESET_HOUR;
@@ -255,6 +259,14 @@ public final class Config {
                 .define("commerceItem", "utopiamods:licencecommerciale");
         BUILDER.pop();
 
+        BUILDER.comment("Marche flottant (stands tenus par les joueurs).").push("market");
+        MARKET_MIN_PRICE = BUILDER
+                .comment("Prix unitaire minimal d'une offre. En dessous, la part de la mairie et la",
+                        "part detruite tombent a zero par arrondi : la vente ne fait plus circuler",
+                        "d'Utopieces, elle ne fait que les deplacer.")
+                .defineInRange("minUnitPrice", 2, 1, 1_000_000);
+        BUILDER.pop();
+
         BUILDER.comment("Chambres d'auberge (boites 3D superposables, gerees par les admins/aubergistes).").push("room");
         ROOM_WAND_ITEM = BUILDER
                 .comment("Outil de selection des chambres (clic gauche = coin 1, clic droit = coin 2 ; le Y compte).")
@@ -321,6 +333,7 @@ public final class Config {
         ADMIN_CHANTIERS = BUILDER.comment("Bouton \"Chantiers\".").define("chantiers", true);
         ADMIN_TRANSIT = BUILDER.comment("Bouton \"Capitaines Transit\".").define("transit", true);
         ADMIN_STRUCTURES = BUILDER.comment("Bouton \"Structures\".").define("structures", true);
+        ADMIN_NPCS = BUILDER.comment("Bouton \"Statues\".").define("npcs", true);
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
 

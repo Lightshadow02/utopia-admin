@@ -57,6 +57,14 @@ public final class UtopiaEntities {
                     .updateInterval(2)
                     .build("bookmaker_npc"));
 
+    /** Statue vivante a l'effigie d'un joueur : purement decorative. */
+    public static final DeferredHolder<EntityType<?>, EntityType<DecorNpc>> DECOR_NPC =
+            ENTITIES.register("decor_npc", () -> EntityType.Builder.<DecorNpc>of(DecorNpc::new, MobCategory.MISC)
+                    .sized(0.6f, 1.8f)
+                    .clientTrackingRange(8)
+                    .updateInterval(2)
+                    .build("decor_npc"));
+
     private UtopiaEntities() {
     }
 
@@ -71,5 +79,6 @@ public final class UtopiaEntities {
         event.put(TRANSIT_NPC.get(), LivingEntity.createLivingAttributes().build());
         event.put(CHANTIER_NPC.get(), LivingEntity.createLivingAttributes().build());
         event.put(BOOKMAKER_NPC.get(), LivingEntity.createLivingAttributes().build());
+        event.put(DECOR_NPC.get(), LivingEntity.createLivingAttributes().build());
     }
 }

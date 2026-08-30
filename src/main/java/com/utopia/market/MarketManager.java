@@ -207,7 +207,8 @@ public final class MarketManager {
         }
         ItemStack sold = held.copy();
         player.getInventory().setItem(player.getInventory().selected, ItemStack.EMPTY);
-        stall.offers.add(new MarketData.Offer(sold, Math.max(0, price),
+        stall.offers.add(new MarketData.Offer(sold,
+                Math.max(com.utopia.Config.MARKET_MIN_PRICE.get(), price),
                 System.currentTimeMillis() + OFFER_DURATION_MS));
         MarketData.get(player.server).setDirty();
         return OfferResult.OK;

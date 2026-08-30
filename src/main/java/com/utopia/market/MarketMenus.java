@@ -101,11 +101,14 @@ public final class MarketMenus {
             return;
         }
         String desc = held.getCount() + "x " + held.getHoverName().getString();
+        long minPrice = com.utopia.Config.MARKET_MIN_PRICE.get();
         Menus.promptAmount(player, Icons.label("Prix UNITAIRE (par objet)", ChatFormatting.GOLD),
                 List.of(Icons.lore("Objet : " + desc, ChatFormatting.GRAY),
                         Icons.lore("Prix pour 1 objet (l'acheteur choisit la quantite).", ChatFormatting.DARK_GRAY),
-                        Icons.lore("Vendeur 75%, mairie 15%, detruit 10%.", ChatFormatting.DARK_GRAY)),
-                Icons.label("Mettre en vente", ChatFormatting.GREEN), 1, 0, 1_000_000_000L,
+                        Icons.lore("Vendeur 75%, mairie 15%, detruit 10%.", ChatFormatting.DARK_GRAY),
+                        Icons.lore("Minimum : " + minPrice + " Utopieces l'unite.", ChatFormatting.DARK_GRAY)),
+                Icons.label("Mettre en vente", ChatFormatting.GREEN),
+                minPrice, minPrice, 1_000_000_000L,
                 price -> {
                     MarketManager.OfferResult r = MarketManager.addOfferFromHand(player, stall, price);
                     switch (r) {
@@ -270,14 +273,7 @@ public final class MarketMenus {
                 Component.literal("Solde de la mairie : ")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
                         .append(Component.literal(balance + " Utopieces")
-                                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))),
-                Component.literal("Alimente par la taxe du marche (15%)"
-                                + (com.utopia.data.QuoteData.get(player.server).taxPercent() > 0
-                                        ? " et celle des devis ("
-                                                + com.utopia.data.QuoteData.get(player.server).taxPercent()
-                                                + "%)."
-                                        : "."))
-                        .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
+                                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))));
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.GOLD_INGOT),
