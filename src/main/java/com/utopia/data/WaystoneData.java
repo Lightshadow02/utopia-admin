@@ -22,8 +22,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  * Reseau des balises de voyage : chaque balise posee dans le monde, et ce que chaque joueur a
  * decouvert.
  *
- * <p>Une balise n'est pas un point de teleportation ouvert a tous : il faut l'avoir touchee une fois
- * pour pouvoir y revenir. C'est ce qui fait du reseau une recompense d'exploration plutot qu'une
+ * <p>Une balise n'est jamais ouverte a tous : il faut l'avoir touchee une fois pour pouvoir y
+ * revenir, sans exception. C'est ce qui fait du reseau une recompense d'exploration plutot qu'une
  * carte offerte.
  */
 public final class WaystoneData extends SavedData {
@@ -43,8 +43,6 @@ public final class WaystoneData extends SavedData {
         public final int z;
         public UUID owner;               // null = posee par l'administration
         public String ownerName = "";
-        /** Une balise publique est connue de tous sans avoir a la trouver. */
-        public boolean global;
 
         public Waystone(String id, String name, String dim, int x, int y, int z) {
             this.id = id;
@@ -107,12 +105,12 @@ public final class WaystoneData extends SavedData {
         return out;
     }
 
-    /** Balises accessibles a ce joueur : les publiques, plus celles qu'il a trouvees. */
+    /** Balises accessibles a ce joueur : celles qu'il a trouvees, et elles seules. */
     public List<Waystone> availableTo(UUID player) {
         Set<String> known = discovered.getOrDefault(player, Set.of());
         List<Waystone> out = new ArrayList<>();
         for (Waystone w : all()) {
-            if (w.global || known.contains(w.id)) {
+            if (known.contains(w.id)) {
                 out.add(w);
             }
         }
@@ -120,8 +118,7 @@ public final class WaystoneData extends SavedData {
     }
 
     public boolean knows(UUID player, String id) {
-        Waystone stone = stones.get(id);
-        return stone != null && (stone.global || discovered.getOrDefault(player, Set.of()).contains(id));
+        return stones.containsKey(id) && discovered.getOrDefault(player, Set.of()).contains(id);
     }
 
     /** Marque une balise comme trouvee ; renvoie true si c'est une decouverte. */
@@ -161,7 +158,6 @@ public final class WaystoneData extends SavedData {
                 }
             }
             stone.ownerName = w.getString("ownerName");
-            stone.global = w.getBoolean("global");
             data.stones.put(id, stone);
         }
         ListTag players = tag.getList("discovered", Tag.TAG_COMPOUND);
@@ -200,7 +196,6 @@ public final class WaystoneData extends SavedData {
                 w.putString("owner", stone.owner.toString());
             }
             w.putString("ownerName", stone.ownerName);
-            w.putBoolean("global", stone.global);
             list.add(w);
         }
         tag.put("stones", list);

@@ -56,13 +56,10 @@ public final class WaystoneMenus {
                 continue; // on ne voyage pas vers l'endroit ou l'on se tient
             }
             String target = stone.id;
-            entries.add(new OwoMenuServer.HubEntry(
-                    new ItemStack(stone.global ? Items.BEACON : Items.ENDER_PEARL),
-                    Icons.label(stone.name, stone.global ? ChatFormatting.GOLD : ChatFormatting.AQUA),
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_PEARL),
+                    Icons.label(stone.name, ChatFormatting.AQUA),
                     Icons.lore(WaystoneManager.worldLabel(stone.dim) + " - " + stone.x + " "
-                                    + stone.y + " " + stone.z
-                                    + (stone.global ? " - publique" : ""),
-                            ChatFormatting.GRAY),
+                            + stone.y + " " + stone.z, ChatFormatting.GRAY),
                     sp -> {
                         WaystoneManager.TravelResult r = WaystoneManager.travel(sp, target);
                         if (r != WaystoneManager.TravelResult.OK) {
@@ -83,24 +80,6 @@ public final class WaystoneMenus {
                     Icons.label("Renommer cette balise", ChatFormatting.YELLOW),
                     Icons.lore("Le nom que verront tous ceux qui la trouvent", ChatFormatting.GRAY),
                     sp -> promptRename(sp, id)));
-        }
-        if (player.hasPermissions(2)) {
-            pinned.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BEACON),
-                    Icons.label(here.global ? "Rendre privee" : "Rendre publique",
-                            here.global ? ChatFormatting.GRAY : ChatFormatting.GOLD),
-                    Icons.lore(here.global
-                                    ? "Elle redevient a trouver pour en profiter"
-                                    : "Elle sera connue de tous, sans avoir a la trouver",
-                            ChatFormatting.GRAY),
-                    sp -> {
-                        WaystoneData d = WaystoneData.get(sp.server);
-                        WaystoneData.Waystone fresh = d.get(id);
-                        if (fresh != null) {
-                            fresh.global = !fresh.global;
-                            d.setDirty();
-                        }
-                        openStone(sp, id, page);
-                    }));
         }
 
         OwoMenuServer.openHubPaged(player, title, stats, pinned, entries, page, PAGE_SIZE,
@@ -152,6 +131,8 @@ public final class WaystoneMenus {
         List<Component> stats = List.of(
                 Icons.lore(data.all().size() + " balise(s) posee(s) sur le serveur", ChatFormatting.GRAY),
                 Icons.lore("Le bloc n'a aucune recette : il ne s'obtient qu'ici.",
+                        ChatFormatting.DARK_GRAY),
+                Icons.lore("Chaque balise doit etre trouvee pour servir : aucune n'est offerte.",
                         ChatFormatting.DARK_GRAY));
 
         List<OwoMenuServer.HubEntry> pinned = List.of(
@@ -169,13 +150,11 @@ public final class WaystoneMenus {
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         for (WaystoneData.Waystone stone : data.all()) {
             String id = stone.id;
-            entries.add(new OwoMenuServer.HubEntry(
-                    new ItemStack(stone.global ? Items.BEACON : Items.ENDER_PEARL),
-                    Icons.label(stone.name, stone.global ? ChatFormatting.GOLD : ChatFormatting.AQUA),
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_PEARL),
+                    Icons.label(stone.name, ChatFormatting.AQUA),
                     Icons.lore(WaystoneManager.worldLabel(stone.dim) + " " + stone.x + " " + stone.y
                                     + " " + stone.z
-                                    + (stone.ownerName.isBlank() ? "" : " - " + stone.ownerName)
-                                    + (stone.global ? " - publique" : ""),
+                                    + (stone.ownerName.isBlank() ? "" : " - " + stone.ownerName),
                             ChatFormatting.GRAY),
                     sp -> openAdminStone(sp, id)));
         }
@@ -206,21 +185,7 @@ public final class WaystoneMenus {
                 new OwoMenuServer.PanelRow(Icons.label("Nom", ChatFormatting.GRAY),
                         Icons.label(stone.name, ChatFormatting.WHITE),
                         Icons.label("Renommer", ChatFormatting.YELLOW),
-                        sp -> promptRename(sp, id)),
-                new OwoMenuServer.PanelRow(Icons.label("Acces", ChatFormatting.GRAY),
-                        Icons.label(stone.global ? "publique - connue de tous" : "a trouver",
-                                stone.global ? ChatFormatting.GOLD : ChatFormatting.GRAY),
-                        Icons.label(stone.global ? "Rendre privee" : "Rendre publique",
-                                ChatFormatting.YELLOW),
-                        sp -> {
-                            WaystoneData d = WaystoneData.get(sp.server);
-                            WaystoneData.Waystone fresh = d.get(id);
-                            if (fresh != null) {
-                                fresh.global = !fresh.global;
-                                d.setDirty();
-                            }
-                            openAdminStone(sp, id);
-                        }));
+                        sp -> promptRename(sp, id)));
 
         List<OwoMenuServer.PanelAction> footer = List.of(
                 new OwoMenuServer.PanelAction(Icons.label("Se teleporter", ChatFormatting.LIGHT_PURPLE),
