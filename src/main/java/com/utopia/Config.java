@@ -111,6 +111,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_TRANSIT;
     public static final ModConfigSpec.BooleanValue ADMIN_STRUCTURES;
     public static final ModConfigSpec.BooleanValue ADMIN_NPCS;
+    public static final ModConfigSpec.BooleanValue ADMIN_WAYSTONES;
 
     /** Heure a laquelle le marchand ambulant retrouve sa place (0-23, heure de Paris). */
     public static final ModConfigSpec.IntValue MERCHANT_RESET_HOUR;
@@ -334,6 +335,7 @@ public final class Config {
         ADMIN_TRANSIT = BUILDER.comment("Bouton \"Capitaines Transit\".").define("transit", true);
         ADMIN_STRUCTURES = BUILDER.comment("Bouton \"Structures\".").define("structures", true);
         ADMIN_NPCS = BUILDER.comment("Bouton \"Statues\".").define("npcs", true);
+        ADMIN_WAYSTONES = BUILDER.comment("Bouton \"Balises de voyage\".").define("waystones", true);
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
 

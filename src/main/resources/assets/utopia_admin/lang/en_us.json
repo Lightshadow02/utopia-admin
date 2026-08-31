@@ -1,3 +1,4 @@
 {
-  "entity.utopia_admin.stall_npc": "Vendeur"
+  "entity.utopia_admin.stall_npc": "Vendeur",
+  "block.utopia_admin.waystone": "Waystone"
 }

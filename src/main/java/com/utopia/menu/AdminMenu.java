@@ -120,6 +120,13 @@ public final class AdminMenu {
                     Icons.lore("Metiers, salaires quotidiens, employes, banquiers", ChatFormatting.GRAY),
                     com.utopia.job.JobMenus::open));
         }
+        if (Config.ADMIN_WAYSTONES.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_PEARL),
+                    Icons.label("Balises de voyage", ChatFormatting.AQUA),
+                    Icons.lore("Reseau de deplacement : distribuer, nommer, ouvrir a tous",
+                            ChatFormatting.GRAY),
+                    com.utopia.waystone.WaystoneMenus::openAdmin));
+        }
         if (Config.ADMIN_NPCS.get()) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARMOR_STAND),
                     Icons.label("Statues", ChatFormatting.LIGHT_PURPLE),

@@ -1,0 +1,36 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "utopia_admin:block/waystone_side",
+    "side": "utopia_admin:block/waystone_side",
+    "top": "utopia_admin:block/waystone_top"
+  },
+  "elements": [
+    {
+      "__comment": "Socle : il ancre la balise au sol au lieu de la faire flotter.",
+      "from": [2, 0, 2],
+      "to": [14, 3, 14],
+      "faces": {
+        "north": { "uv": [2, 13, 14, 16], "texture": "#side" },
+        "south": { "uv": [2, 13, 14, 16], "texture": "#side" },
+        "east":  { "uv": [2, 13, 14, 16], "texture": "#side" },
+        "west":  { "uv": [2, 13, 14, 16], "texture": "#side" },
+        "up":    { "uv": [2, 2, 14, 14], "texture": "#top" },
+        "down":  { "uv": [2, 2, 14, 14], "texture": "#top", "cullface": "down" }
+      }
+    },
+    {
+      "__comment": "Stele : la face nord porte la rune, elle regarde le poseur.",
+      "from": [4, 3, 4],
+      "to": [12, 16, 12],
+      "faces": {
+        "north": { "uv": [4, 0, 12, 13], "texture": "#side" },
+        "south": { "uv": [4, 0, 12, 13], "texture": "#side" },
+        "east":  { "uv": [4, 0, 12, 13], "texture": "#side" },
+        "west":  { "uv": [4, 0, 12, 13], "texture": "#side" },
+        "up":    { "uv": [4, 4, 12, 12], "texture": "#top" },
+        "down":  { "uv": [4, 4, 12, 12], "texture": "#top" }
+      }
+    }
+  ]
+}

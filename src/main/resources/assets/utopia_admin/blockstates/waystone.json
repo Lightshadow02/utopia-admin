@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "utopia_admin:block/waystone" },
+    "facing=east":  { "model": "utopia_admin:block/waystone", "y": 90 },
+    "facing=south": { "model": "utopia_admin:block/waystone", "y": 180 },
+    "facing=west":  { "model": "utopia_admin:block/waystone", "y": 270 }
+  }
+}

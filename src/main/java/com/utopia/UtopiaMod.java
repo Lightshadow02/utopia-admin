@@ -37,6 +37,8 @@ public final class UtopiaMod {
         com.utopia.sound.UtopiaSounds.register(modEventBus);
         // Enregistre les entites du mod (PNJ des stands de marche).
         com.utopia.entity.UtopiaEntities.register(modEventBus);
+        // Blocs du mod : aucune recette, ils se distribuent depuis l'administration.
+        com.utopia.block.UtopiaBlocks.register(modEventBus);
         // Enregistre les paquets reseau (menus owo-ui).
         modEventBus.addListener(com.utopia.net.UtopiaNet::onRegister);
         // Cote client uniquement : enregistre l'ecran custom du menu.
