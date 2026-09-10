@@ -619,7 +619,7 @@ public final class StructureMenus {
                     StructureData.get(sp.server).setDirty();
                     sp.sendSystemMessage(st.npcMongol
                             ? Messages.success("Rachat programme actif : ce marchand rachete les items du calendrier "
-                                    + "(1 Utopiece l'unite, quota " + MongolManager.DAILY_QUOTA + "/jour).")
+                                    + "(" + MongolManager.unitPrice() + " Utopiece l'unite, quota " + MongolManager.dailyQuota() + "/jour).")
                             : Messages.info("Rachat programme desactive."));
                     openShopAdmin(sp, name);
                 }));
@@ -632,7 +632,7 @@ public final class StructureMenus {
             rows.add(new OwoMenuServer.PanelRow(
                     Icons.label("Quota du jour", ChatFormatting.GRAY),
                     Icons.label(MongolManager.remaining(admin.server) + " / "
-                            + MongolManager.DAILY_QUOTA + " items", ChatFormatting.GOLD),
+                            + MongolManager.dailyQuota() + " items", ChatFormatting.GOLD),
                     null, null));
         }
 

@@ -28,18 +28,37 @@ public final class MongolManager {
 
     /**
      * Place quotidienne de chaque joueur : ces items ne touchent pas la reserve du serveur. Chacun
-     * peut donc toujours vendre ses 200 premiers items, quoi qu'aient fait les autres.
+     * peut donc toujours vendre sa part du jour, quoi qu'aient fait les autres.
      */
-    public static final int PERSONAL_QUOTA = 200;
+    public static int personalQuota() {
+        return com.utopia.Config.MERCHANT_PERSONAL_QUOTA.get();
+    }
+
     /**
      * Reserve commune : elle n'est entamee que par les <b>depassements</b> de la place quotidienne.
-     * Une fois vide, plus personne ne peut vendre au-dela de ses 200 items du jour.
+     * Une fois vide, plus personne ne peut vendre au-dela de sa place du jour.
      */
-    public static final int DAILY_QUOTA = 1000;
+    public static int dailyQuota() {
+        return com.utopia.Config.MERCHANT_DAILY_QUOTA.get();
+    }
+
     /** Prix paye par item. */
-    public static final int UNIT_PRICE = 1;
+    public static int unitPrice() {
+        return com.utopia.Config.MERCHANT_UNIT_PRICE.get();
+    }
+
+    /** Heure reelle (fuseau de Paris) du renouvellement, telle qu'on l'ecrit aux joueurs : "4h". */
+    public static String resetLabel() {
+        return com.utopia.Config.MERCHANT_RESET_HOUR.get() + "h";
+    }
 
     private static DailyCalendar calendar;
+
+    /**
+     * Vrai quand le changement d'etal du jour n'a pas encore pu etre pose : sa zone n'etait pas
+     * chargee a l'heure dite. On retente a chaque tick plutot que de sauter le jour.
+     */
+    private static boolean rotationPending;
 
     private MongolManager() {
     }
@@ -52,6 +71,9 @@ public final class MongolManager {
 
     public static synchronized DailyCalendar loadCalendar() {
         calendar = DailyCalendar.load(calendarPath());
+        // Appele au demarrage : un changement d'etal reste en attente d'une autre partie n'a plus
+        // lieu d'etre ici, c'est la journee du nouveau monde qui decide.
+        rotationPending = false;
         return calendar;
     }
 
@@ -66,10 +88,14 @@ public final class MongolManager {
         return calendar().getReward(date);
     }
 
-    /** Items acceptes aujourd'hui, sous forme de piles modeles (quantite 1). */
+    /**
+     * Items acceptes aujourd'hui, sous forme de piles modeles (quantite 1). La journee est celle du
+     * marchand, pas celle du calendrier : la liste change a la meme heure que ses quotas, sinon on
+     * lui apporterait a minuit des items qu'il ne peut plus payer.
+     */
     public static List<ItemStack> acceptedToday() {
         List<ItemStack> out = new ArrayList<>();
-        for (String spec : acceptedSpecs(LocalDate.now())) {
+        for (String spec : acceptedSpecs(LocalDate.ofEpochDay(merchantDay()))) {
             ItemStack stack = DailyManager.specToStack(spec);
             if (!stack.isEmpty()) {
                 out.add(stack.copyWithCount(1));
@@ -92,26 +118,24 @@ public final class MongolManager {
 
     /** Items deja rachetes aujourd'hui (apres recalage du jour). */
     public static int soldToday(MinecraftServer server) {
-        MongolData data = MongolData.get(server);
-        data.rollOver(LocalDate.now().toEpochDay());
-        return data.sold();
+        sync(server);
+        return MongolData.get(server).sold();
     }
 
     /** Reserve commune restante (elle ne sert qu'aux depassements de place quotidienne). */
     public static int remaining(MinecraftServer server) {
-        return Math.max(0, DAILY_QUOTA - soldToday(server));
+        return Math.max(0, dailyQuota() - soldToday(server));
     }
 
     /** Items deja vendus aujourd'hui par ce joueur (place quotidienne + depassements). */
     public static int personalSold(ServerPlayer player) {
-        MongolData data = MongolData.get(player.server);
-        data.rollOver(LocalDate.now().toEpochDay());
-        return data.personalSold(player.getUUID());
+        sync(player.server);
+        return MongolData.get(player.server).personalSold(player.getUUID());
     }
 
-    /** Place quotidienne restante de ce joueur (sur {@link #PERSONAL_QUOTA}). */
+    /** Place quotidienne restante de ce joueur (sur {@link #personalQuota()}). */
     public static int personalRemaining(ServerPlayer player) {
-        return Math.max(0, PERSONAL_QUOTA - personalSold(player));
+        return Math.max(0, personalQuota() - personalSold(player));
     }
 
     /**
@@ -151,21 +175,96 @@ public final class MongolManager {
     }
 
     public static void tick(MinecraftServer server) {
+        sync(server);
+        if (rotationPending) {
+            rotationPending = !rotateStructure(server);
+        }
+    }
+
+    /**
+     * Recale la journee du marchand si l'heure de renouvellement est passee, et joue une seule fois
+     * ce qui l'accompagne. <b>Toutes</b> les lectures de quota passent par ici : si seul le tick
+     * remettait les compteurs a zero, un simple coup d'oeil au menu consommerait le changement de
+     * jour avant lui, et ni l'etal ni l'annonce ne suivraient.
+     */
+    private static void sync(MinecraftServer server) {
         MongolData data = MongolData.get(server);
         // On n'annonce la reouverture que si la reserve avait reellement ete epuisee : pas de
         // message au tout premier demarrage, ni les jours ou le marchand n'a jamais ete rempli.
         boolean wasFull = data.initialized() && data.announced();
-        if (data.rollOver(merchantDay()) && wasFull) {
+        boolean firstDay = !data.initialized();
+        if (!data.rollOver(merchantDay())) {
+            return;
+        }
+        // Le marchand ne bouge pas : il retrouve simplement sa place, et son etal change de blocs.
+        if (!firstDay) {
+            rotationPending = !rotateStructure(server);
+        }
+        if (wasFull && com.utopia.Config.MERCHANT_ANNOUNCE.get()) {
             String name = merchantName(server);
             server.getPlayerList().broadcastSystemMessage(
                     Component.literal(name + " a de nouveau de la place : venez le voir !")
                             .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true))
-                            .append(Component.literal("\n" + PERSONAL_QUOTA
-                                            + " items du jour pour chacun, et " + DAILY_QUOTA
+                            .append(Component.literal("\n" + personalQuota()
+                                            + " items du jour pour chacun, et " + dailyQuota()
                                             + " items de reserve commune.")
                                     .withStyle(s -> s.withColor(ChatFormatting.GRAY).withBold(false))),
                     false);
         }
+    }
+
+    /**
+     * Fait passer l'etal du marchand a son etat suivant, une fois par jour a l'heure choisie. Le PNJ
+     * reste ou il est : on deplace aussi son etat d'apparition, sinon il disparaitrait avec l'ancien
+     * decor. Les structures en bascule automatique sont laissees tranquilles, leur mode (jour/nuit
+     * ou horaires du jeu) reprendrait la main dans la seconde.
+     */
+    private static boolean rotateStructure(MinecraftServer server) {
+        if (!com.utopia.Config.MERCHANT_ROTATE_STRUCTURE.get()) {
+            return true;
+        }
+        com.utopia.data.StructureData data = com.utopia.data.StructureData.get(server);
+        boolean changed = false;
+        boolean done = true;
+        for (com.utopia.data.StructureData.Struct st : data.all()) {
+            if (!st.npcMongol || st.mode != com.utopia.data.StructureData.Mode.MANUAL) {
+                continue;
+            }
+            int next = nextState(st);
+            if (next == st.current) {
+                continue; // un seul etat capture : rien a faire tourner
+            }
+            net.minecraft.server.level.ServerLevel level =
+                    StructureManager.resolveLevel(server, st.dim);
+            if (level == null || !level.isLoaded(st.min)) {
+                done = false; // zone non chargee : on retentera au prochain tick
+                continue;
+            }
+            boolean npcFollows = st.npcEnabled && st.npcState == st.current;
+            if (!StructureManager.applyAnimated(server, st, next)) {
+                done = false;
+                continue;
+            }
+            if (npcFollows) {
+                st.npcState = next;
+            }
+            changed = true;
+        }
+        if (changed) {
+            data.setDirty();
+        }
+        return done;
+    }
+
+    /** Etat capture suivant, en tournant en boucle sur les etats utilises de la structure. */
+    private static int nextState(com.utopia.data.StructureData.Struct st) {
+        for (int step = 1; step <= st.stateCount; step++) {
+            int slot = ((st.current - 1 + step) % st.stateCount) + 1;
+            if (st.hasState(slot)) {
+                return slot;
+            }
+        }
+        return st.current;
     }
 
     // ------------------------------------------------------------------ Vente
@@ -182,7 +281,7 @@ public final class MongolManager {
     /**
      * Vend jusqu'a {@code qty} exemplaires de {@code model} au marchand. La quantite reellement prise
      * est bornee par ce que le joueur possede, par sa place quotidienne, puis par la reserve commune :
-     * les {@link #PERSONAL_QUOTA} premiers items du joueur sont toujours rachetes, et seul le
+     * les premiers items du joueur (sa place quotidienne) sont toujours rachetes, et seul le
      * depassement entame la reserve du serveur.
      */
     public static Sale sell(ServerPlayer player, ItemStack model, int qty, String merchantName) {
@@ -212,7 +311,7 @@ public final class MongolManager {
         }
         // Si l'inventaire a bouge entre-temps, on impute d'abord a la place quotidienne.
         int reserveUsed = Math.max(0, removed - fromPersonal);
-        long paid = (long) removed * UNIT_PRICE;
+        long paid = (long) removed * unitPrice();
         EconomyManager.add(server, player.getUUID(), paid);
         MongolData data = MongolData.get(server);
         data.addPersonal(player.getUUID(), removed);
@@ -229,15 +328,20 @@ public final class MongolManager {
      */
     private static void announceIfFull(MinecraftServer server, String merchantName) {
         MongolData data = MongolData.get(server);
-        if (data.sold() < DAILY_QUOTA || data.announced()) {
+        if (data.sold() < dailyQuota() || data.announced()) {
             return;
         }
+        // Le drapeau est pose meme sans annonce : il sert aussi a savoir, au renouvellement,
+        // que la reserve avait bien ete epuisee.
         data.setAnnounced(true);
+        if (!com.utopia.Config.MERCHANT_ANNOUNCE.get()) {
+            return;
+        }
         String who = (merchantName == null || merchantName.isBlank()) ? "Le marchand" : merchantName;
         server.getPlayerList().broadcastSystemMessage(
                 Component.literal(who + " a rempli ses reserves pour aujourd'hui ! "
-                                + "Impossible de depasser vos " + PERSONAL_QUOTA
-                                + " de place quotidienne avant minuit.")
+                                + "Impossible de depasser vos " + personalQuota()
+                                + " de place quotidienne avant " + resetLabel() + ".")
                         .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true)), false);
     }
 

@@ -188,6 +188,12 @@ public final class ParcelManager {
     public static Parcel.Flag requiredInteractFlag(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         Block block = state.getBlock();
+        // Liste tenue par l'admin (config parcel.restrictedBlocks) : elle passe avant tout le reste,
+        // c'est ce qui lui permet aussi de reclasser un bloc que la detection automatique range mal.
+        Parcel.Flag declared = RestrictedBlocks.flagFor(state);
+        if (declared != null) {
+            return declared;
+        }
         // Blocs du mod Create : geres par leur propre permission.
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
         if (blockId != null && "create".equals(blockId.getNamespace())) {

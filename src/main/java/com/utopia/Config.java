@@ -65,6 +65,8 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue PARCEL_PROTECT_ENTITIES;
     public static final ModConfigSpec.ConfigValue<String> PARCEL_HABITATION_ITEM;
     public static final ModConfigSpec.ConfigValue<String> PARCEL_COMMERCE_ITEM;
+    /** Blocs proteges par une permission de parcelle en plus de ceux detectes automatiquement. */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> PARCEL_RESTRICTED_BLOCKS;
 
     // Chambres d'auberge
     public static final ModConfigSpec.ConfigValue<String> ROOM_WAND_ITEM;
@@ -115,6 +117,11 @@ public final class Config {
 
     /** Heure a laquelle le marchand ambulant retrouve sa place (0-23, heure de Paris). */
     public static final ModConfigSpec.IntValue MERCHANT_RESET_HOUR;
+    public static final ModConfigSpec.IntValue MERCHANT_PERSONAL_QUOTA;
+    public static final ModConfigSpec.IntValue MERCHANT_DAILY_QUOTA;
+    public static final ModConfigSpec.IntValue MERCHANT_UNIT_PRICE;
+    public static final ModConfigSpec.BooleanValue MERCHANT_ANNOUNCE;
+    public static final ModConfigSpec.BooleanValue MERCHANT_ROTATE_STRUCTURE;
 
     public static final ModConfigSpec SPEC;
 
@@ -258,6 +265,23 @@ public final class Config {
         PARCEL_COMMERCE_ITEM = BUILDER
                 .comment("Item exige (et consomme) pour acheter une parcelle Commerce. Vide pour ne rien exiger.")
                 .define("commerceItem", "utopiamods:licencecommerciale");
+        PARCEL_RESTRICTED_BLOCKS = BUILDER
+                .comment("Blocs interdits aux joueurs qui n'ont pas la permission indiquee sur la parcelle.",
+                        "A remplir librement : un bloc par ligne, \"modid:bloc | PERMISSION\".",
+                        "Permissions possibles : BUILD, CONTAINERS, DOORS, MACHINES, CREATE.",
+                        "Sans permission indiquee, CONTAINERS est utilise (droit d'ouvrir les coffres).",
+                        "Sert aux blocs que le mod ne peut pas deviner seul : un terminal de stockage",
+                        "n'est pas un coffre pour Minecraft, il donne pourtant acces a tous les coffres.",
+                        "Cette liste passe avant la detection automatique : elle permet aussi de",
+                        "reclasser un bloc deja protege (mettre un bloc Create sous CONTAINERS...).")
+                .defineListAllowEmpty("restrictedBlocks",
+                        List.of("toms_storage:storage_terminal | CONTAINERS",
+                                "toms_storage:crafting_terminal | CONTAINERS",
+                                "toms_storage:inventory_connector | CONTAINERS",
+                                "toms_storage:inventory_proxy | CONTAINERS",
+                                "toms_storage:level_emitter | MACHINES"),
+                        () -> "modid:bloc | CONTAINERS",
+                        Config::validateRestrictedBlock);
         BUILDER.pop();
 
         BUILDER.comment("Marche flottant (stands tenus par les joueurs).").push("market");
@@ -339,12 +363,37 @@ public final class Config {
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
 
-        BUILDER.comment("Marchand ambulant : le PNJ qui rachete les items du jour.").push("merchant");
+        BUILDER.comment("Marchand ambulant : le PNJ qui rachete les items du jour.",
+                        "Sa liste d'items se regle a part, dans config/utopia_admin/mongol_calendar.json.")
+                .push("merchant");
         MERCHANT_RESET_HOUR = BUILDER
-                .comment("Heure a laquelle il retrouve sa place quotidienne et sa reserve commune,",
-                        "en heure de Paris. 0 = minuit. Une annonce part sur le serveur a ce moment",
-                        "si sa reserve avait ete epuisee.")
+                .comment("Heure REELLE (horloge du monde reel, fuseau de Paris) a laquelle il retrouve",
+                        "sa place quotidienne et sa reserve commune. 0 = minuit, 4 = 4h du matin.",
+                        "C'est le seul moment de la journee ou les compteurs repartent a zero :",
+                        "epuiser la reserve ne la renouvelle pas, il faut attendre cette heure.")
                 .defineInRange("resetHour", 0, 0, 23);
+        MERCHANT_PERSONAL_QUOTA = BUILDER
+                .comment("Place quotidienne de chaque joueur : ces items ne touchent pas la reserve",
+                        "commune. Chacun peut donc toujours vendre ce nombre d'items par jour,",
+                        "quoi qu'aient fait les autres.")
+                .defineInRange("personalQuota", 200, 0, 1_000_000);
+        MERCHANT_DAILY_QUOTA = BUILDER
+                .comment("Reserve commune au serveur, entamee uniquement par les depassements de la",
+                        "place quotidienne. 0 = personne ne peut vendre au-dela de sa place du jour.")
+                .defineInRange("dailyQuota", 1000, 0, 100_000_000);
+        MERCHANT_UNIT_PRICE = BUILDER
+                .comment("Utopieces payees par item rachete.")
+                .defineInRange("unitPrice", 1, 1, 1_000_000);
+        MERCHANT_ANNOUNCE = BUILDER
+                .comment("Annoncer sur le serveur quand sa reserve est epuisee, puis quand elle est",
+                        "renouvelee a l'heure ci-dessus.")
+                .define("announce", true);
+        MERCHANT_ROTATE_STRUCTURE = BUILDER
+                .comment("A cette meme heure, sa structure passe a l'etat suivant : le marchand ne",
+                        "bouge pas, c'est son etal qui change de blocs chaque jour. La structure doit",
+                        "etre en mode Manuel (les modes Jour/nuit et Horaires suivent le temps du jeu",
+                        "et reprendraient la main aussitot).")
+                .define("rotateStructure", true);
         BUILDER.pop(); // merchant
 
         SPEC = BUILDER.build();
@@ -380,6 +429,31 @@ public final class Config {
             }
         }
         return true;
+    }
+
+    /**
+     * Valide une entree "modid:bloc | PERMISSION" : l'identifiant doit etre bien forme et la
+     * permission, si elle est ecrite, doit exister. Le bloc lui-meme n'est pas verifie dans le
+     * registre : on veut pouvoir preparer la ligne d'un mod qui n'est pas encore installe.
+     */
+    private static boolean validateRestrictedBlock(final Object obj) {
+        if (!(obj instanceof String raw)) {
+            return false;
+        }
+        String[] fields = raw.split("\\|", -1);
+        if (ResourceLocation.tryParse(fields[0].trim()) == null) {
+            return false;
+        }
+        if (fields.length < 2 || fields[1].trim().isEmpty()) {
+            return true; // permission omise : CONTAINERS par defaut
+        }
+        String flag = fields[1].trim().toUpperCase(java.util.Locale.ROOT);
+        for (com.utopia.parcel.Parcel.Flag f : com.utopia.parcel.Parcel.Flag.values()) {
+            if (f.name().equals(flag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Valide une entree de serveur : le nom dans le proxy est obligatoire, le reste facultatif. */

@@ -54,7 +54,7 @@ public final class ShopMenus {
             int sellable = MongolManager.sellableFor(player);
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.CHEST),
                     Icons.label("Lui vendre des items", ChatFormatting.GREEN),
-                    Icons.lore("1 item = " + MongolManager.UNIT_PRICE + " Utopiece - tu peux en vendre "
+                    Icons.lore("1 item = " + MongolManager.unitPrice() + " Utopiece - tu peux en vendre "
                             + sellable + " aujourd'hui",
                             sellable > 0 ? ChatFormatting.GRAY : ChatFormatting.RED),
                     sp -> MongolMenus.openSell(sp, structName)));

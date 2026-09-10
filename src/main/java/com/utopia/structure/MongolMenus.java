@@ -51,16 +51,18 @@ public final class MongolMenus {
         Component title = Component.literal(merchantName)
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true));
         List<Component> stats = new ArrayList<>();
-        stats.add(Component.literal("Il rachete 1 item = " + MongolManager.UNIT_PRICE + " Utopiece")
+        stats.add(Component.literal("Il rachete 1 item = " + MongolManager.unitPrice() + " Utopiece")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
         stats.add(Component.literal("Ta place quotidienne : " + mine
-                        + " / " + MongolManager.PERSONAL_QUOTA + " items")
+                        + " / " + MongolManager.personalQuota() + " items")
                 .withStyle(s -> s.withColor(mine > 0 ? ChatFormatting.GREEN : ChatFormatting.YELLOW)
                         .withItalic(false)));
         stats.add(Component.literal("Reserve du serveur (au-dela) : " + reserve
-                        + " / " + MongolManager.DAILY_QUOTA + " items")
+                        + " / " + MongolManager.dailyQuota() + " items")
                 .withStyle(s -> s.withColor(reserve > 0 ? ChatFormatting.AQUA : ChatFormatting.RED)
                         .withItalic(false)));
+        stats.add(Component.literal("Tout repart a " + MongolManager.resetLabel() + " (heure reelle)")
+                .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
         if (accepted.isEmpty()) {
             stats.add(Component.literal("Il ne cherche rien de particulier aujourd'hui.")
                     .withStyle(s -> s.withColor(ChatFormatting.DARK_GRAY).withItalic(false)));
@@ -88,9 +90,9 @@ public final class MongolMenus {
         int reserve = MongolManager.remaining(player.server);
         int sellable = mine + reserve;
         if (sellable <= 0) {
-            player.sendSystemMessage(Messages.warn("Tu as utilise tes " + MongolManager.PERSONAL_QUOTA
+            player.sendSystemMessage(Messages.warn("Tu as utilise tes " + MongolManager.personalQuota()
                     + " de place quotidienne et les reserves du marchand sont pleines : "
-                    + "impossible de depasser avant minuit."));
+                    + "impossible de depasser avant " + MongolManager.resetLabel() + "."));
             openSell(player, structName);
             return;
         }
@@ -103,7 +105,7 @@ public final class MongolMenus {
         int max = Math.min(owned, sellable);
         String label = model.getHoverName().getString();
         Menus.promptAmount(player, Icons.label("Vendre : " + label, ChatFormatting.GOLD),
-                List.of(Icons.lore("Le marchand paie " + MongolManager.UNIT_PRICE + " Utopiece par item",
+                List.of(Icons.lore("Le marchand paie " + MongolManager.unitPrice() + " Utopiece par item",
                                 ChatFormatting.GRAY),
                         Icons.lore("Tu en possedes " + owned + " - ta place quotidienne : " + mine,
                                 ChatFormatting.DARK_GRAY),
@@ -115,7 +117,7 @@ public final class MongolMenus {
                     switch (sale.result()) {
                         case QUOTA_FULL -> player.sendSystemMessage(Messages.warn(
                                 "Reserves pleines : impossible de depasser tes "
-                                        + MongolManager.PERSONAL_QUOTA + " de place quotidienne avant minuit."));
+                                        + MongolManager.personalQuota() + " de place quotidienne avant " + MongolManager.resetLabel() + "."));
                         case NOT_ACCEPTED -> player.sendSystemMessage(Messages.warn(
                                 "Le marchand ne veut plus de cet objet aujourd'hui."));
                         case NONE_OWNED -> player.sendSystemMessage(Messages.warn("Tu n'as pas cet objet."));
@@ -189,8 +191,8 @@ public final class MongolMenus {
         List<Component> help = List.of(
                 Component.literal("Clic sur un jour : choisir les items rachetes ce jour-la")
                         .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withItalic(false)),
-                Component.literal("1 item = " + MongolManager.UNIT_PRICE + " Utopiece | quota "
-                                + MongolManager.DAILY_QUOTA + " items/jour (serveur)")
+                Component.literal("1 item = " + MongolManager.unitPrice() + " Utopiece | quota "
+                                + MongolManager.dailyQuota() + " items/jour (serveur)")
                         .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false)));
 
         OwoMenuServer.openScreen(admin, gui, sid -> MenuS2CPayload.of(new OpenDailyPayload(

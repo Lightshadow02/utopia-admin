@@ -660,7 +660,7 @@ public final class StructureManager {
                 pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 1, 0, 0, 0, 0);
     }
 
-    private static ServerLevel resolveLevel(MinecraftServer server, String dim) {
+    static ServerLevel resolveLevel(MinecraftServer server, String dim) {
         ResourceLocation loc = ResourceLocation.tryParse(dim == null ? "" : dim);
         return loc == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, loc));
     }
