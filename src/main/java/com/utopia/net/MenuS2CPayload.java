@@ -26,6 +26,7 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
     public static final int OPEN_PANEL = 6;
     public static final int OPEN_PROGRESS = 7;
     public static final int OPEN_TABLE = 8;
+    public static final int OPEN_ARCADE = 9;
 
     public static final Type<MenuS2CPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(UtopiaMod.MODID, "menu_s2c"));
@@ -45,6 +46,7 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
             case OPEN_PANEL -> OpenPanelPayload.STREAM_CODEC.encode(buf, (OpenPanelPayload) p.data);
             case OPEN_PROGRESS -> OpenProgressPayload.STREAM_CODEC.encode(buf, (OpenProgressPayload) p.data);
             case OPEN_TABLE -> OpenTablePayload.STREAM_CODEC.encode(buf, (OpenTablePayload) p.data);
+            case OPEN_ARCADE -> OpenArcadePayload.STREAM_CODEC.encode(buf, (OpenArcadePayload) p.data);
             default -> throw new IllegalStateException("Variante S2C inconnue : " + p.kind);
         }
     }
@@ -61,6 +63,7 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
             case OPEN_PANEL -> OpenPanelPayload.STREAM_CODEC.decode(buf);
             case OPEN_PROGRESS -> OpenProgressPayload.STREAM_CODEC.decode(buf);
             case OPEN_TABLE -> OpenTablePayload.STREAM_CODEC.decode(buf);
+            case OPEN_ARCADE -> OpenArcadePayload.STREAM_CODEC.decode(buf);
             default -> throw new IllegalStateException("Variante S2C inconnue : " + kind);
         };
         return new MenuS2CPayload(kind, data);
@@ -100,6 +103,10 @@ public record MenuS2CPayload(int kind, CustomPacketPayload data) implements Cust
 
     public static MenuS2CPayload of(OpenTablePayload p) {
         return new MenuS2CPayload(OPEN_TABLE, p);
+    }
+
+    public static MenuS2CPayload of(OpenArcadePayload p) {
+        return new MenuS2CPayload(OPEN_ARCADE, p);
     }
 
     @Override

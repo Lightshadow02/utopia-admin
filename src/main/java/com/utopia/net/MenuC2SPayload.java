@@ -19,6 +19,7 @@ public record MenuC2SPayload(int kind, CustomPacketPayload data) implements Cust
     public static final int CLICK = 0;
     public static final int AMOUNT = 1;
     public static final int TEXT = 2;
+    public static final int ARCADE_SCORE = 3;
 
     public static final Type<MenuC2SPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(UtopiaMod.MODID, "menu_c2s"));
@@ -32,6 +33,7 @@ public record MenuC2SPayload(int kind, CustomPacketPayload data) implements Cust
             case CLICK -> MenuClickPayload.STREAM_CODEC.encode(buf, (MenuClickPayload) p.data);
             case AMOUNT -> AmountResultPayload.STREAM_CODEC.encode(buf, (AmountResultPayload) p.data);
             case TEXT -> TextResultPayload.STREAM_CODEC.encode(buf, (TextResultPayload) p.data);
+            case ARCADE_SCORE -> ArcadeScorePayload.STREAM_CODEC.encode(buf, (ArcadeScorePayload) p.data);
             default -> throw new IllegalStateException("Variante C2S inconnue : " + p.kind);
         }
     }
@@ -42,6 +44,7 @@ public record MenuC2SPayload(int kind, CustomPacketPayload data) implements Cust
             case CLICK -> MenuClickPayload.STREAM_CODEC.decode(buf);
             case AMOUNT -> AmountResultPayload.STREAM_CODEC.decode(buf);
             case TEXT -> TextResultPayload.STREAM_CODEC.decode(buf);
+            case ARCADE_SCORE -> ArcadeScorePayload.STREAM_CODEC.decode(buf);
             default -> throw new IllegalStateException("Variante C2S inconnue : " + kind);
         };
         return new MenuC2SPayload(kind, data);
@@ -57,6 +60,10 @@ public record MenuC2SPayload(int kind, CustomPacketPayload data) implements Cust
 
     public static MenuC2SPayload of(TextResultPayload p) {
         return new MenuC2SPayload(TEXT, p);
+    }
+
+    public static MenuC2SPayload of(ArcadeScorePayload p) {
+        return new MenuC2SPayload(ARCADE_SCORE, p);
     }
 
     @Override

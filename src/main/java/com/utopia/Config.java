@@ -115,6 +115,10 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_NPCS;
     public static final ModConfigSpec.BooleanValue ADMIN_WAYSTONES;
 
+    /** Salle d'arcade : bornes de jeu posees dans le monde. */
+    public static final ModConfigSpec.BooleanValue CASINO_ENABLED;
+    public static final ModConfigSpec.BooleanValue CASINO_REVENUE_TO_MAIRIE;
+
     /** Modules du menu du maire : un module retire ici disparait de /maire. */
     public static final ModConfigSpec.BooleanValue MAIRIE_TAXES;
     public static final ModConfigSpec.BooleanValue MAIRIE_LEADERBOARD;
@@ -367,6 +371,22 @@ public final class Config {
         ADMIN_WAYSTONES = BUILDER.comment("Bouton \"Balises de voyage\".").define("waystones", true);
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
+
+        BUILDER.comment("Salle d'arcade : bornes de jeu posees sur n'importe quel bloc.",
+                        "On ne gagne rien a l'arcade : les Utopieces glissees dans une borne",
+                        "quittent la poche du joueur pour de bon. Une borne qui rembourse devient",
+                        "une imprimante a billets des qu'un joueur maitrise le jeu.")
+                .push("casino");
+        CASINO_ENABLED = BUILDER
+                .comment("Activer la salle d'arcade. A false, les bornes posees ne repondent plus",
+                        "au clic droit et /casino n'est plus proposee.")
+                .define("enabled", true);
+        CASINO_REVENUE_TO_MAIRIE = BUILDER
+                .comment("Les parties payees vont a la caisse de la mairie. A false, les Utopieces",
+                        "sont detruites : la salle devient un puits qui retire de la monnaie de",
+                        "l'economie au lieu de la deplacer.")
+                .define("revenueToMairie", true);
+        BUILDER.pop(); // casino
 
         BUILDER.comment("Menu du maire (/maire). Ces modules sont pilotes en jeu par le maire elu ;",
                         "les retirer ici les lui retire, y compris ce qu'il avait deja regle.")

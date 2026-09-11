@@ -40,6 +40,8 @@ public final class UtopiaNet {
                         com.utopia.client.owo.OwoMenuClient.handleProgress((OpenProgressPayload) payload.data(), context);
                 case MenuS2CPayload.OPEN_TABLE ->
                         com.utopia.client.owo.OwoMenuClient.handleTable((OpenTablePayload) payload.data(), context);
+                case MenuS2CPayload.OPEN_ARCADE ->
+                        com.utopia.client.owo.OwoMenuClient.handleArcade((OpenArcadePayload) payload.data(), context);
                 default -> { /* variante inconnue : ignore */ }
             }
         });
@@ -50,6 +52,8 @@ public final class UtopiaNet {
                 case MenuC2SPayload.CLICK -> OwoMenuServer.handleClick((MenuClickPayload) payload.data(), context);
                 case MenuC2SPayload.AMOUNT -> OwoMenuServer.handleAmount((AmountResultPayload) payload.data(), context);
                 case MenuC2SPayload.TEXT -> OwoMenuServer.handleText((TextResultPayload) payload.data(), context);
+                case MenuC2SPayload.ARCADE_SCORE ->
+                        com.utopia.casino.CasinoManager.handleScore((ArcadeScorePayload) payload.data(), context);
                 default -> { /* variante inconnue : ignore */ }
             }
         });

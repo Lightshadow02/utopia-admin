@@ -90,6 +90,16 @@ public final class OwoMenuClient {
         });
     }
 
+    public static void handleArcade(com.utopia.net.OpenArcadePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            // Meme echelle fixe que les menus : une borne dessinee a l'echelle 4 perd la moitie de
+            // son terrain, et le jeu n'est plus le meme d'un joueur a l'autre.
+            GuiScaleLock.apply();
+            Minecraft.getInstance().setScreen(
+                    new com.utopia.client.arcade.ArcadeScreen(payload));
+        });
+    }
+
     public static void handleAmountPrompt(OpenAmountPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             // L'echelle est fixee avant la creation de l'ecran : la poser depuis build()

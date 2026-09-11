@@ -81,6 +81,7 @@ public final class UtopiaEvents {
         com.utopia.command.SavingsCommand.register(dispatcher);
         com.utopia.command.QuoteCommand.register(dispatcher);
         com.utopia.command.BetCommand.register(dispatcher);
+        com.utopia.command.CasinoCommand.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -102,6 +103,23 @@ public final class UtopiaEvents {
             // Si on casse un bloc d'acces enregistre, on le retire de la liste.
             if (RoomData.get(level.getServer()).isAubergeBlock(dim, pos)) {
                 RoomData.get(level.getServer()).removeAubergeBlock(dim, pos);
+            }
+            // Mode "poser une borne d'arcade" : ce bloc devient une borne. Meme geste que pour un
+            // stand de marche, pour que le gerant n'ait pas deux conventions a retenir.
+            String arcadeGame = com.utopia.casino.CasinoManager.placingGame(sp.getUUID());
+            if (arcadeGame != null) {
+                com.utopia.casino.CasinoManager.clearPlacing(sp.getUUID());
+                com.utopia.data.CasinoData.get(level.getServer()).addMachine(dim, pos, arcadeGame);
+                event.setCanceled(true);
+                sp.sendSystemMessage(Messages.success(
+                        "Borne posee ! Les joueurs feront clic droit dessus pour jouer."));
+                return;
+            }
+            // Si on casse une borne enregistree, elle disparait de la salle.
+            com.utopia.data.CasinoData casino = com.utopia.data.CasinoData.get(level.getServer());
+            com.utopia.data.CasinoData.Machine broken = casino.machineAt(dim, pos);
+            if (broken != null) {
+                casino.removeMachine(broken.key());
             }
             // Mode "definir un stand de marche" : ce bloc devient un emplacement de vente.
             if (com.utopia.market.MarketManager.isSelectingStall(sp.getUUID())) {
@@ -205,6 +223,16 @@ public final class UtopiaEvents {
                     + " (valide dans /admin -> Structures)"));
             event.setCanceled(true);
             return;
+        }
+        // Borne d'arcade : clic droit -> prix, record, et le bouton pour jouer.
+        if (Config.CASINO_ENABLED.get()) {
+            com.utopia.data.CasinoData.Machine machine = com.utopia.data.CasinoData
+                    .get(level.getServer()).machineAt(level.dimension().location(), pos);
+            if (machine != null) {
+                com.utopia.casino.CasinoMenus.openMachine(sp, machine);
+                event.setCanceled(true);
+                return;
+            }
         }
         // Stand de marche : clic droit -> reserver / gerer / acheter.
         com.utopia.data.MarketData.Stall stall =
@@ -417,6 +445,10 @@ public final class UtopiaEvents {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         // Cet event est emis AVANT la sauvegarde de l'inventaire : on rend ici les items eventuellement
         // deposes dans l'editeur de recompenses (sinon ils seraient perdus, removed() n'etant pas appele).
+        if (event.getEntity() instanceof ServerPlayer leaving) {
+            // Une partie d'arcade laissee ouverte n'a plus d'objet : son score n'arrivera jamais.
+            com.utopia.casino.CasinoManager.onLogout(leaving);
+        }
         if (event.getEntity() instanceof ServerPlayer sp) {
             if (sp.containerMenu instanceof UtopiaMenu menu) {
                 menu.handleLogout(sp);
