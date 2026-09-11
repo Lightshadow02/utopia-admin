@@ -49,6 +49,9 @@ public final class CasinoManager {
             new Game("breakout", "Casse-briques", "Renvoie la balle, casse le mur",
                     Items.ORANGE_DYE, 500_000L));
 
+    /** Sentinelle de pose : ce n'est pas un jeu, c'est une machine a capsules. */
+    public static final String GACHA_ID = "gacha";
+
     public static Game game(String id) {
         for (Game g : GAMES) {
             if (g.id().equals(id)) {

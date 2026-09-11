@@ -34,13 +34,39 @@ public final class CasinoData extends SavedData {
     /** Scores gardes par jeu : au-dela, le tableau ne se lit plus et le fichier gonfle. */
     public static final int MAX_SCORES = 25;
 
-    /** Une borne posee dans le monde : un bloc, un jeu, un prix. */
+    /** Ce que fait une machine posee sur un bloc. */
+    public enum Kind {
+        ARCADE, GACHA
+    }
+
+    /** Ce qu'une machine a capsules peut cracher. */
+    public enum Content {
+        TETES("Tetes de joueurs"),
+        CARTES("Cartes a collectionner"),
+        TOUT("Tetes et cartes");
+
+        public final String label;
+
+        Content(String label) {
+            this.label = label;
+        }
+
+        public Content next() {
+            return values()[(ordinal() + 1) % values().length];
+        }
+    }
+
+    /** Une machine posee dans le monde : un bloc, un role, un prix. */
     public static final class Machine {
         public final String dim;
         public final int x;
         public final int y;
         public final int z;
+        public Kind kind = Kind.ARCADE;
+        /** Borne d'arcade : le jeu. Machine a capsules : ignore. */
         public String gameId;
+        /** Machine a capsules : ce qu'elle distribue. */
+        public Content content = Content.TOUT;
         /** Nom affiche sur la borne ; vide = le nom du jeu. */
         public String label = "";
         /** Utopieces exigees par partie. 0 = gratuit. */
@@ -68,6 +94,17 @@ public final class CasinoData extends SavedData {
     }
 
     private final Map<String, Machine> machines = new LinkedHashMap<>();
+    /** Rarete choisie pour une carte ; absente = commune. */
+    private final Map<String, com.utopia.casino.GachaCards.Rarity> cardRarity = new LinkedHashMap<>();
+    /**
+     * Tout joueur deja venu sur le serveur, avec son pseudo. C'est le vivier des tetes : une
+     * machine a capsules distribue les visages du serveur, pas ceux d'une liste ecrite a la main.
+     */
+    private final Map<UUID, String> knownPlayers = new LinkedHashMap<>();
+    /** Cartes possedees par joueur. */
+    private final Map<UUID, java.util.Set<String>> cardsOwned = new LinkedHashMap<>();
+    /** Tetes possedees par joueur (uuid du visage collectionne). */
+    private final Map<UUID, java.util.Set<UUID>> headsOwned = new LinkedHashMap<>();
     /** Identifiant de jeu -> meilleurs scores, du plus fort au plus faible. */
     private final Map<String, List<Score>> scores = new LinkedHashMap<>();
     /** Gerants : ils ouvrent /casino sans etre operateurs. */
@@ -143,6 +180,65 @@ public final class CasinoData extends SavedData {
         return n;
     }
 
+    // -------- Cartes et collections --------
+
+    public com.utopia.casino.GachaCards.Rarity rarity(String cardId) {
+        return cardRarity.getOrDefault(cardId, com.utopia.casino.GachaCards.Rarity.COMMUNE);
+    }
+
+    public void setRarity(String cardId, com.utopia.casino.GachaCards.Rarity rarity) {
+        if (rarity == null || rarity == com.utopia.casino.GachaCards.Rarity.COMMUNE) {
+            cardRarity.remove(cardId);
+        } else {
+            cardRarity.put(cardId, rarity);
+        }
+        setDirty();
+    }
+
+    /** A la connexion : le joueur entre au vivier des tetes, et son pseudo est rafraichi. */
+    public void remember(UUID player, String name) {
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        if (!name.equals(knownPlayers.put(player, name))) {
+            setDirty();
+        }
+    }
+
+    public Map<UUID, String> knownPlayers() {
+        return java.util.Collections.unmodifiableMap(knownPlayers);
+    }
+
+    public java.util.Set<String> cardsOf(UUID player) {
+        return java.util.Collections.unmodifiableSet(
+                cardsOwned.getOrDefault(player, java.util.Set.of()));
+    }
+
+    public java.util.Set<UUID> headsOf(UUID player) {
+        return java.util.Collections.unmodifiableSet(
+                headsOwned.getOrDefault(player, java.util.Set.of()));
+    }
+
+    /** Inscrit une carte a la collection ; renvoie vrai si c'est une premiere. */
+    public boolean collectCard(UUID player, String cardId) {
+        boolean nouveau = cardsOwned.computeIfAbsent(player, k -> new java.util.LinkedHashSet<>())
+                .add(cardId);
+        if (nouveau) {
+            setDirty();
+        }
+        return nouveau;
+    }
+
+    /** Inscrit une tete a la collection ; renvoie vrai si c'est une premiere. */
+    public boolean collectHead(UUID player, UUID face) {
+        boolean nouveau = headsOwned.computeIfAbsent(player, k -> new java.util.LinkedHashSet<>())
+                .add(face);
+        if (nouveau) {
+            setDirty();
+        }
+        return nouveau;
+    }
+
     // -------- Scores --------
 
     public List<Score> scores(String gameId) {
@@ -202,6 +298,18 @@ public final class CasinoData extends SavedData {
 
     // -------- Serialisation --------
 
+    /** Lit un enum sauvegarde ; une valeur disparue d'une version a l'autre ne doit pas tout casser. */
+    private static <E extends Enum<E>> E enumOr(Class<E> type, String name, E fallback) {
+        if (name == null || name.isEmpty()) {
+            return fallback;
+        }
+        try {
+            return Enum.valueOf(type, name);
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
     public static CasinoData load(CompoundTag tag, HolderLookup.Provider registries) {
         CasinoData data = new CasinoData();
         ListTag list = tag.getList("machines", Tag.TAG_COMPOUND);
@@ -211,7 +319,56 @@ public final class CasinoData extends SavedData {
                     m.getInt("z"), m.getString("game"));
             machine.label = m.getString("label");
             machine.cost = m.getLong("cost");
+            machine.kind = enumOr(Kind.class, m.getString("kind"), Kind.ARCADE);
+            machine.content = enumOr(Content.class, m.getString("content"), Content.TOUT);
             data.machines.put(machine.key(), machine);
+        }
+        CompoundTag rarities = tag.getCompound("cardRarity");
+        for (String cardId : rarities.getAllKeys()) {
+            com.utopia.casino.GachaCards.Rarity r = enumOr(
+                    com.utopia.casino.GachaCards.Rarity.class, rarities.getString(cardId), null);
+            if (r != null) {
+                data.cardRarity.put(cardId, r);
+            }
+        }
+        ListTag known = tag.getList("known", Tag.TAG_COMPOUND);
+        for (int i = 0; i < known.size(); i++) {
+            CompoundTag k = known.getCompound(i);
+            try {
+                data.knownPlayers.put(UUID.fromString(k.getString("uuid")), k.getString("name"));
+            } catch (IllegalArgumentException ignored) {
+                // uuid corrompu
+            }
+        }
+        ListTag collections = tag.getList("collections", Tag.TAG_COMPOUND);
+        for (int i = 0; i < collections.size(); i++) {
+            CompoundTag c = collections.getCompound(i);
+            UUID owner;
+            try {
+                owner = UUID.fromString(c.getString("uuid"));
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+            ListTag cards = c.getList("cards", Tag.TAG_STRING);
+            if (!cards.isEmpty()) {
+                java.util.Set<String> set = new java.util.LinkedHashSet<>();
+                for (int j = 0; j < cards.size(); j++) {
+                    set.add(cards.getString(j));
+                }
+                data.cardsOwned.put(owner, set);
+            }
+            ListTag heads = c.getList("heads", Tag.TAG_STRING);
+            if (!heads.isEmpty()) {
+                java.util.Set<UUID> set = new java.util.LinkedHashSet<>();
+                for (int j = 0; j < heads.size(); j++) {
+                    try {
+                        set.add(UUID.fromString(heads.getString(j)));
+                    } catch (IllegalArgumentException ignored) {
+                        // uuid corrompu
+                    }
+                }
+                data.headsOwned.put(owner, set);
+            }
         }
         CompoundTag boards = tag.getCompound("scores");
         for (String gameId : boards.getAllKeys()) {
@@ -251,9 +408,46 @@ public final class CasinoData extends SavedData {
             c.putString("game", m.gameId);
             c.putString("label", m.label == null ? "" : m.label);
             c.putLong("cost", m.cost);
+            c.putString("kind", m.kind.name());
+            c.putString("content", m.content.name());
             list.add(c);
         }
         tag.put("machines", list);
+
+        CompoundTag rarities = new CompoundTag();
+        for (Map.Entry<String, com.utopia.casino.GachaCards.Rarity> e : cardRarity.entrySet()) {
+            rarities.putString(e.getKey(), e.getValue().name());
+        }
+        tag.put("cardRarity", rarities);
+
+        ListTag known = new ListTag();
+        for (Map.Entry<UUID, String> e : knownPlayers.entrySet()) {
+            CompoundTag k = new CompoundTag();
+            k.putString("uuid", e.getKey().toString());
+            k.putString("name", e.getValue());
+            known.add(k);
+        }
+        tag.put("known", known);
+
+        ListTag collections = new ListTag();
+        java.util.Set<UUID> owners = new java.util.LinkedHashSet<>(cardsOwned.keySet());
+        owners.addAll(headsOwned.keySet());
+        for (UUID owner : owners) {
+            CompoundTag c = new CompoundTag();
+            c.putString("uuid", owner.toString());
+            ListTag cards = new ListTag();
+            for (String id : cardsOwned.getOrDefault(owner, java.util.Set.of())) {
+                cards.add(net.minecraft.nbt.StringTag.valueOf(id));
+            }
+            c.put("cards", cards);
+            ListTag heads = new ListTag();
+            for (UUID face : headsOwned.getOrDefault(owner, java.util.Set.of())) {
+                heads.add(net.minecraft.nbt.StringTag.valueOf(face.toString()));
+            }
+            c.put("heads", heads);
+            collections.add(c);
+        }
+        tag.put("collections", collections);
 
         CompoundTag boards = new CompoundTag();
         for (Map.Entry<String, List<Score>> e : scores.entrySet()) {

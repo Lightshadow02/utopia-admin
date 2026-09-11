@@ -109,10 +109,17 @@ public final class UtopiaEvents {
             String arcadeGame = com.utopia.casino.CasinoManager.placingGame(sp.getUUID());
             if (arcadeGame != null) {
                 com.utopia.casino.CasinoManager.clearPlacing(sp.getUUID());
-                com.utopia.data.CasinoData.get(level.getServer()).addMachine(dim, pos, arcadeGame);
+                com.utopia.data.CasinoData.Machine posee = com.utopia.data.CasinoData
+                        .get(level.getServer()).addMachine(dim, pos, arcadeGame);
+                boolean capsule = com.utopia.casino.CasinoManager.GACHA_ID.equals(arcadeGame);
+                if (capsule) {
+                    posee.kind = com.utopia.data.CasinoData.Kind.GACHA;
+                    com.utopia.data.CasinoData.get(level.getServer()).setDirty();
+                }
                 event.setCanceled(true);
-                sp.sendSystemMessage(Messages.success(
-                        "Borne posee ! Les joueurs feront clic droit dessus pour jouer."));
+                sp.sendSystemMessage(Messages.success(capsule
+                        ? "Machine a capsules posee ! Clic droit dessus pour tourner la manivelle."
+                        : "Borne posee ! Les joueurs feront clic droit dessus pour jouer."));
                 return;
             }
             // Si on casse une borne enregistree, elle disparait de la salle.
@@ -413,6 +420,8 @@ public final class UtopiaEvents {
         }
         // Salaires verses pendant son absence : le message n'apparait qu'une fois.
         com.utopia.job.JobManager.onLogin(sp);
+        // Le vivier des tetes des machines a capsules : tout visage vu une fois reste tirable.
+        com.utopia.data.CasinoData.get(sp.server).remember(sp.getUUID(), sp.getGameProfile().getName());
         com.utopia.savings.SavingsManager.onLogin(sp);
         com.utopia.quote.QuoteManager.onLogin(sp);
         com.utopia.bet.BetManager.onLogin(sp);

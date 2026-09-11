@@ -47,8 +47,12 @@ public final class CasinoMenus {
 
     // ================================================================= Joueur devant une borne
 
-    /** Ce que voit un joueur au clic droit sur une borne : le prix, le record, et le bouton jouer. */
+    /** Ce que voit un joueur au clic droit : une borne d'arcade ou une machine a capsules. */
     public static void openMachine(ServerPlayer player, CasinoData.Machine machine) {
+        if (machine.kind == CasinoData.Kind.GACHA) {
+            openGacha(player, machine);
+            return;
+        }
         CasinoManager.Game game = CasinoManager.game(machine.gameId);
         if (game == null) {
             player.sendSystemMessage(Messages.error("Cette borne est en panne (jeu inconnu)."));
@@ -96,6 +100,96 @@ public final class CasinoMenus {
                 ? game.name() : machine.label;
         OwoMenuServer.openHub(player, Icons.screenTitle(titre, ChatFormatting.LIGHT_PURPLE),
                 stats, entries, sp -> openMachine(sp, machine), null);
+    }
+
+    // ================================================================= Machine a capsules
+
+    /** Devant une machine a capsules : le prix, ce qu'elle crache, et la manivelle. */
+    public static void openGacha(ServerPlayer player, CasinoData.Machine machine) {
+        CasinoData data = CasinoData.get(player.server);
+        int cartes = data.cardsOf(player.getUUID()).size();
+        int tetes = data.headsOf(player.getUUID()).size();
+        int totalTetes = data.knownPlayers().size();
+
+        List<Component> stats = new ArrayList<>();
+        stats.add(Icons.lore(machine.content.label, ChatFormatting.GRAY));
+        stats.add(Component.literal("Une capsule : ")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(value(machine.cost <= 0 ? "gratuite" : machine.cost + " Utopiece(s)",
+                        machine.cost <= 0 ? ChatFormatting.GREEN : ChatFormatting.GOLD)));
+        stats.add(Icons.lore("Ta collection : " + cartes + " / " + GachaCards.ALL.size()
+                + " cartes, " + tetes + " / " + totalTetes + " tetes", ChatFormatting.DARK_GRAY));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_EYE),
+                Icons.label("Tourner la manivelle", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore(machine.cost <= 0 ? "Gratuit" : machine.cost + " Utopiece(s) la capsule",
+                        ChatFormatting.GRAY),
+                sp -> {
+                    GachaManager.draw(sp, machine);
+                    openGacha(sp, machine);
+                }));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BOOKSHELF),
+                Icons.label("Ma collection", ChatFormatting.AQUA),
+                Icons.lore("Ce que tu as, et ce qu'il te manque", ChatFormatting.GRAY),
+                sp -> openCollection(sp, 0, sp2 -> openGacha(sp2, machine))));
+        if (CasinoManager.canManage(player)) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.COMPARATOR),
+                    Icons.label("Regler cette machine", ChatFormatting.AQUA),
+                    Icons.lore("Contenu, prix, nom affiche", ChatFormatting.GRAY),
+                    sp -> openMachineConfig(sp, machine.key(), sp2 -> openGacha(sp2, machine))));
+        }
+
+        String titre = machine.label == null || machine.label.isBlank()
+                ? "Machine a capsules" : machine.label;
+        OwoMenuServer.openHub(player, Icons.screenTitle(titre, ChatFormatting.LIGHT_PURPLE),
+                stats, entries, sp -> openGacha(sp, machine), null);
+    }
+
+    // ================================================================= Collection
+
+    /** L'album : les cartes trouvees en couleur, les manquantes en gris. */
+    public static void openCollection(ServerPlayer player, int page,
+                                      java.util.function.Consumer<ServerPlayer> back) {
+        CasinoData data = CasinoData.get(player.server);
+        java.util.Set<String> mine = data.cardsOf(player.getUUID());
+        java.util.Set<java.util.UUID> mesTetes = data.headsOf(player.getUUID());
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (GachaCards.Card card : GachaCards.ALL) {
+            boolean owned = mine.contains(card.id());
+            GachaCards.Rarity rarity = data.rarity(card.id());
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(owned ? Items.PAPER : Items.GRAY_DYE),
+                    Icons.label(owned ? "\"" + card.text() + "\"" : "? ? ?",
+                            owned ? rarity.color : ChatFormatting.DARK_GRAY),
+                    Icons.lore(owned ? rarity.label : "Pas encore trouvee",
+                            owned ? rarity.color : ChatFormatting.DARK_GRAY),
+                    null));
+        }
+        for (java.util.Map.Entry<java.util.UUID, String> e : data.knownPlayers().entrySet()) {
+            boolean owned = mesTetes.contains(e.getKey());
+            com.mojang.authlib.GameProfile profile =
+                    new com.mojang.authlib.GameProfile(e.getKey(), e.getValue());
+            entries.add(new OwoMenuServer.HubEntry(
+                    owned ? Icons.playerHead(profile,
+                                    Icons.label(e.getValue(), ChatFormatting.YELLOW), List.of())
+                            : new ItemStack(Items.GRAY_DYE),
+                    Icons.label(owned ? e.getValue() : "? ? ?",
+                            owned ? ChatFormatting.YELLOW : ChatFormatting.DARK_GRAY),
+                    Icons.lore(owned ? "Tete collectionnee" : "Tete pas encore trouvee",
+                            owned ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY),
+                    null));
+        }
+
+        int totalTetes = data.knownPlayers().size();
+        OwoMenuServer.openHubPaged(player,
+                Icons.screenTitle("Ma collection", ChatFormatting.AQUA),
+                List.of(Icons.lore(mine.size() + " / " + GachaCards.ALL.size() + " cartes - "
+                                + mesTetes.size() + " / " + totalTetes + " tetes",
+                        ChatFormatting.GRAY)),
+                entries, page, 28,
+                (sp, p) -> openCollection(sp, p, back), back);
     }
 
     // ================================================================= Tableau des scores
@@ -176,7 +270,7 @@ public final class CasinoMenus {
         CasinoData data = CasinoData.get(player.server);
 
         List<Component> stats = new ArrayList<>();
-        stats.add(Component.literal("Bornes posees : ")
+        stats.add(Component.literal("Machines posees : ")
                 .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
                 .append(value(String.valueOf(data.machines().size()), ChatFormatting.GOLD)));
         stats.add(Icons.lore("Les recettes vont " + (com.utopia.Config.CASINO_REVENUE_TO_MAIRIE.get()
@@ -185,18 +279,27 @@ public final class CasinoMenus {
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CRAFTING_TABLE),
-                Icons.label("Poser une borne", ChatFormatting.GREEN),
-                Icons.lore("Choisis un jeu, puis casse le bloc qui deviendra la borne", ChatFormatting.GRAY),
+                Icons.label("Poser une machine", ChatFormatting.GREEN),
+                Icons.lore("Choisis un jeu ou une capsule, puis casse le bloc voulu", ChatFormatting.GRAY),
                 CasinoMenus::openGamePicker));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.REPEATER),
-                Icons.label("Les bornes", ChatFormatting.AQUA),
-                Icons.lore(data.machines().size() + " borne(s) - regler, retrouver, retirer",
+                Icons.label("Les machines", ChatFormatting.AQUA),
+                Icons.lore(data.machines().size() + " machine(s) - regler, retrouver, retirer",
                         ChatFormatting.GRAY),
                 sp -> openMachines(sp, 0)));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.GOLDEN_HELMET),
                 Icons.label("Tableaux des scores", ChatFormatting.GOLD),
                 Icons.lore("Un classement par jeu, commun a toutes les bornes", ChatFormatting.GRAY),
                 CasinoMenus::openScoreBoards));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BOOK),
+                Icons.label("Raretes des cartes", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore(GachaCards.ALL.size() + " cartes - regle lesquelles sont rares",
+                        ChatFormatting.GRAY),
+                sp -> openCardRarities(sp, 0, CasinoMenus::open)));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BOOKSHELF),
+                Icons.label("Ma collection", ChatFormatting.AQUA),
+                Icons.lore("Ce que tu as trouve, et ce qu'il te manque", ChatFormatting.GRAY),
+                sp -> openCollection(sp, 0, CasinoMenus::open)));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
                 Icons.label("Gerants", ChatFormatting.YELLOW),
                 Icons.lore(data.managers().size() + " gerant(s) - ils ouvrent /casino sans etre op",
@@ -224,8 +327,17 @@ public final class CasinoMenus {
                         Menus.close(sp);
                     }));
         }
-        OwoMenuServer.openHub(player, Icons.screenTitle("Quel jeu ?", ChatFormatting.LIGHT_PURPLE),
-                List.of(Icons.lore("Le bloc que tu casseras ensuite deviendra la borne.", ChatFormatting.GRAY),
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ENDER_EYE),
+                Icons.label("Machine a capsules", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Tetes des joueurs du serveur et cartes a collectionner", ChatFormatting.GRAY),
+                sp -> {
+                    CasinoManager.startPlacing(sp.getUUID(), CasinoManager.GACHA_ID);
+                    sp.sendSystemMessage(Messages.info(
+                            "Mode actif : casse le bloc qui deviendra la machine a capsules."));
+                    Menus.close(sp);
+                }));
+        OwoMenuServer.openHub(player, Icons.screenTitle("Quelle machine ?", ChatFormatting.LIGHT_PURPLE),
+                List.of(Icons.lore("Le bloc que tu casseras ensuite deviendra la machine.", ChatFormatting.GRAY),
                         Icons.lore("N'importe quel bloc convient : les joueurs feront clic droit dessus.",
                                 ChatFormatting.DARK_GRAY)),
                 entries, CasinoMenus::openGamePicker, CasinoMenus::open);
@@ -243,7 +355,7 @@ public final class CasinoMenus {
 
         List<OwoMenuServer.Column> columns = List.of(
                 new OwoMenuServer.Column(head("BORNE"), 104, OwoMenuServer.Column.LEFT),
-                new OwoMenuServer.Column(head("JEU"), 76, OwoMenuServer.Column.LEFT),
+                new OwoMenuServer.Column(head("ROLE"), 96, OwoMenuServer.Column.LEFT),
                 new OwoMenuServer.Column(head("PRIX"), 48, OwoMenuServer.Column.RIGHT),
                 new OwoMenuServer.Column(head("POSITION"), 108, OwoMenuServer.Column.LEFT));
 
@@ -252,13 +364,15 @@ public final class CasinoMenus {
         int to = Math.min(all.size(), from + ROW_PAGE);
         for (int i = from; i < to; i++) {
             CasinoData.Machine m = all.get(i);
-            CasinoManager.Game g = CasinoManager.game(m.gameId);
+            boolean capsule = m.kind == CasinoData.Kind.GACHA;
+            CasinoManager.Game g = capsule ? null : CasinoManager.game(m.gameId);
+            String role = capsule ? m.content.label : (g == null ? "inconnu" : g.name());
+            String defaut = capsule ? "Machine a capsules" : (g == null ? m.gameId : g.name());
             rows.add(new OwoMenuServer.TableRow(
-                    new ItemStack(g == null ? Items.BARRIER : g.icon()),
-                    List.of(value(m.label == null || m.label.isBlank()
-                                    ? (g == null ? m.gameId : g.name()) : m.label, ChatFormatting.WHITE),
-                            value(g == null ? "inconnu" : g.name(),
-                                    g == null ? ChatFormatting.RED : ChatFormatting.AQUA),
+                    new ItemStack(capsule ? Items.ENDER_EYE : (g == null ? Items.BARRIER : g.icon())),
+                    List.of(value(m.label == null || m.label.isBlank() ? defaut : m.label,
+                                    ChatFormatting.WHITE),
+                            value(role, !capsule && g == null ? ChatFormatting.RED : ChatFormatting.AQUA),
                             value(m.cost <= 0 ? "gratuit" : String.valueOf(m.cost),
                                     m.cost <= 0 ? ChatFormatting.GREEN : ChatFormatting.GOLD),
                             value(m.x + " " + m.y + " " + m.z, ChatFormatting.DARK_GRAY)),
@@ -266,13 +380,13 @@ public final class CasinoMenus {
         }
         if (rows.isEmpty()) {
             rows.add(new OwoMenuServer.TableRow(
-                    List.of(Icons.lore("Aucune borne posee.", ChatFormatting.DARK_GRAY),
+                    List.of(Icons.lore("Aucune machine posee.", ChatFormatting.DARK_GRAY),
                             Component.empty(), Component.empty(), Component.empty()),
                     null));
         }
 
-        OwoMenuServer.openTable(player, Icons.screenTitle("Les bornes", ChatFormatting.LIGHT_PURPLE),
-                List.of(Icons.lore("Clique une borne pour la regler.", ChatFormatting.GRAY)),
+        OwoMenuServer.openTable(player, Icons.screenTitle("Les machines", ChatFormatting.LIGHT_PURPLE),
+                List.of(Icons.lore("Clique une machine pour la regler.", ChatFormatting.GRAY)),
                 List.of(), columns, rows, List.of(),
                 cur > 0 ? sp -> openMachines(sp, cur - 1) : null,
                 cur < totalPages - 1 ? sp -> openMachines(sp, cur + 1) : null,
@@ -294,21 +408,36 @@ public final class CasinoMenus {
         }
         CasinoManager.Game game = CasinoManager.game(machine.gameId);
 
+        boolean capsule = machine.kind == CasinoData.Kind.GACHA;
         List<OwoMenuServer.PanelRow> rows = new ArrayList<>();
+        if (capsule) {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Contenu", ChatFormatting.GRAY),
+                    value(machine.content.label, ChatFormatting.AQUA),
+                    Icons.label("Changer", ChatFormatting.AQUA),
+                    sp -> {
+                        machine.content = machine.content.next();
+                        CasinoData.get(sp.server).setDirty();
+                        openMachineConfig(sp, key, back);
+                    }));
+        } else {
+            rows.add(new OwoMenuServer.PanelRow(
+                    Icons.label("Jeu", ChatFormatting.GRAY),
+                    value(game == null ? machine.gameId + " (inconnu)" : game.name(),
+                            game == null ? ChatFormatting.RED : ChatFormatting.AQUA),
+                    Icons.label("Changer", ChatFormatting.AQUA),
+                    sp -> openMachineGame(sp, key, back)));
+        }
         rows.add(new OwoMenuServer.PanelRow(
-                Icons.label("Jeu", ChatFormatting.GRAY),
-                value(game == null ? machine.gameId + " (inconnu)" : game.name(),
-                        game == null ? ChatFormatting.RED : ChatFormatting.AQUA),
-                Icons.label("Changer", ChatFormatting.AQUA),
-                sp -> openMachineGame(sp, key, back)));
-        rows.add(new OwoMenuServer.PanelRow(
-                Icons.label("Prix de la partie", ChatFormatting.GRAY),
+                Icons.label(capsule ? "Prix de la capsule" : "Prix de la partie", ChatFormatting.GRAY),
                 value(machine.cost <= 0 ? "gratuite" : machine.cost + " Utopiece(s)",
                         machine.cost <= 0 ? ChatFormatting.GREEN : ChatFormatting.GOLD),
                 Icons.label("Modifier", ChatFormatting.GREEN),
-                sp -> Menus.promptAmount(sp, Icons.label("Prix de la partie", ChatFormatting.GOLD),
-                        List.of(Icons.lore("Utopieces exigees a chaque partie.", ChatFormatting.GRAY),
-                                Icons.lore("0 = borne gratuite.", ChatFormatting.DARK_GRAY)),
+                sp -> Menus.promptAmount(sp,
+                        Icons.label(capsule ? "Prix de la capsule" : "Prix de la partie", ChatFormatting.GOLD),
+                        List.of(Icons.lore(capsule ? "Utopieces exigees a chaque capsule."
+                                        : "Utopieces exigees a chaque partie.", ChatFormatting.GRAY),
+                                Icons.lore("0 = machine gratuite.", ChatFormatting.DARK_GRAY)),
                         Icons.label("Valider", ChatFormatting.GREEN), machine.cost, 0, 1_000_000,
                         v -> {
                             machine.cost = v;
@@ -338,7 +467,12 @@ public final class CasinoMenus {
                 Component.empty(), null));
 
         List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
-        if (game != null) {
+        if (capsule) {
+            footer.add(new OwoMenuServer.PanelAction(
+                    Icons.label("Raretes des cartes", ChatFormatting.AQUA),
+                    sp -> openCardRarities(sp, 0, sp2 -> openMachineConfig(sp2, key, back))));
+        }
+        if (game != null && !capsule) {
             footer.add(new OwoMenuServer.PanelAction(
                     Icons.label("Essayer (gratuit)", ChatFormatting.GREEN),
                     sp -> {
@@ -362,7 +496,8 @@ public final class CasinoMenus {
                         s2 -> openMachineConfig(s2, key, back))));
 
         String titre = machine.label == null || machine.label.isBlank()
-                ? (game == null ? "Borne" : game.name()) : machine.label;
+                ? (capsule ? "Machine a capsules" : (game == null ? "Borne" : game.name()))
+                : machine.label;
         OwoMenuServer.openPanel(player, Icons.title(titre, ChatFormatting.LIGHT_PURPLE), rows, footer,
                 sp -> openMachineConfig(sp, key, back), back);
     }
@@ -388,6 +523,42 @@ public final class CasinoMenus {
         }
         OwoMenuServer.openHub(player, Icons.screenTitle("Quel jeu ?", ChatFormatting.LIGHT_PURPLE),
                 List.of(), entries, null, sp -> openMachineConfig(sp, key, back));
+    }
+
+    /**
+     * Les raretes, carte par carte. Un clic fait monter la carte d'un cran : commune, rare, epique,
+     * legendaire, puis retour a commune. Le poids de tirage suit.
+     */
+    public static void openCardRarities(ServerPlayer player, int page,
+                                        java.util.function.Consumer<ServerPlayer> back) {
+        if (denied(player)) {
+            return;
+        }
+        CasinoData data = CasinoData.get(player.server);
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (GachaCards.Card card : GachaCards.ALL) {
+            GachaCards.Rarity rarity = data.rarity(card.id());
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(switch (rarity) {
+                        case LEGENDAIRE -> Items.ENCHANTED_BOOK;
+                        case EPIQUE -> Items.WRITTEN_BOOK;
+                        case RARE -> Items.BOOK;
+                        default -> Items.PAPER;
+                    }),
+                    Icons.label("\"" + card.text() + "\"", rarity.color),
+                    Icons.lore(rarity.label + " - clique pour monter d'un cran", ChatFormatting.GRAY),
+                    sp -> {
+                        CasinoData d = CasinoData.get(sp.server);
+                        d.setRarity(card.id(), d.rarity(card.id()).next());
+                        openCardRarities(sp, page, back);
+                    }));
+        }
+        OwoMenuServer.openHubPaged(player, Icons.screenTitle("Raretes", ChatFormatting.GOLD),
+                List.of(Icons.lore("Plus une carte est rare, moins elle sort.", ChatFormatting.GRAY),
+                        Icons.lore("Commune 100, rare 30, epique 8, legendaire 2 chances relatives.",
+                                ChatFormatting.DARK_GRAY)),
+                entries, page, 28,
+                (sp, p) -> openCardRarities(sp, p, back), back);
     }
 
     /** Un tableau par jeu : on choisit d'abord le jeu. */
