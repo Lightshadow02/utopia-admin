@@ -265,8 +265,13 @@ public final class MarketManager {
         EconomyManager.remove(server, buyer.getUUID(), total);
         long sShare = sellerShare(total);
         long mShare = mairieShare(total);
+        // Les taxes nommees de la mairie se prennent sur la part du vendeur, pas sur le prix affiche :
+        // les 25 % du marche sont deja partis, les compter deux fois pourrait tout emporter.
+        com.utopia.mairie.TaxManager.Levy levy = com.utopia.mairie.TaxManager.collect(
+                server, com.utopia.data.MairieData.Flow.MARCHE, sShare);
+        long sellerGets = sShare - levy.total();
         // Le reste (~10 %) n'est credite a personne : ces pieces sont detruites (deflation).
-        EconomyManager.add(server, seller, sShare);
+        EconomyManager.add(server, seller, sellerGets);
         EconomyManager.add(server, MarketData.MAIRIE_UUID, mShare);
         ItemHandlerHelper.giveItemToPlayer(buyer, bought);
 
@@ -277,7 +282,9 @@ public final class MarketManager {
             sellerOnline.sendSystemMessage(Messages.success("Vente : "
                     + qty + "x " + bought.getHoverName().getString()
                     + " a " + buyer.getGameProfile().getName()
-                    + " | " + total + " Utopieces - 25% de taxe de la mairie = +" + sShare + " Utopieces"));
+                    + " | " + total + " Utopieces - 25% de taxe de la mairie"
+                    + (levy.isEmpty() ? "" : " - " + com.utopia.mairie.TaxManager.describe(levy))
+                    + " = +" + sellerGets + " Utopieces"));
         }
 
         if (stall.offers.isEmpty()) {

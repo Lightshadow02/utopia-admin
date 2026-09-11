@@ -299,16 +299,21 @@ public final class ParcelManager {
     /**
      * Vente directe au serveur : rembourse 75% de ce que le proprietaire a paye, puis la parcelle
      * redevient propriete du serveur et est remise en vente au prix qu'il avait paye. Renvoie le
-     * montant rembourse, ou -1 si le joueur n'est pas proprietaire.
+     * montant rembourse, -1 si le joueur n'est pas proprietaire, -2 si la caisse de la mairie ne
+     * peut pas payer.
      */
     public static long sellToServer(ServerPlayer owner, Parcel parcel) {
         if (!parcel.isOwner(owner.getUUID())) {
             return -1;
         }
         long refund = Math.round(parcel.lastPaid() * SERVER_BUYBACK_RATE);
+        // La mairie rachete la parcelle : le remboursement sort de sa caisse, et seulement si elle
+        // l'a. Un credit negatif serait ramene a zero par la banque : le vendeur serait paye avec
+        // des Utopieces frappees a partir de rien, et la caisse videe sans un mot.
+        if (refund > 0 && !EconomyManager.remove(owner.server, MarketData.MAIRIE_UUID, refund)) {
+            return -2;
+        }
         EconomyManager.add(owner.server, owner.getUUID(), refund);
-        // La mairie rachete la parcelle : le remboursement est preleve sur le compte de la mairie.
-        EconomyManager.add(owner.server, MarketData.MAIRIE_UUID, -refund);
         relistToServer(parcel);
         ParcelData.get(owner.server).setDirty();
         return refund;

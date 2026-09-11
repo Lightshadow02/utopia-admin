@@ -200,15 +200,20 @@ public final class EconomyCommands {
             return 0;
         }
         int amount = IntegerArgumentType.getInteger(ctx, "amount");
-        if (!EconomyManager.transfer(server, sender.getUUID(), gp.getId(), amount)) {
+        // Le virement est une transaction comme une autre : sans cette retenue, il suffirait de se
+        // payer entre joueurs pour echapper a toute taxe de la mairie.
+        com.utopia.mairie.TaxManager.Levy levy = com.utopia.mairie.TaxManager.transferTaxed(
+                server, sender.getUUID(), gp.getId(), amount);
+        if (levy == null) {
             sender.sendSystemMessage(Messages.error("Solde insuffisant."));
             return 0;
         }
+        long recu = amount - levy.total();
         sender.sendSystemMessage(Messages.success("Vous avez envoye " + EconomyManager.format(amount)
-                + " a " + gp.getName() + "."));
+                + " a " + gp.getName() + com.utopia.mairie.TaxManager.suffix(levy) + "."));
         ServerPlayer target = server.getPlayerList().getPlayer(gp.getId());
         if (target != null) {
-            target.sendSystemMessage(Messages.success("Vous avez recu " + EconomyManager.format(amount)
+            target.sendSystemMessage(Messages.success("Vous avez recu " + EconomyManager.format(recu)
                     + " de " + sender.getGameProfile().getName() + "."));
         }
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;

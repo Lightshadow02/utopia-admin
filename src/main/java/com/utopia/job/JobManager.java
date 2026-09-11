@@ -172,6 +172,12 @@ public final class JobManager {
      */
     private static final String PLAIN = String.valueOf((char) 1);
     private static final String PAY = String.valueOf((char) 2);
+    /**
+     * Separateur des champs d'une notification de salaire. Un caractere de controle, parce qu'un nom
+     * de metier est saisi librement : avec une barre verticale, un metier nomme "A|B" rendrait la
+     * ligne impossible a relire.
+     */
+    private static final String SEP = String.valueOf((char) 3);
 
     // ------------------------------------------------------------------ Versement
 
@@ -220,16 +226,24 @@ public final class JobManager {
         if (total <= 0) {
             return;
         }
-        EconomyManager.add(server, player, total);
-        data.log("Salaire verse a " + data.nameOf(player) + " : " + total + " Utopieces ("
-                + String.join(", ", lines) + ")");
+        // Le brut passe d'abord par la mairie : l'impot et les taxes nommees sont retenus a la
+        // source, le salarie ne touche que le net. Prelever apres coup obligerait a debiter un solde
+        // qui a pu bouger entre-temps.
+        com.utopia.mairie.TaxManager.Levy levy = com.utopia.mairie.TaxManager.collect(
+                server, com.utopia.data.MairieData.Flow.SALAIRE, total);
+        long net = total - levy.total();
+        EconomyManager.add(server, player, net);
+        data.log("Salaire verse a " + data.nameOf(player) + " : " + net + " Utopieces"
+                + (levy.isEmpty() ? "" : " (brut " + total + ", retenue " + levy.total() + " : "
+                        + com.utopia.mairie.TaxManager.describe(levy) + ")")
+                + " (" + String.join(", ", lines) + ")");
 
         ServerPlayer online = server.getPlayerList().getPlayer(player);
         String jobs = String.join(", ", jobNames(data, player));
         if (online != null) {
-            online.sendSystemMessage(paidNow(jobs, total));
+            online.sendSystemMessage(paidNow(jobs, net, levy));
         } else {
-            data.addPending(player, PAY + jobs + "|" + total);
+            data.addPending(player, PAY + jobs + SEP + net + SEP + levy.total());
         }
     }
 
@@ -248,24 +262,41 @@ public final class JobManager {
     }
 
     /** Message affiche au joueur present au moment du versement. */
-    private static Component paidNow(String jobs, long total) {
-        return Component.literal("[Banque d'Utopia] ")
+    private static Component paidNow(String jobs, long net, com.utopia.mairie.TaxManager.Levy levy) {
+        return withDeduction(Component.literal("[Banque d'Utopia] ")
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true))
                 .append(Component.literal("Votre salaire de " + jobs + " vient de vous etre verse : ")
                         .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(false)))
-                .append(Component.literal("+" + total + " Utopieces.")
-                        .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
+                .append(Component.literal("+" + net + " Utopieces.")
+                        .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true))),
+                levy.total(), com.utopia.mairie.TaxManager.describe(levy));
     }
 
     /** Message affiche a la connexion pour un salaire verse pendant l'absence du joueur. */
-    private static Component paidWhileAway(String jobs, long total) {
-        return Component.literal("[Banque d'Utopia] ")
+    private static Component paidWhileAway(String jobs, long net, long tax) {
+        return withDeduction(Component.literal("[Banque d'Utopia] ")
                 .withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(true))
                 .append(Component.literal("Pendant votre absence, votre salaire de " + jobs
                                 + " vous a ete verse : ")
                         .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(false)))
-                .append(Component.literal("+" + total + " Utopieces.")
-                        .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
+                .append(Component.literal("+" + net + " Utopieces.")
+                        .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true))),
+                tax, "");
+    }
+
+    /**
+     * Ajoute la mention de la retenue. Un salaire ampute sans explication passe pour un bug : le
+     * salarie doit lire ce que la mairie lui a pris, et au nom de quoi.
+     */
+    private static Component withDeduction(Component base, long tax, String detail) {
+        if (tax <= 0) {
+            return base;
+        }
+        String suffix = detail == null || detail.isBlank()
+                ? " (" + tax + " Utopieces retenues par la mairie)"
+                : " (" + tax + " Utopieces retenues : " + detail + ")";
+        return base.copy().append(Component.literal(suffix)
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withBold(false)));
     }
 
     /**
@@ -283,18 +314,36 @@ public final class JobManager {
             }
             // Les entrees d'avant l'introduction des marques n'en portent aucune : elles restent lisibles.
             String body = raw.startsWith(PAY) ? raw.substring(PAY.length()) : raw;
-            int sep = body.lastIndexOf('|');
-            if (sep <= 0) {
-                continue;
+            String jobs;
+            long net;
+            long tax = 0;
+            if (body.contains(SEP)) {
+                // Format courant : metiers, net, retenue.
+                String[] fields = body.split(SEP, -1);
+                if (fields.length < 3) {
+                    continue;
+                }
+                jobs = fields[0];
+                try {
+                    net = Long.parseLong(fields[1]);
+                    tax = Long.parseLong(fields[2]);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+            } else {
+                // Format d'avant l'impot : un seul montant, apres la derniere barre.
+                int sep = body.lastIndexOf('|');
+                if (sep <= 0) {
+                    continue;
+                }
+                jobs = body.substring(0, sep);
+                try {
+                    net = Long.parseLong(body.substring(sep + 1));
+                } catch (NumberFormatException e) {
+                    continue;
+                }
             }
-            String jobs = body.substring(0, sep);
-            long total;
-            try {
-                total = Long.parseLong(body.substring(sep + 1));
-            } catch (NumberFormatException e) {
-                continue;
-            }
-            player.sendSystemMessage(paidWhileAway(jobs, total));
+            player.sendSystemMessage(paidWhileAway(jobs, net, tax));
         }
     }
 

@@ -635,9 +635,21 @@ public final class QuoteMenus {
                 rows.add(row("Reste a payer", quote.remaining() + " Utopieces", ChatFormatting.YELLOW));
             }
         }
-        if (data.taxPercent() > 0) {
-            rows.add(row("Taxe de la mairie", data.taxPercent() + " % du reglement",
+        // On annonce ce que le percepteur prendra vraiment, pas le seul taux de droit commun : les
+        // taxes nommees du maire s'y ajoutent, et l'emetteur s'engage sur ce qu'il va toucher. La
+        // projection ne vaut que pour ce qui reste du : sur un devis solde, refuse ou annule, elle
+        // annoncerait une retenue a venir qui n'aura jamais lieu.
+        long assiette = quote.remaining();
+        com.utopia.mairie.TaxManager.Levy retenue = assiette > 0
+                ? com.utopia.mairie.TaxManager.quote(
+                        player.server, com.utopia.data.MairieData.Flow.DEVIS, assiette)
+                : com.utopia.mairie.TaxManager.Levy.NONE;
+        if (!retenue.isEmpty()) {
+            rows.add(row("Taxes de la mairie", retenue.total() + " Utopieces sur les "
+                    + assiette + " restants (" + com.utopia.mairie.TaxManager.describe(retenue) + ")",
                     ChatFormatting.DARK_GRAY));
+            rows.add(row("Net pour l'emetteur", (assiette - retenue.total()) + " Utopieces",
+                    ChatFormatting.GREEN));
         }
 
         List<OwoMenuServer.PanelAction> footer = new ArrayList<>();
@@ -903,7 +915,8 @@ public final class QuoteMenus {
                 stat(all.size() + " devis - ", open + " en cours, " + settled + " solde(s)",
                         ChatFormatting.AQUA),
                 stat("Volume regle : ", volume + " Utopieces", ChatFormatting.GREEN),
-                stat("Taxe de la mairie : ", data.taxPercent() + " % du reglement", ChatFormatting.GRAY));
+                stat("Taxe de la mairie : ", data.taxPercent()
+                        + " % du reglement, hors taxes nommees", ChatFormatting.GRAY));
 
         List<OwoMenuServer.Column> columns = List.of(
                 new OwoMenuServer.Column(head("DEVIS"), 40, OwoMenuServer.Column.LEFT),
@@ -1054,8 +1067,11 @@ public final class QuoteMenus {
                         sp -> Menus.promptAmount(sp, Icons.label("Taxe sur les devis", ChatFormatting.GOLD),
                                 List.of(Icons.lore("Part prelevee sur chaque reglement, en %",
                                                 ChatFormatting.GRAY),
+                                        Icons.lore("Les taxes nommees du maire s'y ajoutent (/maire).",
+                                                ChatFormatting.DARK_GRAY),
                                         Icons.lore("0 = aucune taxe", ChatFormatting.DARK_GRAY)),
-                                Icons.label("Valider", ChatFormatting.GREEN), data.taxPercent(), 0, 100,
+                                Icons.label("Valider", ChatFormatting.GREEN), data.taxPercent(),
+                                0, com.utopia.data.MairieData.MAX_TOTAL_TAX,
                                 v -> {
                                     QuoteData.get(sp.server).setTaxPercent((int) v);
                                     openAdminSettings(sp, back);

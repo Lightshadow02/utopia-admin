@@ -115,6 +115,11 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_NPCS;
     public static final ModConfigSpec.BooleanValue ADMIN_WAYSTONES;
 
+    /** Modules du menu du maire : un module retire ici disparait de /maire. */
+    public static final ModConfigSpec.BooleanValue MAIRIE_TAXES;
+    public static final ModConfigSpec.BooleanValue MAIRIE_LEADERBOARD;
+    public static final ModConfigSpec.BooleanValue MAIRIE_PVP;
+
     /** Heure a laquelle le marchand ambulant retrouve sa place (0-23, heure de Paris). */
     public static final ModConfigSpec.IntValue MERCHANT_RESET_HOUR;
     public static final ModConfigSpec.IntValue MERCHANT_PERSONAL_QUOTA;
@@ -362,6 +367,30 @@ public final class Config {
         ADMIN_WAYSTONES = BUILDER.comment("Bouton \"Balises de voyage\".").define("waystones", true);
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
+
+        BUILDER.comment("Menu du maire (/maire). Ces modules sont pilotes en jeu par le maire elu ;",
+                        "les retirer ici les lui retire, y compris ce qu'il avait deja regle.")
+                .push("mairie");
+        BUILDER.comment("Modules du menu du maire : mettre a false pour en retirer un.")
+                .push("entries");
+        MAIRIE_TAXES = BUILDER
+                .comment("Bouton \"Taxes et impots\" : impot sur les salaires et taxes nommees.",
+                        "A false, aucune taxe nommee n'est prelevee et l'impot sur les salaires",
+                        "cesse de s'appliquer, quelles que soient les valeurs deja saisies.",
+                        "La taxe sur les devis, elle, reste active : elle est anterieure et se",
+                        "regle a part, dans l'ecran des devis.")
+                .define("taxes", true);
+        MAIRIE_LEADERBOARD = BUILDER
+                .comment("Bouton \"Concours de chasse\" : classement 24 h a points par mob.",
+                        "A false, plus aucune prise n'est comptee ni recompensee.")
+                .define("leaderboard", true);
+        MAIRIE_PVP = BUILDER
+                .comment("Bouton \"PVP dans les parcelles\".",
+                        "A false, le maire ne peut plus toucher au PVP et les parcelles",
+                        "retrouvent le comportement du serveur.")
+                .define("pvp", true);
+        BUILDER.pop(); // entries
+        BUILDER.pop(); // mairie
 
         BUILDER.comment("Marchand ambulant : le PNJ qui rachete les items du jour.",
                         "Sa liste d'items se regle a part, dans config/utopia_admin/mongol_calendar.json.")

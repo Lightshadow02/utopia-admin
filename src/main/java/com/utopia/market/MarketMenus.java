@@ -106,6 +106,9 @@ public final class MarketMenus {
                 List.of(Icons.lore("Objet : " + desc, ChatFormatting.GRAY),
                         Icons.lore("Prix pour 1 objet (l'acheteur choisit la quantite).", ChatFormatting.DARK_GRAY),
                         Icons.lore("Vendeur 75%, mairie 15%, detruit 10%.", ChatFormatting.DARK_GRAY),
+                        // Le vendeur s'engage sur un prix : il doit lire les taxes du maire ici, et
+                        // non les decouvrir dans le message de vente, qu'il rate s'il est hors ligne.
+                        Icons.lore(marketTaxNote(player), ChatFormatting.DARK_GRAY),
                         Icons.lore("Minimum : " + minPrice + " Utopieces l'unite.", ChatFormatting.DARK_GRAY)),
                 Icons.label("Mettre en vente", ChatFormatting.GREEN),
                 minPrice, minPrice, 1_000_000_000L,
@@ -258,6 +261,26 @@ public final class MarketMenus {
                 onPrev, onNext, sp -> openRecovery(sp, onBack, cur), onBack);
     }
 
+    /** Les taxes nommees qui frappent en plus la part du vendeur, ou l'absence de taxe. */
+    private static String marketTaxNote(ServerPlayer player) {
+        List<com.utopia.data.MairieData.Tax> taxes = com.utopia.data.MairieData.get(player.server)
+                .taxesFor(com.utopia.data.MairieData.Flow.MARCHE);
+        if (taxes.isEmpty() || !com.utopia.Config.MAIRIE_TAXES.get()) {
+            return "Aucune taxe de la mairie en plus.";
+        }
+        // Trois taxes citees au plus : l'infobulle d'un ecran de saisie ne se coupe pas toute seule,
+        // et la liste complete se lit dans /maire.
+        List<String> parts = new ArrayList<>(3);
+        for (com.utopia.data.MairieData.Tax t : taxes) {
+            if (parts.size() == 3) {
+                parts.add("et " + (taxes.size() - 3) + " autre(s)");
+                break;
+            }
+            parts.add(t.name + " " + t.rateLabel());
+        }
+        return "En plus, sur la part du vendeur : " + String.join(", ", parts) + ".";
+    }
+
     /** En-tete de colonne : gris-bleu, en capitales, pour se distinguer des donnees. */
     private static Component head(String text) {
         return Component.literal(text)
@@ -268,12 +291,18 @@ public final class MarketMenus {
 
     public static void openMaire(ServerPlayer player) {
         long balance = EconomyManager.getBalance(player.server, MarketData.MAIRIE_UUID);
+        com.utopia.data.MairieData mairie = com.utopia.data.MairieData.get(player.server);
         Component title = Icons.screenTitle("Mairie", ChatFormatting.GOLD);
-        List<Component> stats = List.of(
-                Component.literal("Solde de la mairie : ")
-                        .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
-                        .append(Component.literal(balance + " Utopieces")
-                                .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))));
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal("Solde de la mairie : ")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(balance + " Utopieces")
+                        .withStyle(s -> s.withColor(ChatFormatting.GOLD).withItalic(false))));
+        if (mairie.leaderboardEnabled() && com.utopia.Config.MAIRIE_LEADERBOARD.get()) {
+            stats.add(Icons.lore("Concours de chasse en cours - cloture a "
+                            + com.utopia.mairie.LeaderboardManager.hourLabel(mairie) + " (heure reelle)",
+                    ChatFormatting.DARK_GRAY));
+        }
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.GOLD_INGOT),
@@ -348,10 +377,38 @@ public final class MarketMenus {
                             });
                 }));
 
-        entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK),
-                Icons.label("Taxe sur les devis", ChatFormatting.YELLOW),
-                Icons.lore("Part prelevee sur chaque reglement, versee a la mairie", ChatFormatting.GRAY),
-                sp -> com.utopia.quote.QuoteMenus.openAdminSettings(sp, MarketMenus::openMaire)));
+        if (com.utopia.Config.MAIRIE_TAXES.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK),
+                    Icons.label("Taxes et impots", ChatFormatting.YELLOW),
+                    Icons.lore("Impot sur les salaires, taxe sur les devis, taxes nommees", ChatFormatting.GRAY),
+                    sp -> com.utopia.mairie.MairieMenus.openTaxes(sp, MarketMenus::openMaire)));
+        } else {
+            // Le module est retire, mais la taxe sur les devis lui est anterieure : son reglage reste.
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK),
+                    Icons.label("Taxe sur les devis", ChatFormatting.YELLOW),
+                    Icons.lore("Part prelevee sur chaque reglement, versee a la mairie", ChatFormatting.GRAY),
+                    sp -> com.utopia.quote.QuoteMenus.openAdminSettings(sp, MarketMenus::openMaire)));
+        }
+        if (com.utopia.Config.MAIRIE_LEADERBOARD.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD),
+                    Icons.label("Concours de chasse", ChatFormatting.LIGHT_PURPLE),
+                    Icons.lore(mairie.leaderboardEnabled()
+                                    ? "Classement du jour, bareme par mob, primes et palmares"
+                                    : "Arrete - a lancer pour que les prises comptent",
+                            mairie.leaderboardEnabled() ? ChatFormatting.GRAY : ChatFormatting.DARK_GRAY),
+                    sp -> com.utopia.mairie.MairieMenus.openLeaderboard(sp, MarketMenus::openMaire)));
+        }
+        if (com.utopia.Config.MAIRIE_PVP.get()) {
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(mairie.pvpInParcels()
+                            ? net.minecraft.world.item.Items.IRON_SWORD
+                            : net.minecraft.world.item.Items.SHIELD),
+                    Icons.label("PVP dans les parcelles", ChatFormatting.RED),
+                    Icons.lore(mairie.pvpInParcels() ? "Autorise : les joueurs peuvent s'y battre"
+                                    : "Interdit : les coups entre joueurs y sont bloques",
+                            mairie.pvpInParcels() ? ChatFormatting.RED : ChatFormatting.GREEN),
+                    sp -> com.utopia.mairie.MairieMenus.confirmPvp(sp, MarketMenus::openMaire)));
+        }
 
         OwoMenuServer.openHub(player, title, stats, entries, MarketMenus::openMaire, null);
     }

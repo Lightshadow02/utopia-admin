@@ -395,6 +395,14 @@ public final class ParcelMenus {
                                 return;
                             }
                             long r = ParcelManager.sellToServer(s2, cur);
+                            if (r == -2) {
+                                // La caisse de la mairie ne suit pas : mieux vaut un refus net qu'un
+                                // remboursement paye avec des Utopieces sorties de nulle part.
+                                s2.sendSystemMessage(Messages.error(
+                                        "La caisse de la mairie ne peut pas payer ce rachat pour l'instant."));
+                                openSellMenu(s2, parcelId);
+                                return;
+                            }
                             s2.sendSystemMessage(Messages.success("Parcelle vendue a la Mairie. Rembourse : " + EconomyManager.format(r) + "."));
                             com.utopia.gui.Menus.close(s2);
                         },

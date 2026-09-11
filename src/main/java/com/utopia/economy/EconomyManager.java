@@ -35,7 +35,12 @@ public final class EconomyManager {
     // -------- Soldes --------
 
     public static long getBalance(MinecraftServer server, UUID playerId) {
-        return EconomyData.get(server).getBalance(playerId, Config.ECO_STARTING_BALANCE.get());
+        // Le solde de depart est une dotation de bienvenue : elle n'a de sens que pour un joueur.
+        // La mairie, elle, part de rien — sinon sa caisse annoncerait un pecule qui n'existe pas,
+        // et un retrait dessus fabriquerait des Utopieces.
+        long fallback = com.utopia.data.MarketData.MAIRIE_UUID.equals(playerId)
+                ? 0L : Config.ECO_STARTING_BALANCE.get();
+        return EconomyData.get(server).getBalance(playerId, fallback);
     }
 
     public static void setBalance(MinecraftServer server, UUID playerId, long amount) {

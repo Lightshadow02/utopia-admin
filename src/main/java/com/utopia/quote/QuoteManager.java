@@ -195,12 +195,14 @@ public final class QuoteManager {
         }
         MinecraftServer server = client.server;
         QuoteData data = QuoteData.get(server);
-        long tax = amount * data.taxPercent() / 100;
+        // La taxe sur les devis et les taxes nommees de la mairie sont prelevees ensemble, sous un
+        // plafond commun : deux taxes cumulees ne doivent jamais rendre le net negatif, un solde
+        // negatif etant ramene a zero sans un mot par la banque.
+        com.utopia.mairie.TaxManager.Levy levy = com.utopia.mairie.TaxManager.collect(
+                server, com.utopia.data.MairieData.Flow.DEVIS, amount);
+        long tax = levy.total();
         long net = amount - tax;
         EconomyManager.add(server, quote.issuer, net);
-        if (tax > 0) {
-            EconomyManager.add(server, MarketData.MAIRIE_UUID, tax);
-        }
         quote.paid += amount;
         boolean settled = quote.remaining() <= 0;
         if (settled) {
@@ -210,10 +212,13 @@ public final class QuoteManager {
         data.setDirty();
 
         String clientName = data.nameOf(quote.client);
+        String retenue = levy.isEmpty() ? ""
+                : " (" + tax + " retenues : " + com.utopia.mairie.TaxManager.describe(levy) + ")";
         notifyIssuer(server, data, quote, settled
-                        ? clientName + " a solde le devis " + quote.id + " : +" + net + " Utopieces."
+                        ? clientName + " a solde le devis " + quote.id + " : +" + net
+                                + " Utopieces" + retenue + "."
                         : clientName + " a verse un acompte sur le devis " + quote.id + " : +" + net
-                                + " Utopieces (reste " + quote.remaining() + ").",
+                                + " Utopieces" + retenue + " (reste " + quote.remaining() + ").",
                 ChatFormatting.GREEN);
         return PayResult.OK;
     }

@@ -263,9 +263,23 @@ public final class UtopiaEvents {
 
     @SubscribeEvent
     public static void onAttackEntity(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
-        // Empeche de blesser/tuer les entites (villageois, animaux, cadres...) d'une parcelle.
-        if (!Config.PARCEL_PROTECT_ENTITIES.get() || !(event.getEntity() instanceof ServerPlayer sp)
+        if (!(event.getEntity() instanceof ServerPlayer sp)
                 || !(sp.serverLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        // Le duel se tranche en premier, et separement : un joueur n'est pas une entite de parcelle a
+        // proteger, et la protection des entites se desactive en config alors que le droit fixe par
+        // le maire, lui, doit tenir dans tous les cas. Quand le module est retire, en revanche, on
+        // laisse la protection d'entites trancher comme elle le faisait avant lui.
+        if (event.getTarget() instanceof ServerPlayer victim && Config.MAIRIE_PVP.get()) {
+            if (com.utopia.mairie.PvpRules.blocked(sp, victim)) {
+                event.setCanceled(true);
+                com.utopia.mairie.PvpRules.warn(sp);
+            }
+            return;
+        }
+        // Empeche de blesser/tuer les entites (villageois, animaux, cadres...) d'une parcelle.
+        if (!Config.PARCEL_PROTECT_ENTITIES.get()) {
             return;
         }
         // Un mob hostile n'appartient a personne : il se defend partout, y compris chez les autres.
@@ -286,6 +300,55 @@ public final class UtopiaEvents {
         if (!ParcelManager.isActionAllowed(sp, level, pos, Parcel.Flag.BUILD)) {
             event.setCanceled(true);
             sp.sendSystemMessage(Messages.error("Vous ne pouvez pas attaquer les entites de cette parcelle."));
+        }
+    }
+
+    @SubscribeEvent
+    public static void onIncomingDamage(
+            net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
+        // Le coup porte a la main passe par AttackEntityEvent ; tout le reste (potion, trident,
+        // loup lance sur sa cible, boule de feu renvoyee) n'arrive que sous cette forme.
+        if (!(event.getEntity() instanceof ServerPlayer victim)) {
+            return;
+        }
+        ServerPlayer attacker = com.utopia.mairie.PvpRules.attackerOf(event.getSource());
+        if (attacker != null && com.utopia.mairie.PvpRules.blocked(attacker, victim)) {
+            event.setCanceled(true);
+            com.utopia.mairie.PvpRules.warn(attacker);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onProjectileImpact(
+            net.neoforged.neoforge.event.entity.ProjectileImpactEvent event) {
+        // Une fleche interdite est arretee avant de toucher : annuler plus tard, au moment du degat,
+        // laisserait passer l'embrasement et empilerait un contexte de degat jamais depile cote
+        // NeoForge. A raison de plusieurs fleches par seconde, cela finit par se voir.
+        // Seuls les projectiles qui blessent sont concernes : un bouchon de peche, un oeuf ou une
+        // boule de neige ne font que bousculer, les arreter n'apporterait qu'un message de refus
+        // absurde a chaque lancer.
+        net.minecraft.world.entity.projectile.Projectile projectile = event.getProjectile();
+        boolean offensif = projectile instanceof net.minecraft.world.entity.projectile.AbstractArrow
+                || projectile instanceof net.minecraft.world.entity.projectile.AbstractHurtingProjectile
+                || projectile instanceof net.minecraft.world.entity.projectile.FireworkRocketEntity;
+        if (!offensif
+                || !(event.getRayTraceResult()
+                        instanceof net.minecraft.world.phys.EntityHitResult hit)
+                || !(hit.getEntity() instanceof ServerPlayer victim)
+                || !(projectile.getOwner() instanceof ServerPlayer attacker)) {
+            return;
+        }
+        if (com.utopia.mairie.PvpRules.blocked(attacker, victim)) {
+            event.setCanceled(true);
+            com.utopia.mairie.PvpRules.warn(attacker);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        // Concours de chasse : la prise est comptee ici, donc apres toute annulation de degat.
+        if (event.getEntity().level() instanceof ServerLevel level) {
+            com.utopia.mairie.LeaderboardManager.onKill(level.getServer(), event.getEntity());
         }
     }
 
@@ -410,6 +473,7 @@ public final class UtopiaEvents {
             com.utopia.job.JobManager.tick(server);
             com.utopia.savings.SavingsManager.tick(server); // interets a minuit (heure de Paris)
             com.utopia.quote.QuoteManager.tick(server);     // devis arrives a echeance
+            com.utopia.mairie.LeaderboardManager.tick(server); // cloture du concours de chasse
         }
         // Structures en mode auto : bascule jour <-> nuit + presence des marchands (toutes les ~5 s).
         if (t % 40 == 0) {
@@ -427,7 +491,6 @@ public final class UtopiaEvents {
             com.utopia.transit.TransitManager.syncNpcs(server); // capitaines a leur poste
             com.utopia.chantier.ChantierManager.sync(server);  // PNJ + hologramme Top 3
             com.utopia.hologram.HologramManager.sync(server);  // panneaux libres de l'administration
-            com.utopia.npc.NpcManager.sync(server);            // statues decoratives
             com.utopia.npc.NpcManager.sync(server);            // statues decoratives
         }
         // Elections : cloture automatique + feux d'artifice de la ceremonie.

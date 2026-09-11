@@ -241,15 +241,25 @@ public final class EconomyMenus {
                 amount -> {
                     if (player.getUUID().equals(targetId)) {
                         player.sendSystemMessage(Messages.error("Vous ne pouvez pas vous payer."));
-                    } else if (EconomyManager.transfer(server, player.getUUID(), targetId, amount)) {
-                        player.sendSystemMessage(Messages.success("Envoye " + EconomyManager.format(amount) + " a " + nameOf(server, targetId) + "."));
-                        ServerPlayer t = server.getPlayerList().getPlayer(targetId);
-                        if (t != null) {
-                            t.sendSystemMessage(Messages.success("Vous avez recu " + EconomyManager.format(amount)
-                                    + " de " + player.getGameProfile().getName() + "."));
-                        }
                     } else {
-                        player.sendSystemMessage(Messages.error("Solde insuffisant."));
+                        // Meme retenue que /pay : les deux chemins menent au meme virement.
+                        com.utopia.mairie.TaxManager.Levy levy =
+                                com.utopia.mairie.TaxManager.transferTaxed(
+                                        server, player.getUUID(), targetId, amount);
+                        if (levy == null) {
+                            player.sendSystemMessage(Messages.error("Solde insuffisant."));
+                        } else {
+                            long recu = amount - levy.total();
+                            player.sendSystemMessage(Messages.success("Envoye "
+                                    + EconomyManager.format(amount) + " a " + nameOf(server, targetId)
+                                    + com.utopia.mairie.TaxManager.suffix(levy) + "."));
+                            ServerPlayer t = server.getPlayerList().getPlayer(targetId);
+                            if (t != null) {
+                                t.sendSystemMessage(Messages.success("Vous avez recu "
+                                        + EconomyManager.format(recu)
+                                        + " de " + player.getGameProfile().getName() + "."));
+                            }
+                        }
                     }
                     openPlayerMenu(player);
                 });

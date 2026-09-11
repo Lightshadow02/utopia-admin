@@ -155,7 +155,9 @@ public final class QuoteData extends SavedData {
     }
 
     public void setTaxPercent(int value) {
-        this.taxPercent = Math.max(0, Math.min(100, value));
+        // Meme plafond que toutes les autres taxes : au-dela, le percepteur ecreterait en silence
+        // et l'ecran promettrait un taux qui n'est jamais preleve.
+        this.taxPercent = Math.max(0, Math.min(MairieData.MAX_TOTAL_TAX, value));
         setDirty();
     }
 
