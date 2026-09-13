@@ -399,6 +399,9 @@ public final class BetAdminMenus {
                         BetData.Bet fresh = BetData.get(sp.server).bet(betId);
                         if (fresh == null || fresh.state.closed()) {
                             sp.sendSystemMessage(Messages.warn("Ce pari est deja clos."));
+                        } else if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                            openBet(sp, betId);
+                            return;
                         } else if (BetManager.cancel(sp.server, fresh, "Annule par l'administration ("
                                 + sp.getGameProfile().getName() + ")")) {
                             sp.sendSystemMessage(Messages.success("Pari annule, mises remboursees."));

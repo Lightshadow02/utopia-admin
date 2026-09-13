@@ -64,6 +64,12 @@ public final class JobManager {
         return !now().toLocalTime().isBefore(PAY_TIME);
     }
 
+    /** Instant du versement de midi pour cette journee, en heure de Paris. */
+    public static long payInstant(long day) {
+        return java.time.LocalDate.ofEpochDay(day).atTime(PAY_TIME).atZone(ZONE)
+                .toInstant().toEpochMilli();
+    }
+
     public static String stamp(long millis) {
         return ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), ZONE).format(STAMP);
     }
@@ -221,9 +227,24 @@ public final class JobManager {
             total += data.bankerSalary();
             lines.add("Banquier : +" + data.bankerSalary() + " Utopieces");
         }
+        // Un droit ne AVANT le gel reste du : on ne consomme pas le repere, et il sera verse une
+        // seule fois a la levee. Seule l'echeance tombee PENDANT le gel est perdue.
+        if (com.utopia.economy.FreezeManager.isFrozen(server) && !com.utopia.economy.FreezeManager.wasFrozenAt(server, payInstant(day))) {
+            return;
+        }
         // Meme sans rien a verser, on marque la journee : inutile de re-tester ce joueur en boucle.
         data.setLastPaidDay(player, day);
         if (total <= 0) {
+            return;
+        }
+        // Fonds geles : la journee est marquee payee mais rien n'est verse. C'est volontaire - une
+        // echeance gelee est perdue, jamais rattrapee, sinon la levee du gel paierait d'un coup
+        // toutes les journees du blocage.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            com.utopia.economy.FreezeManager.noteSuspended(server, player,
+                    "salaire de " + data.nameOf(player) + " (" + total + " Utopieces)");
+            data.log("Salaire de " + data.nameOf(player) + " suspendu par le gel des fonds ("
+                    + total + " Utopieces non verses)");
             return;
         }
         // Le brut passe d'abord par la mairie : l'impot et les taxes nommees sont retenus a la

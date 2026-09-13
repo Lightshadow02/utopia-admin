@@ -242,6 +242,9 @@ public final class RoomMenus {
             return;
         }
         long cost = pricePerDay * days;
+        if (com.utopia.economy.FreezeManager.blocked(admin)) {
+            return;
+        }
         if (!EconomyManager.payCombined(admin, cost)) {
             admin.sendSystemMessage(Messages.error("Fonds insuffisants pour avancer " + EconomyManager.format(cost) + " (pieces + solde)."));
             openRoom(admin, roomId);

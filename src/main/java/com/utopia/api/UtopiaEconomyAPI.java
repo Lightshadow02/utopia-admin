@@ -140,6 +140,22 @@ public final class UtopiaEconomyAPI {
     }
 
     // ============================================================
+    //  Gel global des fonds
+    // ============================================================
+
+    /**
+     * L'economie est-elle gelee ? Pendant un gel, <b>toutes</b> les ecritures de cette interface
+     * sont refusees : {@code add} et {@code giveCoins} ne font rien, {@code remove},
+     * {@code transfer}, {@code payCombined} renvoient faux, {@code takeCoins} renvoie zero.
+     *
+     * <p>Un script qui donne une recompense doit tester cette methode avant de consommer quoi que
+     * ce soit : sinon il retirera un objet sans jamais crediter sa contrepartie.
+     */
+    public static boolean isFrozen(MinecraftServer server) {
+        return com.utopia.economy.FreezeManager.isFrozen(server);
+    }
+
+    // ============================================================
     //  Utilitaires
     // ============================================================
 

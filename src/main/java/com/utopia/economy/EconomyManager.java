@@ -44,15 +44,26 @@ public final class EconomyManager {
     }
 
     public static void setBalance(MinecraftServer server, UUID playerId, long amount) {
+        if (FreezeManager.blockWrite(server, playerId, "setBalance")) {
+            return;
+        }
         EconomyData.get(server).setBalance(playerId, amount);
     }
 
     public static void add(MinecraftServer server, UUID playerId, long amount) {
+        if (FreezeManager.blockWrite(server, playerId, "add")) {
+            return;
+        }
         setBalance(server, playerId, getBalance(server, playerId) + amount);
     }
 
     /** Retire {@code amount} si le solde est suffisant ; renvoie faux sinon. */
     public static boolean remove(MinecraftServer server, UUID playerId, long amount) {
+        // Un gel se signale ici par un refus, et non par un succes silencieux : un appelant qui
+        // ignore la valeur de retour doit se heurter au meme mur que les autres.
+        if (FreezeManager.blockWrite(server, playerId, "remove")) {
+            return false;
+        }
         long balance = getBalance(server, playerId);
         if (balance < amount) {
             return false;
@@ -63,6 +74,9 @@ public final class EconomyManager {
 
     /** Transfere {@code amount} de {@code from} vers {@code to} ; faux si solde insuffisant. */
     public static boolean transfer(MinecraftServer server, UUID from, UUID to, long amount) {
+        if (FreezeManager.blockWrite(server, from, "transfer")) {
+            return false;
+        }
         if (!remove(server, from, amount)) {
             return false;
         }
@@ -135,6 +149,10 @@ public final class EconomyManager {
 
     /** Donne {@code amount} pieces au joueur (en respectant la taille de pile max ; surplus au sol). */
     public static void giveCoins(ServerPlayer player, int amount) {
+        if (FreezeManager.blockWrite(player == null ? null : player.server,
+                player == null ? null : player.getUUID(), "giveCoins")) {
+            return;
+        }
         int maxStack = new ItemStack(coinItem()).getMaxStackSize();
         int remaining = amount;
         while (remaining > 0) {
@@ -175,6 +193,12 @@ public final class EconomyManager {
 
     /** Retire jusqu'a {@code amount} pieces de l'inventaire ; renvoie le nombre reellement retire. */
     public static int takeCoins(ServerPlayer player, int amount) {
+        // Les pieces frappees sont de la monnaie comme une autre : les prendre pendant un gel
+        // reviendrait a les detruire, puisque leur contrepartie en banque serait refusee.
+        if (FreezeManager.blockWrite(player == null ? null : player.server,
+                player == null ? null : player.getUUID(), "takeCoins")) {
+            return 0;
+        }
         Inventory inv = player.getInventory();
         int remaining = amount;
         for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
@@ -198,6 +222,10 @@ public final class EconomyManager {
     public static boolean payCombined(ServerPlayer payer, long amount) {
         if (amount <= 0) {
             return true;
+        }
+        if (FreezeManager.blockWrite(payer == null ? null : payer.server,
+                payer == null ? null : payer.getUUID(), "payCombined")) {
+            return false;
         }
         int coins = countCoins(payer);
         long balance = getBalance(payer.server, payer.getUUID());

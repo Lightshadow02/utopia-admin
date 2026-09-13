@@ -178,6 +178,11 @@ public final class MarketMenus {
                         Icons.lore("Disponible : " + available, ChatFormatting.GRAY)),
                 Icons.label("Acheter", ChatFormatting.GREEN), available, 1, available,
                 qty -> {
+                    // L'achat livre l'objet sans relire la valeur du debit : on refuse en amont,
+                    // sinon un gel ferait sortir la marchandise gratuitement.
+                    if (com.utopia.economy.FreezeManager.blocked(player)) {
+                        return;
+                    }
                     MarketManager.BuyResult r = MarketManager.buy(player, stall, idx, (int) qty);
                     switch (r) {
                         case POOR -> player.sendSystemMessage(Messages.error("Solde insuffisant."));
@@ -322,6 +327,9 @@ public final class MarketMenus {
                                 long cur = EconomyManager.getBalance(sp.server, MarketData.MAIRIE_UUID);
                                 long amount = Math.min(v, cur);
                                 if (amount > 0) {
+                                    if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                                        return;
+                                    }
                                     EconomyManager.remove(sp.server, MarketData.MAIRIE_UUID, amount);
                                     EconomyManager.add(sp.server, sp.getUUID(), amount);
                                     sp.sendSystemMessage(Messages.success("Retire " + EconomyManager.format(amount)
@@ -347,6 +355,9 @@ public final class MarketMenus {
                                 long cur = EconomyManager.getBalance(sp.server, sp.getUUID());
                                 long amount = Math.min(v, cur);
                                 if (amount > 0) {
+                                    if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                                        return;
+                                    }
                                     EconomyManager.remove(sp.server, sp.getUUID(), amount);
                                     EconomyManager.add(sp.server, MarketData.MAIRIE_UUID, amount);
                                     sp.sendSystemMessage(Messages.success("Depose " + EconomyManager.format(amount)

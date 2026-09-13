@@ -110,6 +110,9 @@ public final class CasinoManager {
             player.sendSystemMessage(Messages.error("Cette borne est en panne (jeu inconnu)."));
             return;
         }
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return;
+        }
         if (machine.cost > 0 && !EconomyManager.payCombined(player, machine.cost)) {
             player.sendSystemMessage(Messages.error("Il te faut " + machine.cost
                     + " Utopiece(s) pour jouer."));

@@ -127,17 +127,23 @@ public final class AdminMenu {
                             ChatFormatting.GRAY),
                     com.utopia.waystone.WaystoneMenus::openAdmin));
         }
+        if (Config.ADMIN_FREEZE.get()) {
+            boolean gele = com.utopia.economy.FreezeManager.isFrozen(player.server);
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(gele ? Items.BLUE_ICE : Items.GOLD_INGOT),
+                    Icons.label("Gel global des fonds : " + (gele ? "ACTIF" : "INACTIF"),
+                            gele ? ChatFormatting.RED : ChatFormatting.GREEN),
+                    Icons.lore(gele
+                                    ? "Toute circulation d'Utopieces est arretee - clique pour degeler"
+                                    : "Arrete toute circulation d'Utopieces sur le serveur",
+                            gele ? ChatFormatting.RED : ChatFormatting.GRAY),
+                    AdminMenu::confirmFreeze));
+        }
         if (Config.ADMIN_NPCS.get()) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARMOR_STAND),
                     Icons.label("Statues", ChatFormatting.LIGHT_PURPLE),
                     Icons.lore("PNJ decoratifs a l'effigie d'un joueur, visage conserve",
                             ChatFormatting.GRAY),
-                    com.utopia.npc.NpcMenus::open));
-        }
-        if (Config.ADMIN_NPCS.get()) {
-            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.ARMOR_STAND),
-                    Icons.label("Statues", ChatFormatting.LIGHT_PURPLE),
-                    Icons.lore("Personnages decoratifs a l'effigie d'un joueur", ChatFormatting.GRAY),
                     com.utopia.npc.NpcMenus::open));
         }
         if (Config.ADMIN_HOLOGRAMS.get()) {
@@ -252,6 +258,59 @@ public final class AdminMenu {
         }
 
         OwoMenuServer.openHub(player, title, stats, entries, AdminMenu::openInventorySwitch, AdminMenu::open);
+    }
+
+    /**
+     * Bascule le gel, avec confirmation. Le droit est revu au moment d'agir et pas seulement a
+     * l'ouverture : un ecran reste affiche apres une revocation, et c'est le clic qui compte.
+     */
+    public static void confirmFreeze(ServerPlayer player) {
+        if (!player.hasPermissions(2)) {
+            player.sendSystemMessage(Messages.error("Reserve a l'administration."));
+            return;
+        }
+        boolean gele = com.utopia.economy.FreezeManager.isFrozen(player.server);
+        OwoMenuServer.openConfirm(player,
+                Icons.title(gele ? "Degeler les fonds d'Utopia ?" : "Geler tous les fonds d'Utopia ?",
+                        gele ? ChatFormatting.GREEN : ChatFormatting.RED),
+                gele
+                        ? List.of(Icons.lore("Les operations ordinaires reprennent immediatement.",
+                                        ChatFormatting.GRAY),
+                                Icons.lore("Les soldes conserves redeviennent utilisables.",
+                                        ChatFormatting.GRAY),
+                                Icons.lore("Les salaires et interets des periodes gelees ne seront pas rattrapes.",
+                                        ChatFormatting.DARK_GRAY))
+                        : List.of(Icons.lore("Plus une seule Utopiece ne bougera : retraits, depots,",
+                                        ChatFormatting.GRAY),
+                                Icons.lore("paiements, virements, salaires, interets, achats, paris.",
+                                        ChatFormatting.GRAY),
+                                Icons.lore("Les operateurs ne font pas exception.", ChatFormatting.RED),
+                                Icons.lore("Aucun solde n'est efface : l'argent est immobilise, pas perdu.",
+                                        ChatFormatting.DARK_GRAY)),
+                Icons.label(gele ? "Degeler" : "Geler tout",
+                        gele ? ChatFormatting.GREEN : ChatFormatting.RED),
+                sp -> {
+                    if (!sp.hasPermissions(2)) {
+                        sp.sendSystemMessage(Messages.error("Reserve a l'administration."));
+                        return;
+                    }
+                    // La cible est celle annoncee a l'ouverture, pas une recalculee au clic : si un
+                    // autre administrateur a bascule entre-temps, le bouton ferait l'inverse de ce
+                    // que son libelle promet.
+                    boolean cible = !gele;
+                    if (!com.utopia.economy.FreezeManager.setFrozen(sp.server, sp, cible)) {
+                        sp.sendSystemMessage(Messages.warn(
+                                "L'etat a change entre-temps : les fonds sont deja "
+                                        + (cible ? "geles." : "degeles.")));
+                        open(sp);
+                        return;
+                    }
+                    sp.sendSystemMessage(cible
+                            ? Messages.error("Fonds GELES : plus aucune Utopiece ne circule.")
+                            : Messages.success("Fonds DEGELES : les operations reprennent."));
+                    open(sp);
+                },
+                AdminMenu::open);
     }
 
     /** Selecteur des joueurs en ligne : bascule le statut de maire (acces a /maire). */

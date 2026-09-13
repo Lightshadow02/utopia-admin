@@ -11,6 +11,27 @@ API publique et **stable** pour intégrer l'économie d'`utopia-admin` depuis **
 
 ---
 
+## Gel global des fonds
+
+Un administrateur peut geler toute l'économie depuis `/admin`. Pendant un gel, **toutes les écritures de cette API sont refusées** :
+
+| Méthode | Comportement pendant un gel |
+| --- | --- |
+| `add`, `setBalance`, `addToMairie`, `giveCoins` | ne font rien |
+| `remove`, `transfer`, `payCombined` | renvoient `false` |
+| `takeCoins` | renvoie `0` |
+| lectures (`getBalance`, `countCoins`…) | inchangées |
+
+```js
+if (UtopiaEconomyAPI.isFrozen(server)) {
+    // Ne consommez rien : la contrepartie ne sera pas créditée.
+    return
+}
+```
+
+Testez `isFrozen` **avant** de retirer un objet ou de marquer une récompense comme encaissée : sans cela, le script consommera sans jamais créditer.
+
+
 ## 🚀 Démarrage rapide (KubeJS)
 
 Dans un **server script** (`kubejs/server_scripts/…`) :

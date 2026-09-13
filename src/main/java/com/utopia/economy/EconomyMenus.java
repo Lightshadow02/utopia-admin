@@ -66,8 +66,12 @@ public final class EconomyMenus {
 
         Component title = Icons.screenTitle("Economie"
                 + (pages > 1 ? " (" + (cur + 1) + "/" + pages + ")" : ""), ChatFormatting.DARK_AQUA);
-        List<Component> stats = List.of(
-                Icons.lore("Joueurs hors ligne : /money give|take|set", ChatFormatting.GRAY));
+        List<Component> stats = new ArrayList<>();
+        stats.add(Icons.lore("Joueurs hors ligne : /money give|take|set", ChatFormatting.GRAY));
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            stats.add(Icons.lore("Fonds geles : lecture seule, aucune ecriture possible.",
+                    ChatFormatting.RED));
+        }
 
         List<OwoMenuServer.Column> columns = List.of(
                 new OwoMenuServer.Column(head("JOUEUR"), 96, OwoMenuServer.Column.LEFT),
@@ -102,9 +106,13 @@ public final class EconomyMenus {
         long balance = EconomyManager.getBalance(server, targetId);
 
         Component title = Icons.title("Solde de " + name, ChatFormatting.GOLD);
-        List<Component> stats = List.of(
-                stat("Joueur : ", name, ChatFormatting.AQUA),
-                stat("Solde : ", balance + " Utopieces", ChatFormatting.GOLD));
+        List<Component> stats = new ArrayList<>();
+        stats.add(stat("Joueur : ", name, ChatFormatting.AQUA));
+        stats.add(stat("Solde : ", balance + " Utopieces", ChatFormatting.GOLD));
+        if (com.utopia.economy.FreezeManager.isFrozen(admin.server)) {
+            stats.add(Icons.lore("Fonds geles : lecture seule, aucune ecriture possible.",
+                    ChatFormatting.RED));
+        }
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.EMERALD),
@@ -114,6 +122,9 @@ public final class EconomyMenus {
                         List.of(Icons.lore("Joueur : " + name, ChatFormatting.GRAY)),
                         Icons.label("Ajouter", ChatFormatting.GREEN), 100, 1, 1_000_000_000L,
                         v -> {
+                            if (FreezeManager.blocked(sp)) {
+                                return;
+                            }
                             EconomyManager.add(sp.server, targetId, v);
                             notifyTarget(sp.server, targetId);
                             openPlayerEco(sp, targetId);
@@ -126,6 +137,9 @@ public final class EconomyMenus {
                         Icons.label("Retirer", ChatFormatting.RED), 100, 1, 1_000_000_000L,
                         v -> {
                             long bal = EconomyManager.getBalance(sp.server, targetId);
+                            if (FreezeManager.blocked(sp)) {
+                                return;
+                            }
                             EconomyManager.setBalance(sp.server, targetId, Math.max(0L, bal - v));
                             notifyTarget(sp.server, targetId);
                             openPlayerEco(sp, targetId);
@@ -152,15 +166,23 @@ public final class EconomyMenus {
         int coins = EconomyManager.countCoins(player);
 
         Component title = Icons.screenTitle("Banque", ChatFormatting.GOLD);
-        List<Component> stats = List.of(
-                stat("Solde en banque : ", balance + " Utopieces", ChatFormatting.GOLD),
-                stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA));
+        List<Component> stats = new ArrayList<>();
+        stats.add(stat("Solde en banque : ", balance + " Utopieces", ChatFormatting.GOLD));
+        stats.add(stat("Pieces en main : ", Integer.toString(coins), ChatFormatting.AQUA));
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            stats.add(Icons.lore("Fonds geles : lecture seule, aucune operation possible.",
+                    ChatFormatting.RED));
+        }
 
         List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
         entries.add(new OwoMenuServer.HubEntry(ItemStack.EMPTY,
                 Icons.label("Deposer mes pieces", ChatFormatting.AQUA),
                 Icons.lore("Met toutes les pieces en banque", ChatFormatting.GRAY),
                 sp -> {
+                    if (FreezeManager.blocked(sp)) {
+                        openPlayerMenu(sp);
+                        return;
+                    }
                     int count = EconomyManager.countCoins(sp);
                     if (count <= 0) {
                         sp.sendSystemMessage(Messages.warn("Vous n'avez aucune piece a deposer."));
@@ -239,7 +261,10 @@ public final class EconomyMenus {
                 info, Icons.label("Envoyer", ChatFormatting.GREEN),
                 Math.min(10, balance), 1, balance,
                 amount -> {
-                    if (player.getUUID().equals(targetId)) {
+                    if (FreezeManager.blocked(player)) {
+                        openPlayerMenu(player);
+                        return;
+                    } else if (player.getUUID().equals(targetId)) {
                         player.sendSystemMessage(Messages.error("Vous ne pouvez pas vous payer."));
                     } else {
                         // Meme retenue que /pay : les deux chemins menent au meme virement.
@@ -288,6 +313,9 @@ public final class EconomyMenus {
                     int give = (int) Math.min(amount, Math.min(space2, bal));
                     if (give <= 0) {
                         player.sendSystemMessage(Messages.error(space2 <= 0 ? "Inventaire plein." : "Solde insuffisant."));
+                    } else if (FreezeManager.blocked(player)) {
+                        openPlayerMenu(player);
+                        return;
                     } else {
                         EconomyManager.remove(server, player.getUUID(), give);
                         EconomyManager.giveCoins(player, give);

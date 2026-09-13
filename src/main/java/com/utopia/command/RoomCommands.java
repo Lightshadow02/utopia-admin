@@ -135,6 +135,9 @@ public final class RoomCommands {
         int pricePerDay = IntegerArgumentType.getInteger(ctx, "pricePerDay");
         int days = IntegerArgumentType.getInteger(ctx, "days");
         long cost = (long) pricePerDay * days;
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return 0;
+        }
         if (!EconomyManager.payCombined(player, cost)) {
             player.sendSystemMessage(Messages.error("Fonds insuffisants pour avancer " + EconomyManager.format(cost)
                     + " (pieces + solde)."));

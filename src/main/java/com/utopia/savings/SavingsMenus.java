@@ -236,6 +236,9 @@ public final class SavingsMenus {
                                 ChatFormatting.DARK_GRAY)),
                 Icons.label("Deposer", ChatFormatting.GREEN), coins, 1, coins,
                 amount -> {
+                    if (com.utopia.economy.FreezeManager.blocked(banker)) {
+                        return;
+                    }
                     SavingsManager.MoveResult result = SavingsManager.deposit(banker, owner, amount);
                     if (result != SavingsManager.MoveResult.OK) {
                         banker.sendSystemMessage(Messages.warn(SavingsManager.reason(result)));
@@ -271,6 +274,9 @@ public final class SavingsMenus {
                                 ChatFormatting.DARK_GRAY)),
                 Icons.label("Retirer", ChatFormatting.YELLOW), max, 1, max,
                 amount -> {
+                    if (com.utopia.economy.FreezeManager.blocked(banker)) {
+                        return;
+                    }
                     SavingsManager.MoveResult result = SavingsManager.withdraw(banker, owner, amount);
                     if (result != SavingsManager.MoveResult.OK) {
                         banker.sendSystemMessage(Messages.warn(SavingsManager.reason(result)));
@@ -300,6 +306,9 @@ public final class SavingsMenus {
                                         ChatFormatting.GRAY)),
                                 Icons.label("Valider", ChatFormatting.GREEN), 100, 1, 1_000_000_000L,
                                 v -> {
+                                    if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                                        return;
+                                    }
                                     sp.sendSystemMessage(SavingsManager.adjust(sp, owner, v)
                                             ? Messages.success("Livret de " + name + " credite de "
                                                     + v + " Utopieces.")
@@ -314,6 +323,9 @@ public final class SavingsMenus {
                                         ChatFormatting.GRAY)),
                                 Icons.label("Valider", ChatFormatting.RED), 100, 1, 1_000_000_000L,
                                 v -> {
+                                    if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                                        return;
+                                    }
                                     sp.sendSystemMessage(SavingsManager.adjust(sp, owner, -v)
                                             ? Messages.success("Livret de " + name + " debite de "
                                                     + v + " Utopieces.")
@@ -734,7 +746,11 @@ public final class SavingsMenus {
         intro.add(stat("Prochaine nuit, environ : ", "+" + nextGain + " Utopieces", ChatFormatting.YELLOW));
         intro.add(stat("Total percu depuis l'ouverture : ", account.totalInterest + " Utopieces",
                 ChatFormatting.GRAY));
-        if (!data.enabled()) {
+        if (com.utopia.economy.FreezeManager.isFrozen(player.server)) {
+            intro.add(Component.literal("Fonds geles : lecture seule, ni depot ni retrait, "
+                    + "et les interets ne courent pas.")
+                    .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
+        } else if (!data.enabled()) {
             intro.add(Component.literal("Interets suspendus par l'administration "
                     + "(votre epargne reste disponible au guichet).")
                     .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));

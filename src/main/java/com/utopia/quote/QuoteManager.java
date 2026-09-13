@@ -162,7 +162,7 @@ public final class QuoteManager {
 
     // ------------------------------------------------------------------ Reglement
 
-    public enum PayResult { OK, NOT_ACCEPTED, NOT_CLIENT, NOT_ISSUER, BAD_AMOUNT, NOT_ENOUGH }
+    public enum PayResult { OK, NOT_ACCEPTED, NOT_CLIENT, NOT_ISSUER, BAD_AMOUNT, NOT_ENOUGH, GELE }
 
     public static String reason(PayResult result) {
         return switch (result) {
@@ -171,6 +171,7 @@ public final class QuoteManager {
             case NOT_ISSUER -> "Seul l'emetteur peut declarer un reglement en liquide.";
             case BAD_AMOUNT -> "Montant invalide.";
             case NOT_ENOUGH -> "Vous n'avez pas cette somme, pieces et banque reunies.";
+            case GELE -> "Fonds geles : aucun reglement n'est possible.";
             default -> "";
         };
     }
@@ -189,6 +190,9 @@ public final class QuoteManager {
         long remaining = quote.remaining();
         if (amount <= 0 || amount > remaining) {
             return PayResult.BAD_AMOUNT;
+        }
+        if (com.utopia.economy.FreezeManager.blocked(client)) {
+            return PayResult.GELE;
         }
         if (!EconomyManager.payCombined(client, amount)) {
             return PayResult.NOT_ENOUGH;

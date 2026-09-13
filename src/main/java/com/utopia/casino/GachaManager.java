@@ -40,6 +40,9 @@ public final class GachaManager {
 
     /** Encaisse le tirage et remet la capsule. */
     public static void draw(ServerPlayer player, CasinoData.Machine machine) {
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return;
+        }
         if (machine.cost > 0 && !EconomyManager.payCombined(player, machine.cost)) {
             player.sendSystemMessage(Messages.error("Il te faut " + machine.cost
                     + " Utopiece(s) pour tourner la manivelle."));

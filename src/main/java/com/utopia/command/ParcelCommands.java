@@ -196,6 +196,11 @@ public final class ParcelCommands {
         }
         long price = p.price();
         var req = ParcelManager.requiredBuyItem(p);
+        // L'achat consomme un acte ou une licence : refuser avant, sinon le document part sans
+        // que la parcelle change de main.
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return 0;
+        }
         switch (ParcelManager.purchase(player, p)) {
             case NOT_FOR_SALE -> player.sendSystemMessage(Messages.error("Cette parcelle n'est pas en vente."));
             case ALREADY_OWNER -> player.sendSystemMessage(Messages.error("Vous possedez deja cette parcelle."));

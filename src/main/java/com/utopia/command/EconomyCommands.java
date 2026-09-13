@@ -133,7 +133,9 @@ public final class EconomyCommands {
     private static int top(CommandContext<CommandSourceStack> ctx) {
         MinecraftServer server = ctx.getSource().getServer();
         var list = com.utopia.data.EconomyData.get(server).top(10);
-        ctx.getSource().sendSuccess(() -> Messages.success("Classement des soldes (top " + list.size() + ") :"), false);
+        boolean gele = com.utopia.economy.FreezeManager.isFrozen(server);
+        ctx.getSource().sendSuccess(() -> Messages.success("Classement des soldes (top "
+                + list.size() + ")" + (gele ? " - Fonds geles" : "") + " :"), false);
         int rank = 1;
         for (var e : list) {
             final int r = rank++;
@@ -170,7 +172,10 @@ public final class EconomyCommands {
     private static int balanceSelf(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         long bal = EconomyManager.getBalance(player.server, player.getUUID());
-        player.sendSystemMessage(Messages.success("Votre solde : " + EconomyManager.format(bal)));
+        // Le solde reste consultable pendant un gel : ne jamais afficher un faux zero, mais dire
+        // clairement que rien ne peut bouger.
+        player.sendSystemMessage(Messages.success("Votre solde : " + EconomyManager.format(bal)
+                + (com.utopia.economy.FreezeManager.isFrozen(player.server) ? " - Fonds geles" : "")));
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
@@ -182,8 +187,9 @@ public final class EconomyCommands {
             return 0;
         }
         long bal = EconomyManager.getBalance(server, gp.getId());
+        boolean geleAutre = com.utopia.economy.FreezeManager.isFrozen(server);
         ctx.getSource().sendSuccess(() -> Messages.success("Solde de " + gp.getName() + " : "
-                + EconomyManager.format(bal)), false);
+                + EconomyManager.format(bal) + (geleAutre ? " - Fonds geles" : "")), false);
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
@@ -197,6 +203,9 @@ public final class EconomyCommands {
         }
         if (gp.getId().equals(sender.getUUID())) {
             sender.sendSystemMessage(Messages.error("Vous ne pouvez pas vous payer vous-meme."));
+            return 0;
+        }
+        if (com.utopia.economy.FreezeManager.blocked(sender)) {
             return 0;
         }
         int amount = IntegerArgumentType.getInteger(ctx, "amount");
@@ -233,6 +242,11 @@ public final class EconomyCommands {
             player.sendSystemMessage(Messages.error("Solde insuffisant."));
             return 0;
         }
+        // Le debit et la remise des pieces sont deux gestes : bloquer l'un sans l'autre creerait ou
+        // detruirait de la monnaie. On refuse donc avant d'en avoir fait un seul.
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return 0;
+        }
         EconomyManager.remove(player.server, player.getUUID(), amount);
         EconomyManager.giveCoins(player, amount);
         String suffix = amount < requested ? " (limite a la place dispo)" : "";
@@ -246,6 +260,9 @@ public final class EconomyCommands {
         int available = EconomyManager.countCoins(player);
         if (available <= 0) {
             player.sendSystemMessage(Messages.warn("Vous n'avez aucune piece a deposer."));
+            return 0;
+        }
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
             return 0;
         }
         int toDeposit = requested < 0 ? available : Math.min(requested, available);
@@ -274,6 +291,16 @@ public final class EconomyCommands {
         if (!knownTarget(server, id)) {
             ctx.getSource().sendFailure(Messages.error("Joueur inconnu : \"" + gp.getName()
                     + "\" n'a jamais rejoint le serveur (aucun compte cree)."));
+            return 0;
+        }
+        // Le gel s'applique aussi aux operateurs : le cahier des charges le demande nommement, et
+        // une porte derobee pour l'administration est une porte derobee tout court.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            if (ctx.getSource().getEntity() instanceof ServerPlayer admin) {
+                com.utopia.economy.FreezeManager.warn(admin);
+            }
+            ctx.getSource().sendFailure(Messages.error(
+                    "Fonds geles : aucune ecriture n'est possible, meme en administration."));
             return 0;
         }
         long before = EconomyManager.getBalance(server, id);

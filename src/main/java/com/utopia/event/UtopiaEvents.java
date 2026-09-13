@@ -425,6 +425,7 @@ public final class UtopiaEvents {
         com.utopia.savings.SavingsManager.onLogin(sp);
         com.utopia.quote.QuoteManager.onLogin(sp);
         com.utopia.bet.BetManager.onLogin(sp);
+        com.utopia.economy.FreezeManager.onLogin(sp); // echeances manquees pendant un gel
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
             MutableComponent open = Component.literal("[/daily]").withStyle(s -> s
                     .withColor(ChatFormatting.GREEN).withBold(true)

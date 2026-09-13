@@ -652,6 +652,10 @@ public final class BetMenus {
                                 openBookmaker(sp, betId);
                                 return;
                             }
+                            if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                                openBookmaker(sp, betId);
+                                return;
+                            }
                             if (BetManager.resolve(sp.server, fresh, optionId,
                                     sp.getGameProfile().getName())) {
                                 sp.sendSystemMessage(Messages.success("Resultat enregistre et cagnotte "

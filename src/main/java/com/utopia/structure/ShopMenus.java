@@ -135,6 +135,9 @@ public final class ShopMenus {
                         Icons.lore("Tu peux en prendre jusqu'a " + max, ChatFormatting.DARK_GRAY)),
                 Icons.label("Acheter", ChatFormatting.GREEN), 1, 1, max,
                 qty -> {
+                    if (com.utopia.economy.FreezeManager.blocked(player)) {
+                        return;
+                    }
                     long total = unit * qty;
                     if (!EconomyManager.remove(player.server, player.getUUID(), total)) {
                         player.sendSystemMessage(Messages.error("Solde insuffisant."));
@@ -166,6 +169,11 @@ public final class ShopMenus {
                         Icons.lore("Tu en possedes " + owned, ChatFormatting.DARK_GRAY)),
                 Icons.label("Revendre", ChatFormatting.GOLD), owned, 1, owned,
                 qty -> {
+                    // La revente retire les items AVANT de payer : un gel entre les deux les
+                    // detruirait, et le verrou dur ne sait pas rendre ce qui est deja sorti.
+                    if (com.utopia.economy.FreezeManager.blocked(player)) {
+                        return;
+                    }
                     int removed = removeFrom(player, t.stack(), (int) qty);
                     if (removed <= 0) {
                         player.sendSystemMessage(Messages.warn("Objet introuvable dans ton inventaire."));

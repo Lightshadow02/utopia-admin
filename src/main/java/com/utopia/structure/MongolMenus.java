@@ -113,6 +113,10 @@ public final class MongolMenus {
                                 ChatFormatting.DARK_GRAY)),
                 Icons.label("Vendre", ChatFormatting.GREEN), max, 1, max,
                 qty -> {
+                    // La vente retire les items puis paie : un gel entre les deux les detruirait.
+                    if (com.utopia.economy.FreezeManager.blocked(player)) {
+                        return;
+                    }
                     MongolManager.Sale sale = MongolManager.sell(player, model, (int) qty, merchantName);
                     switch (sale.result()) {
                         case QUOTA_FULL -> player.sendSystemMessage(Messages.warn(

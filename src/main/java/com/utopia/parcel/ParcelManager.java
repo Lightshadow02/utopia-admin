@@ -354,6 +354,11 @@ public final class ParcelManager {
         if (days <= 0) {
             return;
         }
+        // Fonds geles : l'horloge des licences s'arrete aussi. Perdre son commerce parce que la
+        // banque etait piratee serait une double peine, et le renouvellement s'achete.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return;
+        }
         long now = System.currentTimeMillis();
         long interval = (long) days * DAY_MS;
         ParcelData data = ParcelData.get(server);

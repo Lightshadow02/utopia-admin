@@ -114,6 +114,10 @@ public final class DailyMenus {
         int backId = 3;
         UtopiaGui gui = new UtopiaGui(1, title);
         gui.button(claimId, ItemStack.EMPTY, sp -> {
+            if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                openPlayerCalendarRich(sp, YearMonth.from(DailyManager.today()));
+                return;
+            }
             DailyManager.claim(sp);
             openPlayerCalendarRich(sp, YearMonth.from(DailyManager.today()));
         });

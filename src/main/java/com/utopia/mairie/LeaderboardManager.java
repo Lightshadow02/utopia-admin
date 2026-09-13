@@ -185,6 +185,11 @@ public final class LeaderboardManager {
 
     /** Solde le classement : recompenses, annonce, archivage, puis remise a zero. */
     private static void close(MinecraftServer server, MairieData mairie, LeaderboardData data) {
+        // Fonds geles : la cloture attend. Solder maintenant reviendrait a annoncer un podium dont
+        // aucune prime n'aurait ete versee, et la journee serait perdue pour rien.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return;
+        }
         long closedDay = dayOf(data.nextClose());
         List<LeaderboardData.Entry> standings = data.standings();
         List<MairieData.PodiumEntry> awarded = new ArrayList<>();

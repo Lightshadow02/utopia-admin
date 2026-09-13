@@ -128,7 +128,9 @@ public final class BetManager {
     }
 
     public enum WagerResult {
-        OK, CLOSED, SUSPENDED, NO_OPTION, LOCKED_OPTION, TOO_SMALL, NOT_ENOUGH, DOUBLE_CLICK
+        OK, CLOSED, SUSPENDED, NO_OPTION, LOCKED_OPTION, TOO_SMALL, NOT_ENOUGH, DOUBLE_CLICK,
+        /** Fonds geles : le message RP a deja ete envoye, celui-ci ne fait que ne pas mentir. */
+        GELE
     }
 
     public static String reason(WagerResult result) {
@@ -139,6 +141,7 @@ public final class BetManager {
             case LOCKED_OPTION -> "Vous avez deja mise sur une autre proposition : le choix est definitif.";
             case TOO_SMALL -> "La mise minimale est de " + MIN_WAGER + " Utopiece.";
             case NOT_ENOUGH -> "Vous n'avez pas cette somme, pieces et banque reunies.";
+            case GELE -> "Fonds geles : aucune mise n'est acceptee.";
             case DOUBLE_CLICK -> "Mise deja enregistree.";
             default -> "";
         };
@@ -167,6 +170,11 @@ public final class BetManager {
         if (amount < MIN_WAGER) {
             return WagerResult.TOO_SMALL;
         }
+        // Avant le jeton anti-double-clic : un refus ne doit pas consommer le jeton, sinon le
+        // parieur doit rouvrir l'ecran pour une action qui n'a rien change.
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return WagerResult.GELE;
+        }
         if (!consumeToken(player, token)) {
             return WagerResult.DOUBLE_CLICK;
         }
@@ -192,6 +200,11 @@ public final class BetManager {
 
     /** Ferme les mises : les montants et les cotes sont figes. Renvoie false si rien n'a bouge. */
     public static boolean close(MinecraftServer server, BetData.Bet bet, String by) {
+        // Gele : on ne touche pas a l'etat du pari. Muter d'abord et echouer au versement
+        // laisserait un pari a moitie clos que personne ne pourrait plus rattraper.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return false;
+        }
         if (bet.state != BetData.State.OUVERT) {
             return false;
         }
@@ -305,6 +318,11 @@ public final class BetManager {
      * enregistree l'emportant a egalite. La cagnotte est distribuee en entier, ni plus ni moins.
      */
     public static boolean resolve(MinecraftServer server, BetData.Bet bet, String optionId, String by) {
+        // Un denouement paie plusieurs comptes d'un coup : gele, il ne doit rien payer du tout,
+        // l'administrateur le rejouera apres la levee.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return false;
+        }
         if (bet.state != BetData.State.FERME) {
             return false;
         }
@@ -406,6 +424,10 @@ public final class BetManager {
      * n'a pas pu aboutir : le pari est alors bloque et rien n'a bouge.
      */
     public static boolean cancel(MinecraftServer server, BetData.Bet bet, String reason) {
+        // L'annulation rembourse : meme regle que le denouement.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return false;
+        }
         if (bet.state.closed()) {
             return false;
         }
@@ -464,6 +486,12 @@ public final class BetManager {
      * et dans le meme instant : ni un double clic ni un redemarrage ne peut le payer deux fois.
      */
     private static void flush(MinecraftServer server, BetData.Bet bet, boolean won, String winnerLabel) {
+        // Point reel d'ecriture des versements : le verrou est ici, pas seulement chez les
+        // appelants, pour couvrir d'un coup denouement, annulation, reglement administratif
+        // et rattrapage automatique au tick.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return;
+        }
         BetData data = BetData.get(server);
         boolean changed = false;
         for (Map.Entry<UUID, Long> e : bet.payout.entrySet()) {
@@ -472,9 +500,16 @@ public final class BetManager {
             if (amount <= 0 || bet.paidOut.contains(player)) {
                 continue;
             }
+            // Le joueur n'est inscrit comme regle qu'APRES un credit reellement passe : marquer
+            // avant, c'est detruire sa part le jour ou l'ecriture est refusee, car le garde
+            // anti-double-paiement interdit tout rattrapage.
+            long avant = EconomyManager.getBalance(server, player);
+            EconomyManager.add(server, player, amount);
+            if (EconomyManager.getBalance(server, player) == avant) {
+                continue; // credit refuse (fonds geles) : on retentera apres la levee
+            }
             bet.paidOut.add(player);
             bet.distributed += amount;
-            EconomyManager.add(server, player, amount);
             changed = true;
             long stake = bet.stakeOf(player);
             notify(server, player, won
@@ -540,6 +575,11 @@ public final class BetManager {
      * on ne cree pas d'Utopiece pour combler un ecart.
      */
     public static boolean settleBlocked(MinecraftServer server, BetData.Bet bet, String by) {
+        // Gele : on ne touche pas a l'etat du pari. Muter d'abord et echouer au versement
+        // laisserait un pari a moitie clos que personne ne pourrait plus rattraper.
+        if (com.utopia.economy.FreezeManager.isFrozen(server)) {
+            return false;
+        }
         if (bet.state != BetData.State.ERREUR) {
             return false;
         }

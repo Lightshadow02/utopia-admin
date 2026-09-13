@@ -47,6 +47,11 @@ public final class DailyCommand {
 
     private static int claim(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
+        // On refuse avant d'entrer : une recompense reclamee pendant le gel ne doit etre ni versee
+        // ni marquee comme encaissee, le joueur la reclamera apres la levee.
+        if (com.utopia.economy.FreezeManager.blocked(player)) {
+            return 0;
+        }
         boolean claimed = DailyManager.claim(player);
         return claimed ? com.mojang.brigadier.Command.SINGLE_SUCCESS : 0;
     }

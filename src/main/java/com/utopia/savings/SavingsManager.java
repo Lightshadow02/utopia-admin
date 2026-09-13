@@ -56,6 +56,37 @@ public final class SavingsManager {
     public static void tick(MinecraftServer server) {
         SavingsData data = SavingsData.get(server);
         long today = today();
+        // Le bareme desactive prime sur le gel : quand la banque a coupe les interets, aucun
+        // versement n'etait du, et annoncer un "versement bloque" serait un mensonge.
+        if (com.utopia.economy.FreezeManager.isFrozen(server) && data.enabled()) {
+            long debutGel = com.utopia.data.FreezeData.get(server).currentStart();
+            long premiereNuitGelee = java.time.Instant.ofEpochMilli(debutGel)
+                    .atZone(JobManager.ZONE).toLocalDate().toEpochDay();
+            boolean moved = false;
+            for (SavingsData.Account account : data.accounts()) {
+                if (account.lastInterestDay >= today) {
+                    continue;
+                }
+                // Une nuit due AVANT le gel est un droit acquis : on laisse le repere en place,
+                // elle sera versee a la levee.
+                if (account.lastInterestDay + 1 < premiereNuitGelee) {
+                    continue;
+                }
+                // On n'annonce que ce qui aurait reellement ete verse : un livret trop petit pour
+                // rapporter une seule Utopiece n'a rien perdu.
+                if (wouldEarn(data, account) > 0) {
+                    com.utopia.economy.FreezeManager.noteSuspended(server, account.owner,
+                            "interets du livret de " + data.nameOf(account.owner));
+                }
+                account.lastInterestDay = today;
+                moved = true;
+            }
+            if (moved) {
+                data.setDirty();
+                data.log("Interets suspendus par le gel des fonds : aucune nuit versee");
+            }
+            return;
+        }
         if (!data.enabled()) {
             // Suspendre, c'est perdre la nuit, pas la reporter : on avance le repere de chaque livret
             // sans rien verser. Sinon la reactivation paierait d'un coup, et composees, toutes les
@@ -82,6 +113,11 @@ public final class SavingsManager {
             long from = Math.max(account.lastInterestDay, today - MAX_CATCHUP);
             long earned = 0;
             for (long d = from + 1; d <= today; d++) {
+                // Un rattrapage qui enjambe un gel doit en exclure les nuits : sans ce test, la
+                // levee verserait d'un coup, et composees, toutes les nuits du blocage.
+                if (com.utopia.economy.FreezeManager.wasFrozenAt(server, nightInstant(d))) {
+                    continue;
+                }
                 earned += creditNight(data, account, d);
             }
             account.lastInterestDay = today;
@@ -99,6 +135,28 @@ public final class SavingsManager {
             }
             data.setDirty();
         }
+    }
+
+    /** Instant de la nuit d'interets : minuit, heure de Paris. */
+    private static long nightInstant(long day) {
+        return java.time.LocalDate.ofEpochDay(day).atStartOfDay(JobManager.ZONE)
+                .toInstant().toEpochMilli();
+    }
+
+    /**
+     * Ce qu'une nuit rapporterait a ce livret, sans rien crediter. Sert a n'annoncer une suspension
+     * qu'aux epargnants qui ont reellement perdu quelque chose.
+     */
+    private static long wouldEarn(SavingsData data, SavingsData.Account account) {
+        if (account.balance <= 0) {
+            return 0;
+        }
+        long interest = (long) Math.floor(account.balance * data.rateFor(account.balance) / 100.0);
+        long ceiling = data.ceiling();
+        if (ceiling > 0) {
+            interest = Math.min(interest, Math.max(0, ceiling - account.balance));
+        }
+        return Math.max(0, interest);
     }
 
     /** Credite une nuit sur un livret et renvoie le montant verse. */

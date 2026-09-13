@@ -165,6 +165,9 @@ public final class ChantierMenus {
                 Icons.label("Confirmer", ChatFormatting.GREEN),
                 Icons.lore("Offrir " + qty + " " + goal.display + " au chantier", ChatFormatting.GRAY),
                 sp -> {
+                    if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                        return;
+                    }
                     ChantierManager.Deposit d = ChantierManager.deposit(sp, chantier, goal, qty);
                     switch (d.result()) {
                         case CLOSED -> sp.sendSystemMessage(Messages.warn("Ce chantier n'accepte plus de dons."));

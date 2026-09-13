@@ -114,6 +114,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_STRUCTURES;
     public static final ModConfigSpec.BooleanValue ADMIN_NPCS;
     public static final ModConfigSpec.BooleanValue ADMIN_WAYSTONES;
+    public static final ModConfigSpec.BooleanValue ADMIN_FREEZE;
 
     /** Salle d'arcade : bornes de jeu posees dans le monde. */
     public static final ModConfigSpec.BooleanValue CASINO_ENABLED;
@@ -369,6 +370,11 @@ public final class Config {
         ADMIN_STRUCTURES = BUILDER.comment("Bouton \"Structures\".").define("structures", true);
         ADMIN_NPCS = BUILDER.comment("Bouton \"Statues\".").define("npcs", true);
         ADMIN_WAYSTONES = BUILDER.comment("Bouton \"Balises de voyage\".").define("waystones", true);
+        ADMIN_FREEZE = BUILDER
+                .comment("Bouton \"Gel global des fonds\" : arrete toute circulation d'Utopieces.",
+                        "Le retirer ne degele rien : si un gel est actif, il le reste et seule",
+                        "la remise a true redonne de quoi le lever.")
+                .define("freeze", true);
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
 

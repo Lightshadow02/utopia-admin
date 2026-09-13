@@ -394,6 +394,12 @@ public final class ParcelMenus {
                                 s2.sendSystemMessage(Messages.error("Vous n'etes pas proprietaire."));
                                 return;
                             }
+                            // Sans ce verrou, le refus serait impute a la caisse municipale alors
+                            // que c'est le gel qui bloque - et un remboursement nul passerait.
+                            if (com.utopia.economy.FreezeManager.blocked(s2)) {
+                                openSellMenu(s2, parcelId);
+                                return;
+                            }
                             long r = ParcelManager.sellToServer(s2, cur);
                             if (r == -2) {
                                 // La caisse de la mairie ne suit pas : mieux vaut un refus net qu'un
@@ -511,6 +517,9 @@ public final class ParcelMenus {
                     }
                     long pr = cur.price();
                     var req = ParcelManager.requiredBuyItem(cur);
+                    if (com.utopia.economy.FreezeManager.blocked(sp)) {
+                        return;
+                    }
                     switch (ParcelManager.purchase(sp, cur)) {
                         case INSUFFICIENT -> sp.sendSystemMessage(Messages.error("Solde insuffisant ("
                                 + EconomyManager.format(pr) + ")."));
