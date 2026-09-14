@@ -39,6 +39,10 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
         return switch (gameId) {
             case "tetris" -> new TetrisGame();
             case "breakout" -> new BreakoutGame();
+            case "bubble" -> new BubbleGame();
+            case "pacman" -> new PacmanGame();
+            case "flappy" -> new FlappyGame();
+            case "2048" -> new Game2048();
             default -> new SnakeGame();
         };
     }
@@ -46,6 +50,22 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
     @Override
     public boolean isPauseScreen() {
         return false; // en solo, le monde doit continuer de tourner pendant la partie
+    }
+
+    /**
+     * Pas de flou derriere une borne. Minecraft floute le monde derriere ses ecrans pour attirer
+     * l'oeil sur le menu ; devant un jeu en pixels, ce voile trouble donne une image sale et coute
+     * une passe de rendu plein ecran a chaque image, alors qu'on en veut soixante par seconde.
+     */
+    @Override
+    protected void renderBlurredBackground(float partialTick) {
+        // volontairement vide
+    }
+
+    /** Fond uni plutot que la texture de menu vanilla : une borne d'arcade est un ecran, pas un menu. */
+    @Override
+    protected void renderMenuBackground(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, 0xE8080B12);
     }
 
     /** Le cadre de jeu : centre, marges reservees au titre et au rappel des touches. */

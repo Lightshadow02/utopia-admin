@@ -47,7 +47,15 @@ public final class CasinoManager {
             new Game("tetris", "Tetris", "Empile les pieces, complete les lignes",
                     Items.CYAN_DYE, 999_999L),
             new Game("breakout", "Casse-briques", "Renvoie la balle, casse le mur",
-                    Items.ORANGE_DYE, 500_000L));
+                    Items.ORANGE_DYE, 500_000L),
+            new Game("bubble", "Bubble Shooter", "Vise, tire, fais exploser les grappes",
+                    Items.MAGENTA_DYE, 999_999L),
+            new Game("pacman", "Pac-Man", "Mange les pastilles, evite les quatre fantomes",
+                    Items.YELLOW_DYE, 999_999L),
+            new Game("flappy", "Envol", "Une touche, des tuyaux, et beaucoup de patience",
+                    Items.FEATHER, 10_000L),
+            new Game("2048", "2048", "Pousse la grille, fusionne les tuiles",
+                    Items.LIGHT_BLUE_DYE, 9_999_999L));
 
     /** Sentinelle de pose : ce n'est pas un jeu, c'est une machine a capsules. */
     public static final String GACHA_ID = "gacha";
