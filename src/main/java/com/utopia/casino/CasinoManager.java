@@ -55,7 +55,19 @@ public final class CasinoManager {
             new Game("flappy", "Envol", "Une touche, des tuyaux, et beaucoup de patience",
                     Items.FEATHER, 10_000L),
             new Game("2048", "2048", "Pousse la grille, fusionne les tuiles",
-                    Items.LIGHT_BLUE_DYE, 9_999_999L));
+                    Items.LIGHT_BLUE_DYE, 9_999_999L),
+            new Game("demineur", "Demineur", "Revele la grille sans reveiller les mines",
+                    Items.TNT, 999_999L),
+            new Game("envahisseurs", "Envahisseurs", "Ils descendent, et de plus en plus vite",
+                    Items.CREEPER_HEAD, 9_999_999L),
+            new Game("taupes", "Tape-taupes", "Quarante-cinq secondes, des taupes, des bombes",
+                    Items.WOODEN_SHOVEL, 999_999L),
+            new Game("puissance4", "Puissance 4", "Aligne quatre jetons contre la machine",
+                    Items.RED_DYE, 999_999L),
+            new Game("asteroides", "Asteroides", "Derive, pivote, pousse, et tire",
+                    Items.COBBLESTONE, 9_999_999L),
+            new Game("simon", "Simon", "Retiens la sequence, puis rejoue-la",
+                    Items.NOTE_BLOCK, 999_999L));
 
     /** Sentinelle de pose : ce n'est pas un jeu, c'est une machine a capsules. */
     public static final String GACHA_ID = "gacha";

@@ -43,6 +43,12 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
             case "pacman" -> new PacmanGame();
             case "flappy" -> new FlappyGame();
             case "2048" -> new Game2048();
+            case "demineur" -> new DemineurGame();
+            case "envahisseurs" -> new EnvahisseursGame();
+            case "taupes" -> new TaupesGame();
+            case "puissance4" -> new Puissance4Game();
+            case "asteroides" -> new AsteroidesGame();
+            case "simon" -> new SimonGame();
             default -> new SnakeGame();
         };
     }
