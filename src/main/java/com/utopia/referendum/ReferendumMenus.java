@@ -53,6 +53,81 @@ public final class ReferendumMenus {
         };
     }
 
+    /**
+     * Largeur visee pour une ligne a l'ecran. Le panneau des consultations offre environ 311 pixels
+     * et la police courante tourne autour de six pixels par caractere : au-dela, le client replie
+     * la ligne tout seul, et comme chaque ligne est centree separement, le texte part en escalier.
+     */
+    private static final int LARGEUR = 56;
+
+    /**
+     * Met l'intitule en lignes d'ecran. Les retours a la ligne de l'auteur sont respectes - ce sont
+     * ses paragraphes - mais chacun est redecoupe aux espaces pour qu'aucune ligne ne deborde.
+     *
+     * <p>Le decoupage est <b>equilibre</b> : plutot que de remplir chaque ligne au maximum et de
+     * laisser trois mots seuls a la derniere, on cherche la largeur qui rend les lignes les plus
+     * egales pour un meme nombre de lignes. Centre, un bloc de lignes egales se lit comme une
+     * proclamation ; un bloc de lignes inegales se lit comme une erreur.
+     */
+    public static List<String> enLignesEcran(List<String> paragraphes) {
+        List<String> out = new ArrayList<>();
+        for (String paragraphe : paragraphes) {
+            if (paragraphe == null || paragraphe.isBlank()) {
+                out.add("");
+                continue;
+            }
+            List<String> greedy = decouper(paragraphe, LARGEUR);
+            List<String> meilleur = greedy;
+            int ecartMin = ecart(greedy);
+            // On ne descend pas en dessous du point ou le paragraphe gagnerait une ligne de plus :
+            // equilibrer ne doit jamais couter une ligne a l'ecran.
+            for (int largeur = LARGEUR - 1; largeur >= LARGEUR / 2; largeur--) {
+                List<String> essai = decouper(paragraphe, largeur);
+                if (essai.size() != greedy.size()) {
+                    break;
+                }
+                int e = ecart(essai);
+                if (e < ecartMin) {
+                    ecartMin = e;
+                    meilleur = essai;
+                }
+            }
+            out.addAll(meilleur);
+        }
+        return out;
+    }
+
+    /** Decoupe aux espaces sans jamais depasser la largeur, sauf pour un mot plus long a lui seul. */
+    private static List<String> decouper(String texte, int largeur) {
+        List<String> lignes = new ArrayList<>();
+        StringBuilder courante = new StringBuilder();
+        for (String mot : texte.trim().split("\\s+")) {
+            if (courante.length() == 0) {
+                courante.append(mot);
+            } else if (courante.length() + 1 + mot.length() <= largeur) {
+                courante.append(' ').append(mot);
+            } else {
+                lignes.add(courante.toString());
+                courante = new StringBuilder(mot);
+            }
+        }
+        if (courante.length() > 0) {
+            lignes.add(courante.toString());
+        }
+        return lignes;
+    }
+
+    /** Difference entre la ligne la plus longue et la plus courte : plus c'est bas, plus c'est droit. */
+    private static int ecart(List<String> lignes) {
+        int min = Integer.MAX_VALUE;
+        int max = 0;
+        for (String l : lignes) {
+            min = Math.min(min, l.length());
+            max = Math.max(max, l.length());
+        }
+        return lignes.size() <= 1 ? 0 : max - min;
+    }
+
     // ================================================================= Administration
 
     /** La liste des consultations, avec leur etat et leur depouillement. */
@@ -314,6 +389,15 @@ public final class ReferendumMenus {
                     sp -> openApercu(sp, id)));
         }
 
+        // L'auteur ecrit des paragraphes, le joueur lit des lignes d'ecran : on annonce les deux,
+        // sinon on decouvre a l'apercu qu'un seul paragraphe en occupait quatre.
+        int surEcran = enLignesEcran(r.lignes).size();
+        rows.add(new OwoMenuServer.PanelRow(
+                Icons.label("A l'ecran", ChatFormatting.DARK_GRAY),
+                valeur(r.lignes.size() + " paragraphe(s) = " + surEcran + " ligne(s) affichee(s)",
+                        surEcran > 14 ? ChatFormatting.RED : ChatFormatting.DARK_GRAY),
+                Component.empty(), null));
+
         OwoMenuServer.openPanel(player,
                 Icons.title("Intitule - " + r.titre, ChatFormatting.GOLD), rows, pied,
                 sp -> openLignes(sp, id), sp -> openUn(sp, id));
@@ -358,7 +442,7 @@ public final class ReferendumMenus {
             return;
         }
         List<Component> intitule = new ArrayList<>();
-        for (String ligne : r.lignes) {
+        for (String ligne : enLignesEcran(r.lignes)) {
             intitule.add(valeur(ligne, ChatFormatting.WHITE));
         }
         intitule.add(Icons.lore("Apercu : ton vote ne compte pas ici.", ChatFormatting.DARK_GRAY));
@@ -446,7 +530,7 @@ public final class ReferendumMenus {
         boolean deja = r.aVote(player.getUUID());
 
         List<Component> intitule = new ArrayList<>();
-        for (String ligne : r.lignes) {
+        for (String ligne : enLignesEcran(r.lignes)) {
             intitule.add(valeur(ligne, ChatFormatting.WHITE));
         }
         if (deja) {
