@@ -249,6 +249,15 @@ public final class AdminMenu {
                     Icons.lore("Designer qui peut ouvrir /auberge", ChatFormatting.GRAY),
                     AdminMenu::openAubergistePicker));
         }
+        if (Config.ADMIN_REFERENDUM.get()) {
+            int ouverts = com.utopia.data.ReferendumData.get(player.server).ouverts().size();
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                    Icons.label("Referendums", ChatFormatting.YELLOW),
+                    Icons.lore(ouverts > 0 ? ouverts + " consultation(s) en cours"
+                                    : "Poser une question au serveur : pour, ou contre",
+                            ouverts > 0 ? ChatFormatting.GREEN : ChatFormatting.GRAY),
+                    com.utopia.referendum.ReferendumMenus::openAdmin));
+        }
         if (Config.ADMIN_CHANTIERS.get()) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SCAFFOLDING),
                     Icons.label("Chantiers", ChatFormatting.GOLD),

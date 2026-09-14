@@ -115,6 +115,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_NPCS;
     public static final ModConfigSpec.BooleanValue ADMIN_WAYSTONES;
     public static final ModConfigSpec.BooleanValue ADMIN_FREEZE;
+    public static final ModConfigSpec.BooleanValue ADMIN_REFERENDUM;
 
     /** Salle d'arcade : bornes de jeu posees dans le monde. */
     public static final ModConfigSpec.BooleanValue CASINO_ENABLED;
@@ -375,6 +376,10 @@ public final class Config {
                         "Le retirer ne degele rien : si un gel est actif, il le reste et seule",
                         "la remise a true redonne de quoi le lever.")
                 .define("freeze", true);
+        ADMIN_REFERENDUM = BUILDER
+                .comment("Bouton \"Referendums\" : consultations pour ou contre posees au serveur.",
+                        "A false, /referendum ne repond plus non plus.")
+                .define("referendum", true);
         BUILDER.pop(); // entries
         BUILDER.pop(); // admin
 
