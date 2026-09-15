@@ -453,6 +453,8 @@ public final class UtopiaEvents {
         com.utopia.economy.FreezeManager.onLogin(sp); // echeances manquees pendant un gel
         // Le profil est reconstruit par Mojang a chaque connexion : le deguisement doit etre repose.
         com.utopia.disguise.DisguiseManager.onLogin(sp);
+        // Capacites speciales : on rend l'objet perdu, on reprend celui d'un droit retire.
+        com.utopia.power.PowerManager.onLogin(sp);
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
             MutableComponent open = Component.literal("[/daily]").withStyle(s -> s
                     .withColor(ChatFormatting.GREEN).withBold(true)
@@ -475,6 +477,44 @@ public final class UtopiaEvents {
         if (EconomyManager.isBankCard(event.getItemStack())) {
             com.utopia.economy.EconomyMenus.openPlayerMenu(sp);
             event.setCanceled(true);
+            return;
+        }
+        // Le baton repond ici, et ici seulement. Quand on vise un bloc ou une creature qui n'a rien a
+        // repondre, le client enchaine de lui-meme sur un clic d'objet : un second relais sur le clic
+        // de bloc ferait partir le sort deux fois pour un seul clic.
+        if (com.utopia.power.MageStaff.onClicDroit(sp, event.getItemStack())) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * Passe apres tous les relais du mod, y compris quand ils ont annule le clic. Le client, lui,
+     * ne sait pas qu'un menu vient de s'ouvrir : il enchaine sur un clic d'objet, et le sort
+     * partirait par-dessus la borne d'arcade ou le stand qu'on voulait ouvrir.
+     */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.LOWEST, receiveCanceled = true)
+    public static void onRightClickBlockApres(PlayerInteractEvent.RightClickBlock event) {
+        if (event.isCanceled() && event.getEntity() instanceof ServerPlayer sp) {
+            com.utopia.power.MageStaff.absorber(sp);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingDrops(
+            net.neoforged.neoforge.event.entity.living.LivingDropsEvent event) {
+        // Les objets de capacite ne tombent pas : ils sont rendus a la reapparition. Sans cela, le
+        // baton reste au sol pendant que son porteur en recoit un neuf - et il y en a deux.
+        if (event.getEntity() instanceof ServerPlayer mort) {
+            com.utopia.power.PowerManager.onDrops(mort, event.getDrops());
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        // Un mage qui meurt en plein evenement ne peut pas attendre qu'un administrateur lui rende
+        // son baton. L'inventaire vient d'etre vide par la mort : il n'y a rien a dupliquer.
+        if (event.getEntity() instanceof ServerPlayer sp) {
+            com.utopia.power.PowerManager.onRespawn(sp);
         }
     }
 
@@ -486,6 +526,7 @@ public final class UtopiaEvents {
             // Une partie d'arcade laissee ouverte n'a plus d'objet : son score n'arrivera jamais.
             com.utopia.casino.CasinoManager.onLogout(leaving);
             com.utopia.disguise.DisguiseManager.onLogout(leaving);
+            com.utopia.power.MageStaff.onLogout(leaving);
         }
         if (event.getEntity() instanceof ServerPlayer sp) {
             if (sp.containerMenu instanceof UtopiaMenu menu) {

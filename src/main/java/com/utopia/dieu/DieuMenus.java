@@ -71,6 +71,13 @@ public final class DieuMenus {
                 Icons.lore("Un message prive, qui n'a l'air de venir de personne",
                         ChatFormatting.GRAY),
                 sp -> openJoueurs(sp, 0)));
+        int porteurs = com.utopia.data.PowerData.get(player.server).tousLesPorteurs().size();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BLAZE_ROD),
+                Icons.label("Capacites speciales", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore(porteurs == 0
+                        ? "Accorder un pouvoir a quelqu'un"
+                        : porteurs + " porteur(s) - accorder ou reprendre", ChatFormatting.GRAY),
+                sp -> openCapacites(sp, 0)));
 
         OwoMenuServer.openHub(player, Icons.screenTitle("Dieux", ChatFormatting.LIGHT_PURPLE),
                 stats, entries, DieuMenus::open, null);
@@ -330,5 +337,144 @@ public final class DieuMenus {
                     player.sendSystemMessage(Messages.success("Message remis a " + nom + "."));
                     openJoueurs(player, page);
                 });
+    }
+
+    // ------------------------------------------------------------------ Capacites speciales
+
+    /**
+     * A qui accorder une capacite. Les joueurs connectes viennent en premier, puis les porteurs
+     * absents : c'est la seule facon de reprendre un pouvoir a quelqu'un qui s'est deconnecte juste
+     * apres l'avoir recu.
+     */
+    public static void openCapacites(ServerPlayer player, int page) {
+        if (denied(player)) {
+            return;
+        }
+        com.utopia.data.PowerData donnees = com.utopia.data.PowerData.get(player.server);
+
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal("Une capacite se donne a une personne, pas a un objet.")
+                .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false)));
+        stats.add(Icons.lore("L'objet qui la porte peut etre perdu ou vole : le droit, lui, reste "
+                + "ici et se reprend d'un clic.", ChatFormatting.DARK_GRAY));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        java.util.Set<java.util.UUID> vus = new java.util.HashSet<>();
+        for (ServerPlayer cible : player.server.getPlayerList().getPlayers()) {
+            vus.add(cible.getUUID());
+            String nom = cible.getGameProfile().getName();
+            entries.add(entreeJoueur(donnees, cible.getUUID(), nom,
+                    Icons.playerHead(cible, Icons.label(nom, ChatFormatting.WHITE), List.of()),
+                    true, page));
+        }
+        for (java.util.Map.Entry<java.util.UUID, String> absent : donnees.noms().entrySet()) {
+            if (vus.contains(absent.getKey())) {
+                continue;
+            }
+            entries.add(entreeJoueur(donnees, absent.getKey(), absent.getValue(),
+                    new ItemStack(Items.SKELETON_SKULL), false, page));
+        }
+
+        OwoMenuServer.openHubPaged(player,
+                Icons.screenTitle("Capacites speciales", ChatFormatting.LIGHT_PURPLE),
+                stats, entries, page, 28, DieuMenus::openCapacites, DieuMenus::open);
+    }
+
+    private static OwoMenuServer.HubEntry entreeJoueur(com.utopia.data.PowerData donnees,
+            java.util.UUID id, String nom, ItemStack icone, boolean connecte, int page) {
+        java.util.Set<com.utopia.power.Power> siens = donnees.de(id);
+        String detail;
+        if (siens.isEmpty()) {
+            detail = connecte ? "Aucune capacite" : "Hors ligne - aucune capacite";
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (com.utopia.power.Power p : siens) {
+                sb.append(sb.isEmpty() ? "" : ", ").append(p.label);
+            }
+            detail = (connecte ? "" : "Hors ligne - ") + sb;
+        }
+        return new OwoMenuServer.HubEntry(icone,
+                Icons.label(nom, siens.isEmpty() ? ChatFormatting.WHITE : ChatFormatting.LIGHT_PURPLE),
+                Icons.lore(detail, siens.isEmpty() ? ChatFormatting.GRAY : ChatFormatting.LIGHT_PURPLE),
+                sp -> openCapacitesJoueur(sp, id, nom, page));
+    }
+
+    /** Ce que porte une personne, et ce qu'on peut lui accorder ou lui reprendre. */
+    public static void openCapacitesJoueur(ServerPlayer player, java.util.UUID id, String nom,
+            int page) {
+        if (denied(player)) {
+            return;
+        }
+        com.utopia.data.PowerData donnees = com.utopia.data.PowerData.get(player.server);
+        ServerPlayer cible = player.server.getPlayerList().getPlayer(id);
+
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal(nom)
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
+        stats.add(Icons.lore(cible == null
+                ? "Hors ligne. Le droit se donne quand meme, l'objet suivra a sa connexion."
+                : "Connecte. L'objet lui est remis tout de suite.", ChatFormatting.DARK_GRAY));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (com.utopia.power.Power pouvoir : com.utopia.power.Power.values()) {
+            boolean tenu = donnees.a(id, pouvoir);
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(pouvoir.icone),
+                    Icons.label(pouvoir.label + (tenu ? " - accordee" : ""),
+                            tenu ? ChatFormatting.GREEN : pouvoir.couleur),
+                    Icons.lore(tenu ? "Clique pour la lui reprendre" : pouvoir.detail,
+                            tenu ? ChatFormatting.GRAY : ChatFormatting.GRAY),
+                    sp -> {
+                        if (denied(sp)) {
+                            return;
+                        }
+                        boolean accorde = com.utopia.data.PowerData.get(sp.server)
+                                .basculer(id, nom, pouvoir);
+                        com.utopia.power.PowerManager.appliquer(sp.server, id, pouvoir, accorde);
+                        sp.sendSystemMessage(accorde
+                                ? Messages.success(pouvoir.label + " accordee a " + nom + ".")
+                                : Messages.warn(pouvoir.label + " reprise a " + nom + "."));
+                        openCapacitesJoueur(sp, id, nom, page);
+                    }));
+        }
+        if (!donnees.de(id).isEmpty()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST),
+                    Icons.label("Lui redonner ses objets", ChatFormatting.GOLD),
+                    Icons.lore("S'il a perdu, jete ou casse ce qui porte sa capacite",
+                            ChatFormatting.GRAY),
+                    sp -> {
+                        if (denied(sp)) {
+                            return;
+                        }
+                        ServerPlayer present = sp.server.getPlayerList().getPlayer(id);
+                        if (present == null) {
+                            sp.sendSystemMessage(Messages.warn(nom + " n'est pas connecte : il "
+                                    + "retrouvera ses objets en revenant."));
+                        } else {
+                            int rendus = com.utopia.power.PowerManager.rendreLesObjets(present);
+                            sp.sendSystemMessage(rendus > 0
+                                    ? Messages.success(rendus + " objet(s) remis a " + nom + ".")
+                                    : Messages.info(nom + " a deja tout ce qu'il lui faut."));
+                        }
+                        openCapacitesJoueur(sp, id, nom, page);
+                    }));
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                    Icons.label("Tout lui reprendre", ChatFormatting.RED),
+                    Icons.lore("Il redevient un joueur comme les autres", ChatFormatting.GRAY),
+                    sp -> {
+                        if (denied(sp)) {
+                            return;
+                        }
+                        // Passe par le service : le droit tombe, et l'objet avec lui.
+                        com.utopia.power.PowerManager.toutRetirer(sp.server, id);
+                        sp.sendSystemMessage(Messages.warn("Capacites reprises a " + nom + "."));
+                        openCapacites(sp, page);
+                    }));
+        }
+
+        OwoMenuServer.openHub(player,
+                Icons.screenTitle("Capacites - " + nom, ChatFormatting.LIGHT_PURPLE),
+                stats, entries,
+                sp -> openCapacitesJoueur(sp, id, nom, page),
+                sp -> openCapacites(sp, page));
     }
 }
