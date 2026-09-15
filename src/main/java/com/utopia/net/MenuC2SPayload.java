@@ -39,7 +39,7 @@ public record MenuC2SPayload(int kind, CustomPacketPayload data) implements Cust
     }
 
     private static MenuC2SPayload decode(RegistryFriendlyByteBuf buf) {
-        int kind = buf.readByte();
+        int kind = buf.readUnsignedByte(); // non signe : au-dela de 127 un octet signe passerait negatif
         CustomPacketPayload data = switch (kind) {
             case CLICK -> MenuClickPayload.STREAM_CODEC.decode(buf);
             case AMOUNT -> AmountResultPayload.STREAM_CODEC.decode(buf);

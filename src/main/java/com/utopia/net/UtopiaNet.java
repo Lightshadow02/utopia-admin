@@ -13,7 +13,11 @@ public final class UtopiaNet {
     }
 
     public static void onRegister(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("1");
+        // Version "2" depuis la variante NICKNAMES. Elle part des la connexion, sans attendre qu'on
+        // ouvre un menu : un client reste sur l'ancien jar ne saurait pas la lire et tomberait sur
+        // une erreur interne en pleine partie. La version fait refuser la negociation d'entree, avec
+        // un ecran qui dit ce qui se passe.
+        PayloadRegistrar registrar = event.registrar("2");
 
         // Deux canaux multiplexes seulement (au lieu de 7) : un S2C et un C2S. Chaque paquet porte
         // un octet "kind" qui indique la variante reelle (ouverture de menu, montant, texte, clic...).
@@ -42,6 +46,8 @@ public final class UtopiaNet {
                         com.utopia.client.owo.OwoMenuClient.handleTable((OpenTablePayload) payload.data(), context);
                 case MenuS2CPayload.OPEN_ARCADE ->
                         com.utopia.client.owo.OwoMenuClient.handleArcade((OpenArcadePayload) payload.data(), context);
+                case MenuS2CPayload.NICKNAMES ->
+                        com.utopia.client.ClientNicknames.handle((NicknamesPayload) payload.data(), context);
                 default -> { /* variante inconnue : ignore */ }
             }
         });

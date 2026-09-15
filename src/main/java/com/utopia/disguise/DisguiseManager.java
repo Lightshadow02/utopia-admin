@@ -33,16 +33,17 @@ public final class DisguiseManager {
 
     // ------------------------------------------------------------------ Nom
 
-    /** Le nom sous lequel ce joueur apparait, ou son vrai nom s'il n'est pas deguise. */
-    public static String nomAffiche(ServerPlayer player) {
-        DisguiseData.Disguise d = DisguiseData.get(player.server).get(player.getUUID());
-        return d != null && d.aUnNom() ? d.nom : player.getGameProfile().getName();
-    }
+    /** Longueur maximale d'un nom d'emprunt. Au-dela, le paquet des plaques refuserait de partir. */
+    public static final int MAX_NOM = 32;
 
     public static void setNom(ServerPlayer player, String nom) {
         DisguiseData data = DisguiseData.get(player.server);
         DisguiseData.Disguise d = data.getOrCreate(player.getUUID());
-        d.nom = nom == null ? "" : nom.trim();
+        // Le plafond est pose ici et non a l'appelant : la commande, le pupitre de /dieux et tout ce
+        // qui viendra ensuite doivent tomber sur la meme limite, sans quoi le chat et la plaque
+        // finiraient par afficher deux noms differents.
+        String propre = nom == null ? "" : nom.trim();
+        d.nom = propre.length() > MAX_NOM ? propre.substring(0, MAX_NOM) : propre;
         data.nettoyer(player.getUUID());
         data.setDirty();
         rafraichirNom(player);
@@ -62,6 +63,38 @@ public final class DisguiseManager {
         server.getPlayerList().broadcastAll(
                 new ClientboundPlayerInfoUpdatePacket(
                         ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME, player));
+        diffuserNoms(server);
+    }
+
+    /**
+     * Renvoie a tout le monde la liste des noms d'emprunt, pour la plaque au-dessus des tetes.
+     *
+     * <p>La plaque est le seul endroit que le serveur ne sait pas corriger : le client la compose
+     * avec le nom du profil, et changer ce nom-la deplacerait aussi /tp, /msg et les bannissements.
+     * On lui dit donc quoi ecrire, et le serveur garde le vrai nom pour lui.
+     */
+    public static void diffuserNoms(MinecraftServer server) {
+        DisguiseData data = DisguiseData.get(server);
+        java.util.Map<UUID, String> noms = new java.util.LinkedHashMap<>();
+        // Seuls les connectes ont une plaque a dessiner. Parcourir la sauvegarde entiere enverrait a
+        // tout le monde le pseudo de chaque joueur passe par la, et la liste ne ferait que grossir.
+        for (ServerPlayer present : server.getPlayerList().getPlayers()) {
+            DisguiseData.Disguise d = data.get(present.getUUID());
+            if (d != null && d.aUnNom()) {
+                // Le paquet refuse au-dela de 32 caracteres, et il part a tout le monde a la fois :
+                // un nom trop long venu d'une ancienne sauvegarde couperait la partie de chacun.
+                String nom = d.nom;
+                noms.put(present.getUUID(), nom.length() > MAX_NOM ? nom.substring(0, MAX_NOM) : nom);
+            }
+        }
+        com.utopia.net.MenuS2CPayload paquet =
+                com.utopia.net.MenuS2CPayload.of(new com.utopia.net.NicknamesPayload(noms));
+        for (ServerPlayer autre : server.getPlayerList().getPlayers()) {
+            // Un client sans le mod n'a pas ce canal : lui ecrire dessus couperait sa connexion.
+            if (autre.connection.hasChannel(com.utopia.net.MenuS2CPayload.TYPE)) {
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(autre, paquet);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ Visage
@@ -160,6 +193,12 @@ public final class DisguiseManager {
                     .ClientboundSetEquipmentPacket(player.getId(), equipement));
             autre.connection.send(new net.minecraft.network.protocol.game
                     .ClientboundRotateHeadPacket(player, tete));
+            // L'entite est reconstruite a neuf : elle a perdu le lien qui l'assoit dans sa barque ou
+            // sur son cheval. Sans ce rappel, le cavalier reste plante a cote de sa monture.
+            if (player.getVehicle() != null) {
+                autre.connection.send(new net.minecraft.network.protocol.game
+                        .ClientboundSetPassengersPacket(player.getVehicle()));
+            }
         }
     }
 
@@ -183,6 +222,14 @@ public final class DisguiseManager {
         if (d.aUnNom()) {
             player.refreshTabListName();
         }
+    }
+
+    /**
+     * Une fois le joueur en jeu : on renvoie les noms d'emprunt a tout le monde. L'arrivant doit
+     * apprendre ceux des autres, et les autres le sien.
+     */
+    public static void onJoined(ServerPlayer player) {
+        diffuserNoms(player.server);
     }
 
     public static void onLogout(ServerPlayer player) {

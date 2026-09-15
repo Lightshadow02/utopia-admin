@@ -30,6 +30,16 @@ public final class UtopiaClient {
         NeoForge.EVENT_BUS.addListener(ClientMusicManager::onSelectMusic);
         // Rend son echelle au joueur des qu'il quitte le dernier menu du mod.
         NeoForge.EVENT_BUS.addListener(com.utopia.client.owo.GuiScaleLock::onClientTick);
+        // La plaque au-dessus des tetes porte le nom d'emprunt : elle se compose cote client.
+        NeoForge.EVENT_BUS.addListener(ClientNicknames::onRenderNameTag);
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e)
+                        -> ClientNicknames.oublier());
+        // Un passage d'un serveur a l'autre derriere un proxy ne repasse pas par la deconnexion :
+        // sans cet oubli-la, les pseudos du serveur precedent resteraient colles aux memes UUID.
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn e)
+                        -> ClientNicknames.oublier());
     }
 
     private static void onRegisterScreens(RegisterMenuScreensEvent event) {

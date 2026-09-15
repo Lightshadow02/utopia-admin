@@ -453,6 +453,8 @@ public final class UtopiaEvents {
         com.utopia.economy.FreezeManager.onLogin(sp); // echeances manquees pendant un gel
         // Le profil est reconstruit par Mojang a chaque connexion : le deguisement doit etre repose.
         com.utopia.disguise.DisguiseManager.onLogin(sp);
+        // Les plaques au-dessus des tetes se composent cote client : il faut leur dire qui porte quoi.
+        com.utopia.disguise.DisguiseManager.onJoined(sp);
         // Capacites speciales : on rend l'objet perdu, on reprend celui d'un droit retire.
         com.utopia.power.PowerManager.onLogin(sp);
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
