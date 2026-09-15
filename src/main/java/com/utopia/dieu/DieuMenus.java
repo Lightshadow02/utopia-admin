@@ -57,6 +57,10 @@ public final class DieuMenus {
                 Icons.lore("Diffuse un message a tout le monde, sans nom d'auteur",
                         ChatFormatting.GRAY),
                 DieuMenus::promptAnnonce));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.WRITABLE_BOOK),
+                Icons.label("Depouillement", ChatFormatting.RED),
+                Icons.lore("Decider du resultat de l'election en cours", ChatFormatting.GRAY),
+                DieuMenus::openElection));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PAPER),
                 Icons.label("Message a un joueur", ChatFormatting.AQUA),
                 Icons.lore("Un message prive, qui n'a l'air de venir de personne",
@@ -95,6 +99,88 @@ public final class DieuMenus {
                     player.sendSystemMessage(Messages.success("Annonce diffusee."));
                     open(player);
                 });
+    }
+
+    /**
+     * Le depouillement, tel qu'on decide qu'il sera. Les deux colonnes sont montrees cote a cote :
+     * ce que les bulletins disent, et ce que le serveur annoncera. Truquer a l'aveugle serait le
+     * meilleur moyen de se trahir.
+     */
+    public static void openElection(ServerPlayer player) {
+        if (denied(player)) {
+            return;
+        }
+        com.utopia.data.ElectionData donnees = com.utopia.data.ElectionData.get(player.server);
+        com.utopia.data.ElectionData.Election el = donnees.current();
+        if (el == null || el.candidates.isEmpty()) {
+            player.sendSystemMessage(Messages.warn("Aucune election en preparation."));
+            open(player);
+            return;
+        }
+
+        java.util.Map<String, Integer> reels =
+                com.utopia.election.ElectionManager.comptesReels(el);
+        java.util.Map<String, Integer> affiches = new java.util.LinkedHashMap<>();
+        for (com.utopia.election.ElectionManager.Scored sc
+                : com.utopia.election.ElectionManager.scores(el)) {
+            affiches.put(sc.name(), sc.votes());
+        }
+
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal(el.name + " - " + el.status)
+                .withStyle(s -> s.withColor(ChatFormatting.AQUA).withItalic(false)));
+        stats.add(Icons.lore(el.votes.size() + " bulletin(s) deposes. Le total annonce ne bougera "
+                + "jamais : truquer deplace des voix, il n'en cree aucune.", ChatFormatting.DARK_GRAY));
+        if (el.truqueEnFaveurDe != null) {
+            stats.add(Component.literal("Depouillement oriente en faveur de " + el.truqueEnFaveurDe)
+                    .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true).withItalic(false)));
+        }
+        if (el.votes.size() == 0) {
+            stats.add(Component.literal("Aucun bulletin : il n'y a rien a deplacer.")
+                    .withStyle(s -> s.withColor(ChatFormatting.RED).withItalic(false)));
+        }
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (String candidat : el.candidates) {
+            int reel = reels.getOrDefault(candidat, 0);
+            int affiche = affiches.getOrDefault(candidat, reel);
+            boolean choisi = candidat.equals(el.truqueEnFaveurDe);
+            String detail = reel == affiche
+                    ? reel + " voix"
+                    : reel + " voix reelles, " + affiche + " annoncees";
+            entries.add(new OwoMenuServer.HubEntry(
+                    new ItemStack(choisi ? Items.GOLDEN_HELMET : Items.PLAYER_HEAD),
+                    Icons.label(candidat + (choisi ? " - fera gagnant" : ""),
+                            choisi ? ChatFormatting.GOLD : ChatFormatting.WHITE),
+                    Icons.lore(detail + (choisi ? "" : " - clique pour le faire gagner"),
+                            reel == affiche ? ChatFormatting.GRAY : ChatFormatting.GOLD),
+                    sp -> {
+                        com.utopia.data.ElectionData d = com.utopia.data.ElectionData.get(sp.server);
+                        com.utopia.data.ElectionData.Election e = d.current();
+                        if (e != null) {
+                            e.truqueEnFaveurDe = candidat;
+                            d.setDirty();
+                        }
+                        openElection(sp);
+                    }));
+        }
+        if (el.truqueEnFaveurDe != null) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                    Icons.label("Rendre le scrutin sincere", ChatFormatting.GREEN),
+                    Icons.lore("Le depouillement redevient celui des bulletins", ChatFormatting.GRAY),
+                    sp -> {
+                        com.utopia.data.ElectionData d = com.utopia.data.ElectionData.get(sp.server);
+                        com.utopia.data.ElectionData.Election e = d.current();
+                        if (e != null) {
+                            e.truqueEnFaveurDe = null;
+                            d.setDirty();
+                        }
+                        openElection(sp);
+                    }));
+        }
+
+        OwoMenuServer.openHub(player, Icons.screenTitle("Depouillement", ChatFormatting.RED),
+                stats, entries, DieuMenus::openElection, DieuMenus::open);
     }
 
     private static void openJoueurs(ServerPlayer player, int page) {

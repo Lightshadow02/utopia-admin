@@ -36,6 +36,15 @@ public final class ElectionData extends SavedData {
         public long endMillis;
         public final List<String> candidates = new ArrayList<>();
         public final Map<UUID, String> votes = new LinkedHashMap<>();
+        /**
+         * Candidat que le depouillement doit faire gagner, ou nul. On garde l'<b>intention</b> et
+         * non des ecarts calcules : les bulletins continuent d'arriver apres coup, et des ecarts
+         * figes laisseraient le favori repasser devant sans que personne ne s'en apercoive.
+         *
+         * <p>Les bulletins eux-memes ne sont jamais touches : un joueur qui rouvre /vote y relit
+         * son propre choix, et c'est par la qu'un trucage se ferait prendre.
+         */
+        public String truqueEnFaveurDe;
 
         public Election(String name, int durationMinutes) {
             this.name = name;
@@ -124,6 +133,8 @@ public final class ElectionData extends SavedData {
             for (int i = 0; i < cands.size(); i++) {
                 el.candidates.add(cands.getString(i));
             }
+            String truque = e.getString("truque");
+            el.truqueEnFaveurDe = truque.isEmpty() ? null : truque;
             ListTag votes = e.getList("votes", Tag.TAG_COMPOUND);
             for (int i = 0; i < votes.size(); i++) {
                 CompoundTag v = votes.getCompound(i);
@@ -158,6 +169,7 @@ public final class ElectionData extends SavedData {
                 cands.add(StringTag.valueOf(c));
             }
             e.put("candidates", cands);
+            e.putString("truque", current.truqueEnFaveurDe == null ? "" : current.truqueEnFaveurDe);
             ListTag votes = new ListTag();
             for (Map.Entry<UUID, String> entry : current.votes.entrySet()) {
                 CompoundTag v = new CompoundTag();
