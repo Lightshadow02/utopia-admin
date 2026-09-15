@@ -54,6 +54,12 @@ public final class UtopiaNet {
 
         // C2S : clic / fermeture / montant / texte saisi envoye par le client.
         registrar.playToServer(MenuC2SPayload.TYPE, MenuC2SPayload.STREAM_CODEC, (payload, context) -> {
+            // Un clic de menu et un score d'arcade sont des signes de vie que Minecraft ne compte
+            // pas : ils n'arrivent que par nos propres paquets. Pendant une partie, en revanche, la
+            // borne n'envoie rien du tout - c'est le score de fin de partie qui fait foi.
+            if (context.player() instanceof net.minecraft.server.level.ServerPlayer sp) {
+                com.utopia.afk.AfkManager.reveiller(sp);
+            }
             switch (payload.kind()) {
                 case MenuC2SPayload.CLICK -> OwoMenuServer.handleClick((MenuClickPayload) payload.data(), context);
                 case MenuC2SPayload.AMOUNT -> OwoMenuServer.handleAmount((AmountResultPayload) payload.data(), context);

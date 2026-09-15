@@ -529,6 +529,7 @@ public final class UtopiaEvents {
             com.utopia.casino.CasinoManager.onLogout(leaving);
             com.utopia.disguise.DisguiseManager.onLogout(leaving);
             com.utopia.power.MageStaff.onLogout(leaving);
+            com.utopia.afk.AfkManager.onLogout(leaving);
         }
         if (event.getEntity() instanceof ServerPlayer sp) {
             if (sp.containerMenu instanceof UtopiaMenu menu) {
@@ -596,6 +597,10 @@ public final class UtopiaEvents {
         if (t % 60 == 0) {
             // Bookmakers a leur poste et hologrammes a jour (le compte a rebours s'y affiche).
             com.utopia.bet.BetManager.syncWorld(server);
+        }
+        if (t % com.utopia.afk.AfkManager.PERIODE_TICKS == 0) {
+            // Anti-AFK : releve de position et de regard, puis preavis et deconnexion.
+            com.utopia.afk.AfkManager.tick(server);
         }
         if (t % 100 == 0) {
             com.utopia.structure.StructureManager.tickAuto(server);

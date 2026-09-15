@@ -121,6 +121,12 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue CASINO_ENABLED;
     public static final ModConfigSpec.BooleanValue CASINO_REVENUE_TO_MAIRIE;
 
+    /** Anti-AFK : un joueur qui ne donne plus signe de vie finit par liberer sa place. */
+    public static final ModConfigSpec.BooleanValue AFK_ENABLED;
+    public static final ModConfigSpec.IntValue AFK_MINUTES;
+    public static final ModConfigSpec.IntValue AFK_WARN_MINUTES;
+    public static final ModConfigSpec.BooleanValue AFK_EXEMPT_OPS;
+
     /** Modules du menu du maire : un module retire ici disparait de /maire. */
     public static final ModConfigSpec.BooleanValue MAIRIE_TAXES;
     public static final ModConfigSpec.BooleanValue MAIRIE_LEADERBOARD;
@@ -398,6 +404,31 @@ public final class Config {
                         "l'economie au lieu de la deplacer.")
                 .define("revenueToMairie", true);
         BUILDER.pop(); // casino
+
+        BUILDER.comment("Anti-AFK : deconnexion des joueurs qui ne donnent plus signe de vie.",
+                        "Compte comme signe de vie : bouger, tourner la tete, ouvrir un coffre,",
+                        "poser un bloc, parler, taper une commande, cliquer dans un menu du mod.",
+                        "",
+                        "Minecraft a son propre reglage du meme genre, player-idle-timeout dans",
+                        "server.properties. Les deux peuvent tourner ensemble avec des delais",
+                        "differents : celui qui expire le premier l'emporte. Mettez-le a 0 si vous",
+                        "voulez que ce module soit seul a decider.")
+                .push("afk");
+        AFK_ENABLED = BUILDER
+                .comment("Activer la deconnexion automatique des inactifs.")
+                .define("enabled", true);
+        AFK_MINUTES = BUILDER
+                .comment("Minutes d'inactivite avant la deconnexion (180 = trois heures).")
+                .defineInRange("minutes", 180, 1, 10080);
+        AFK_WARN_MINUTES = BUILDER
+                .comment("Minutes d'avance avec lesquelles prevenir le joueur. A 0, aucun preavis.",
+                        "Un preavis plus long que le delai lui-meme est ramene a ce delai.")
+                .defineInRange("warnMinutes", 5, 0, 1440);
+        AFK_EXEMPT_OPS = BUILDER
+                .comment("Epargner les operateurs. Utile quand une construction se prepare a cote",
+                        "d'un ecran laisse ouvert.")
+                .define("exemptOps", false);
+        BUILDER.pop(); // afk
 
         BUILDER.comment("Menu du maire (/maire). Ces modules sont pilotes en jeu par le maire elu ;",
                         "les retirer ici les lui retire, y compris ce qu'il avait deja regle.")
