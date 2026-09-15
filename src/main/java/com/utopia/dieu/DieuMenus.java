@@ -61,6 +61,11 @@ public final class DieuMenus {
                 Icons.label("Depouillement", ChatFormatting.RED),
                 Icons.lore("Decider du resultat de l'election en cours", ChatFormatting.GRAY),
                 DieuMenus::openElection));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.LEATHER_HELMET),
+                Icons.label("Deguisement", ChatFormatting.LIGHT_PURPLE),
+                Icons.lore("Porter un autre nom, et le visage de quelqu'un d'autre",
+                        ChatFormatting.GRAY),
+                DieuMenus::openDeguisement));
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PAPER),
                 Icons.label("Message a un joueur", ChatFormatting.AQUA),
                 Icons.lore("Un message prive, qui n'a l'air de venir de personne",
@@ -181,6 +186,101 @@ public final class DieuMenus {
 
         OwoMenuServer.openHub(player, Icons.screenTitle("Depouillement", ChatFormatting.RED),
                 stats, entries, DieuMenus::openElection, DieuMenus::open);
+    }
+
+    /** Le deguisement : un nom d'emprunt, un visage d'emprunt, ou les deux. */
+    public static void openDeguisement(ServerPlayer player) {
+        if (denied(player)) {
+            return;
+        }
+        com.utopia.data.DisguiseData.Disguise d =
+                com.utopia.data.DisguiseData.get(player.server).get(player.getUUID());
+        boolean nom = d != null && d.aUnNom();
+        boolean skin = d != null && d.aUnSkin();
+
+        List<Component> stats = new ArrayList<>();
+        stats.add(Component.literal("Tu apparais sous : ")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(nom ? d.nom : player.getGameProfile().getName())
+                        .withStyle(s -> s.withColor(nom ? ChatFormatting.GOLD : ChatFormatting.WHITE)
+                                .withItalic(false))));
+        stats.add(Component.literal("Visage : ")
+                .withStyle(s -> s.withColor(ChatFormatting.GRAY).withItalic(false))
+                .append(Component.literal(skin ? "celui de " + d.skinSource : "le tien")
+                        .withStyle(s -> s.withColor(skin ? ChatFormatting.GOLD : ChatFormatting.WHITE)
+                                .withItalic(false))));
+        stats.add(Icons.lore("Les autres voient le visage tout de suite ; toi, a ta prochaine "
+                + "connexion.", ChatFormatting.DARK_GRAY));
+
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.NAME_TAG),
+                Icons.label("Changer de nom", ChatFormatting.AQUA),
+                Icons.lore("Le nom du chat et de la liste des joueurs", ChatFormatting.GRAY),
+                sp -> Menus.promptFreeText(sp, Icons.label("Nom d'emprunt", ChatFormatting.GOLD),
+                        List.of(Icons.lore("Accents et espaces acceptes.", ChatFormatting.GRAY)),
+                        Icons.label("Valider", ChatFormatting.GREEN),
+                        nom ? d.nom : "", 32,
+                        v -> {
+                            if (denied(sp)) {
+                                return;
+                            }
+                            if (v != null && !v.isBlank()) {
+                                com.utopia.disguise.DisguiseManager.setNom(sp, v);
+                            }
+                            openDeguisement(sp);
+                        })));
+        entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
+                Icons.label("Prendre un visage", ChatFormatting.AQUA),
+                Icons.lore("Copier le skin d'un joueur connecte", ChatFormatting.GRAY),
+                sp -> openVisages(sp, 0)));
+        if (nom) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                    Icons.label("Reprendre mon nom", ChatFormatting.GREEN), Component.empty(),
+                    sp -> {
+                        com.utopia.disguise.DisguiseManager.clearNom(sp);
+                        openDeguisement(sp);
+                    }));
+        }
+        if (skin) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.BARRIER),
+                    Icons.label("Reprendre mon visage", ChatFormatting.GREEN), Component.empty(),
+                    sp -> {
+                        com.utopia.disguise.DisguiseManager.clearSkin(sp);
+                        openDeguisement(sp);
+                    }));
+        }
+
+        OwoMenuServer.openHub(player, Icons.screenTitle("Deguisement", ChatFormatting.LIGHT_PURPLE),
+                stats, entries, DieuMenus::openDeguisement, DieuMenus::open);
+    }
+
+    private static void openVisages(ServerPlayer player, int page) {
+        if (denied(player)) {
+            return;
+        }
+        List<OwoMenuServer.HubEntry> entries = new ArrayList<>();
+        for (ServerPlayer modele : player.server.getPlayerList().getPlayers()) {
+            if (modele == player) {
+                continue;
+            }
+            entries.add(new OwoMenuServer.HubEntry(
+                    Icons.playerHead(modele, Icons.label(modele.getGameProfile().getName(),
+                            ChatFormatting.WHITE), List.of()),
+                    Icons.label(modele.getGameProfile().getName(), ChatFormatting.WHITE),
+                    Icons.lore("Prendre son visage", ChatFormatting.GRAY),
+                    sp -> {
+                        if (denied(sp)) {
+                            return;
+                        }
+                        com.utopia.disguise.DisguiseManager.setSkin(sp, modele);
+                        openDeguisement(sp);
+                    }));
+        }
+        OwoMenuServer.openHubPaged(player,
+                Icons.screenTitle("Prendre un visage", ChatFormatting.LIGHT_PURPLE),
+                List.of(Icons.lore("Le skin est copie : le modele peut partir ou en changer.",
+                        ChatFormatting.GRAY)),
+                entries, page, 28, DieuMenus::openVisages, DieuMenus::openDeguisement);
     }
 
     private static void openJoueurs(ServerPlayer player, int page) {

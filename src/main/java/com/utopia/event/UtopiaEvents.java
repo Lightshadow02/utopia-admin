@@ -84,6 +84,7 @@ public final class UtopiaEvents {
         com.utopia.command.CasinoCommand.register(dispatcher);
         com.utopia.command.ReferendumCommand.register(dispatcher);
         com.utopia.command.DieuCommand.register(dispatcher);
+        com.utopia.command.DisguiseCommands.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
@@ -390,6 +391,28 @@ public final class UtopiaEvents {
     }
 
     @SubscribeEvent
+    public static void onNameFormat(PlayerEvent.NameFormat event) {
+        // Le nom du chat et de tout ce qui passe par getDisplayName.
+        if (event.getEntity() instanceof ServerPlayer sp) {
+            Component emprunt = com.utopia.disguise.DisguiseManager.nomDemprunt(sp);
+            if (emprunt != null) {
+                event.setDisplayname(emprunt);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onTabListNameFormat(PlayerEvent.TabListNameFormat event) {
+        // La liste des joueurs se lit a part : sans cela, le nom d'emprunt n'apparaitrait qu'au chat.
+        if (event.getEntity() instanceof ServerPlayer sp) {
+            Component emprunt = com.utopia.disguise.DisguiseManager.nomDemprunt(sp);
+            if (emprunt != null) {
+                event.setDisplayName(emprunt);
+            }
+        }
+    }
+
+    @SubscribeEvent
     public static void onExplosion(ExplosionEvent.Detonate event) {
         // Retire les blocs des parcelles de la liste des blocs detruits par l'explosion.
         if (!Config.PARCEL_PROTECT_EXPLOSIONS.get() || !(event.getLevel() instanceof ServerLevel level)) {
@@ -428,6 +451,8 @@ public final class UtopiaEvents {
         com.utopia.quote.QuoteManager.onLogin(sp);
         com.utopia.bet.BetManager.onLogin(sp);
         com.utopia.economy.FreezeManager.onLogin(sp); // echeances manquees pendant un gel
+        // Le profil est reconstruit par Mojang a chaque connexion : le deguisement doit etre repose.
+        com.utopia.disguise.DisguiseManager.onLogin(sp);
         if (DailyManager.isAvailable(sp.server, sp.getUUID())) {
             MutableComponent open = Component.literal("[/daily]").withStyle(s -> s
                     .withColor(ChatFormatting.GREEN).withBold(true)
@@ -460,6 +485,7 @@ public final class UtopiaEvents {
         if (event.getEntity() instanceof ServerPlayer leaving) {
             // Une partie d'arcade laissee ouverte n'a plus d'objet : son score n'arrivera jamais.
             com.utopia.casino.CasinoManager.onLogout(leaving);
+            com.utopia.disguise.DisguiseManager.onLogout(leaving);
         }
         if (event.getEntity() instanceof ServerPlayer sp) {
             if (sp.containerMenu instanceof UtopiaMenu menu) {
