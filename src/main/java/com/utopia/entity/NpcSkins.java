@@ -117,6 +117,65 @@ public final class NpcSkins {
         return new String[] { "", "" };
     }
 
+    /**
+     * Va chercher la propriete "textures" d'un joueur <b>par son pseudo</b>, qu'il soit connecte ou
+     * non. La resolution du pseudo en identifiant puis l'appel au service de session sont bloquants :
+     * ils tournent hors du fil principal, et le resultat revient dessus pour que l'appelant n'ait
+     * jamais a s'en soucier.
+     *
+     * <p>Un joueur connecte est servi sur-le-champ, sans passer par le reseau : son profil est deja
+     * la, et c'est aussi le seul cas qui fonctionne quand les serveurs de Mojang sont injoignables.
+     *
+     * @param whenDone recoit {@code [valeur, signature, pseudo reel]}, ou {@code null} si le joueur
+     *                 est introuvable ou n'a pas de skin
+     */
+    public static void fetchParNom(net.minecraft.server.MinecraftServer server, String pseudo,
+            java.util.function.Consumer<String[]> whenDone) {
+        String nom = pseudo == null ? "" : pseudo.trim();
+        if (nom.isEmpty()) {
+            whenDone.accept(null);
+            return;
+        }
+        net.minecraft.server.level.ServerPlayer connecte =
+                server.getPlayerList().getPlayerByName(nom);
+        if (connecte != null) {
+            String[] textures = capture(connecte);
+            whenDone.accept(textures[0].isEmpty() ? null
+                    : new String[] { textures[0], textures[1],
+                            connecte.getGameProfile().getName() });
+            return;
+        }
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try {
+                java.util.Optional<com.mojang.authlib.GameProfile> connu =
+                        server.getProfileCache() == null
+                                ? java.util.Optional.empty()
+                                : server.getProfileCache().get(nom);
+                if (connu.isEmpty()) {
+                    return null;
+                }
+                // Signature exigee : le client refuse un visage dont la propriete n'est pas signee
+                // par Mojang, et l'echec serait silencieux - le joueur resterait en Steve.
+                var resultat = server.getSessionService().fetchProfile(connu.get().getId(), true);
+                return resultat == null ? null : resultat.profile();
+            } catch (Exception e) {
+                UtopiaMod.LOGGER.warn("[Utopia] Visage de \"{}\" introuvable : {}", nom, e.toString());
+                return null;
+            }
+        }).thenAcceptAsync(profil -> {
+            if (profil == null) {
+                whenDone.accept(null);
+                return;
+            }
+            for (com.mojang.authlib.properties.Property prop : profil.getProperties().get("textures")) {
+                whenDone.accept(new String[] { prop.value(),
+                        prop.signature() == null ? "" : prop.signature(), profil.getName() });
+                return;
+            }
+            whenDone.accept(null);
+        }, server);
+    }
+
     public static String label(String name) {
         String pretty = name.replace('_', ' ').trim();
         return pretty.isEmpty() ? name : Character.toUpperCase(pretty.charAt(0)) + pretty.substring(1);

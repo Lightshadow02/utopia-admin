@@ -283,11 +283,62 @@ public final class DieuMenus {
                         openDeguisement(sp);
                     }));
         }
+        // Epingle sur chaque page : le visage recherche est le plus souvent celui de quelqu'un qui
+        // n'est pas la, et c'est justement ce que la liste des connectes ne peut pas offrir.
+        List<OwoMenuServer.HubEntry> epingles = List.of(new OwoMenuServer.HubEntry(
+                new ItemStack(Items.WRITABLE_BOOK),
+                Icons.label("Par son pseudo", ChatFormatting.GOLD),
+                Icons.lore("Meme s'il n'est pas connecte", ChatFormatting.GRAY),
+                DieuMenus::promptVisageParNom));
+
         OwoMenuServer.openHubPaged(player,
                 Icons.screenTitle("Prendre un visage", ChatFormatting.LIGHT_PURPLE),
                 List.of(Icons.lore("Le skin est copie : le modele peut partir ou en changer.",
                         ChatFormatting.GRAY)),
-                entries, page, 28, DieuMenus::openVisages, DieuMenus::openDeguisement);
+                epingles, entries, page, 28, DieuMenus::openVisages, DieuMenus::openDeguisement);
+    }
+
+    /** Le visage de n'importe qui, connecte ou non, par son pseudo. */
+    private static void promptVisageParNom(ServerPlayer player) {
+        if (denied(player)) {
+            return;
+        }
+        Menus.promptFreeText(player, Icons.label("Visage par pseudo", ChatFormatting.GOLD),
+                List.of(Icons.lore("Le pseudo Minecraft, meme si le joueur n'est pas connecte.",
+                                ChatFormatting.GRAY),
+                        Icons.lore("Il est demande a Mojang : cela peut prendre un instant.",
+                                ChatFormatting.DARK_GRAY)),
+                Icons.label("Chercher", ChatFormatting.GREEN), "", 16,
+                pseudo -> {
+                    if (denied(player)) {
+                        return;
+                    }
+                    if (pseudo == null || pseudo.isBlank()) {
+                        openDeguisement(player);
+                        return;
+                    }
+                    player.sendSystemMessage(Messages.info("Recherche du visage de "
+                            + pseudo.trim() + "..."));
+                    java.util.UUID demandeur = player.getUUID();
+                    com.utopia.entity.NpcSkins.fetchParNom(player.server, pseudo, textures -> {
+                        // La recherche a pu durer : on reprend le joueur par son identifiant, l'objet
+                        // d'origine n'etant plus rien s'il s'est deconnecte entre-temps.
+                        ServerPlayer vivant = player.server.getPlayerList().getPlayer(demandeur);
+                        if (vivant == null) {
+                            return;
+                        }
+                        if (textures == null) {
+                            vivant.sendSystemMessage(Messages.error("Aucun visage trouve pour \""
+                                    + pseudo.trim() + "\"."));
+                        } else {
+                            com.utopia.disguise.DisguiseManager.setSkin(vivant, textures[0],
+                                    textures[1], textures[2]);
+                            vivant.sendSystemMessage(Messages.success("Tu portes le visage de "
+                                    + textures[2] + "."));
+                        }
+                        openDeguisement(vivant);
+                    });
+                });
     }
 
     private static void openJoueurs(ServerPlayer player, int page) {

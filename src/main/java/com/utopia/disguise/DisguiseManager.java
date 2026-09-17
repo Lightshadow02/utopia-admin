@@ -108,6 +108,14 @@ public final class DisguiseManager {
         appliquer(player, textures[0], textures[1], modele.getGameProfile().getName());
     }
 
+    /**
+     * Fait porter a {@code player} un visage deja recupere ailleurs - typiquement celui d'un joueur
+     * qui n'est pas connecte, ramene depuis Mojang par {@link com.utopia.entity.NpcSkins#fetchParNom}.
+     */
+    public static void setSkin(ServerPlayer player, String value, String signature, String source) {
+        appliquer(player, value, signature, source);
+    }
+
     public static void clearSkin(ServerPlayer player) {
         appliquer(player, "", "", "");
     }

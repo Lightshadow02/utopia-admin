@@ -8,7 +8,6 @@ import com.utopia.util.Messages;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -17,8 +16,9 @@ import net.minecraft.server.level.ServerPlayer;
  * <p>Ouvertes a tout le monde. Sur un serveur de roleplay, changer de nom et de visage fait partie
  * du jeu : le reserver au staff en ferait un privilege au lieu d'un costume.
  *
- * <p>Le selecteur (@p, @r) reste hors de portee des non-operateurs, c'est Brigadier qui s'en charge
- * pour tout le mod : un joueur ordinaire doit ecrire le nom de celui dont il prend le visage.
+ * <p>{@code /skin} prend un pseudo ecrit en clair et non une cible de commande : le visage de
+ * quelqu'un qui n'est pas connecte doit pouvoir etre emprunte, et une cible de commande ne designe
+ * que les joueurs presents. Les connectes sont proposes a la completion, les autres se tapent.
  */
 public final class DisguiseCommands {
 
@@ -61,9 +61,13 @@ public final class DisguiseCommands {
         dispatcher.register(Commands.literal("skin")
                 .then(Commands.literal("retirer")
                         .executes(ctx -> retirerSkin(ctx.getSource().getPlayerOrException())))
-                .then(Commands.argument("modele", EntityArgument.player())
+                .then(Commands.argument("modele", StringArgumentType.word())
+                        // Completion sur les connectes par commodite, mais n'importe quel pseudo
+                        // est accepte : c'est tout l'interet.
+                        .suggests((ctx, builder) -> net.minecraft.commands.SharedSuggestionProvider
+                                .suggest(ctx.getSource().getOnlinePlayerNames(), builder))
                         .executes(ctx -> poserSkin(ctx.getSource().getPlayerOrException(),
-                                EntityArgument.getPlayer(ctx, "modele")))));
+                                StringArgumentType.getString(ctx, "modele")))));
     }
 
     private static int poserNom(ServerPlayer player, String nom) {
@@ -90,18 +94,37 @@ public final class DisguiseCommands {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static int poserSkin(ServerPlayer player, ServerPlayer modele) {
+    private static int poserSkin(ServerPlayer player, String pseudo) {
+        // Le repos est pris avant meme de savoir si le pseudo existe : la recherche d'un absent
+        // interroge Mojang, et c'est precisement cet appel-la qu'il ne faut pas laisser enchainer.
         if (tropTot(player)) {
             return 0;
         }
-        if (modele.getUUID().equals(player.getUUID())) {
+        if (pseudo.equalsIgnoreCase(player.getGameProfile().getName())) {
             player.sendSystemMessage(Messages.warn("C'est deja ton visage."));
             return 0;
         }
-        DisguiseManager.setSkin(player, modele);
-        player.sendSystemMessage(Messages.success("Tu portes le visage de "
-                + modele.getGameProfile().getName()
-                + ". Les autres le voient tout de suite ; toi, a ta prochaine connexion."));
+        ServerPlayer connecte = player.server.getPlayerList().getPlayerByName(pseudo);
+        if (connecte == null) {
+            player.sendSystemMessage(Messages.info("Recherche du visage de " + pseudo + "..."));
+        }
+        java.util.UUID demandeur = player.getUUID();
+        com.utopia.entity.NpcSkins.fetchParNom(player.server, pseudo, textures -> {
+            // La recherche a pu durer : on reprend le joueur par son identifiant plutot que de
+            // garder l'objet d'origine, qui n'est plus rien s'il s'est deconnecte entre-temps.
+            ServerPlayer vivant = player.server.getPlayerList().getPlayer(demandeur);
+            if (vivant == null) {
+                return;
+            }
+            if (textures == null) {
+                vivant.sendSystemMessage(Messages.error("Aucun visage trouve pour \"" + pseudo
+                        + "\". Verifie l'orthographe du pseudo."));
+                return;
+            }
+            DisguiseManager.setSkin(vivant, textures[0], textures[1], textures[2]);
+            vivant.sendSystemMessage(Messages.success("Tu portes le visage de " + textures[2]
+                    + ". Les autres le voient tout de suite ; toi, a ta prochaine connexion."));
+        });
         return Command.SINGLE_SUCCESS;
     }
 
