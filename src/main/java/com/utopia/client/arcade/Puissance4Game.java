@@ -559,7 +559,7 @@ public final class Puissance4Game implements ArcadeGame {
         int ox = x + (width - largeur) / 2;
         int oy = y + (height - hauteur) / 2;
 
-        g.fill(ox, oy, ox + largeur, oy + hauteur, 0xFF070B14);
+        g.fillGradient(ox, oy, ox + largeur, oy + hauteur, 0xFF2B2438, 0xFF150F1E);
 
         int haut = oy + (int) (BANDE * echelle);
         int bas = oy + (int) ((BANDE + ROWS) * echelle);
@@ -593,10 +593,10 @@ public final class Puissance4Game implements ArcadeGame {
         } else if (etat == Etat.ATTENTE) {
             int cx = ox + (int) ((selection + 0.5) * echelle);
             int cy = oy + (int) (BANDE / 2.0 * echelle);
-            jeton(g, cx, cy, rayon, jouable(selection) ? COULEUR_HUMAIN : 0xFF3A4256);
+            jeton(g, cx, cy, rayon, jouable(selection) ? COULEUR_HUMAIN : 0xFF7A6A88);
         }
 
-        g.renderOutline(ox - 1, oy - 1, largeur + 2, hauteur + 2, 0xFF2A4360);
+        g.renderOutline(ox - 1, oy - 1, largeur + 2, hauteur + 2, 0xFF6A5A78);
 
         Font police = Minecraft.getInstance().font;
         if (police != null) {

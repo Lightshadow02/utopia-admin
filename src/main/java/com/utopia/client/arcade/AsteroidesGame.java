@@ -533,11 +533,11 @@ public final class AsteroidesGame implements ArcadeGame {
         coupeX1 = ox + cadreW;
         coupeY1 = oy + cadreH;
 
-        g.fill(coupeX0, coupeY0, coupeX1, coupeY1, 0xFF05070F);
+        g.fillGradient(coupeX0, coupeY0, coupeX1, coupeY1, 0xFF1C2350, 0xFF090C22);
         for (int i = 0; i < etoiles.length; i += 3) {
             int sx = ox + (int) (etoiles[i] * sc);
             int sy = oy + (int) (etoiles[i + 1] * sc);
-            int teinte = etoiles[i + 2] > 0.7 ? 0xFF8894AE : 0xFF39425A;
+            int teinte = etoiles[i + 2] > 0.7 ? 0xFF8894AE : 0xFF5A6590;
             rect(g, sx, sy, sx + 1, sy + 1, teinte);
         }
 
@@ -587,7 +587,7 @@ public final class AsteroidesGame implements ArcadeGame {
         }
 
         interfaceJeu(g, ox, oy, cadreW, cadreH);
-        g.renderOutline(coupeX0 - 1, coupeY0 - 1, cadreW + 2, cadreH + 2, 0xFF2A3A60);
+        g.renderOutline(coupeX0 - 1, coupeY0 - 1, cadreW + 2, cadreH + 2, 0xFF47528C);
     }
 
     private void interfaceJeu(GuiGraphics g, int ox, int oy, int cadreW, int cadreH) {
@@ -637,7 +637,7 @@ public final class AsteroidesGame implements ArcadeGame {
             xs[i] = cx + (cxl[i] * cos - cyl[i] * sin) * sc;
             ys[i] = cy + (cxl[i] * sin + cyl[i] * cos) * sc;
         }
-        triangle(g, xs, ys, 0xFF05070F);
+        triangle(g, xs, ys, 0xFF131840);
 
         if (pousseeRestante > 0 && ((int) (horloge * 24)) % 2 == 0) {
             double longueur = 2.0 + (horloge * 37 % 1.0) * 1.6;

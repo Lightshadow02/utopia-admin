@@ -247,12 +247,12 @@ public final class TetrisGame implements ArcadeGame {
         int ox = x + (width - total) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fill(ox, oy, ox + fieldW, oy + fieldH, 0xFF0A0D18);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2E2666, 0xFF150F33);
         for (int r = 1; r < ROWS; r++) {
-            g.fill(ox, oy + r * cell, ox + fieldW, oy + r * cell + 1, 0xFF121728);
+            g.fill(ox, oy + r * cell, ox + fieldW, oy + r * cell + 1, 0xFF453A96);
         }
         for (int c = 1; c < COLS; c++) {
-            g.fill(ox + c * cell, oy, ox + c * cell + 1, oy + fieldH, 0xFF121728);
+            g.fill(ox + c * cell, oy, ox + c * cell + 1, oy + fieldH, 0xFF453A96);
         }
 
         for (int r = 0; r < ROWS; r++) {
@@ -282,11 +282,11 @@ public final class TetrisGame implements ArcadeGame {
                 }
             }
         }
-        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF3A4468);
+        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF6A5FC0);
 
         int panelX = ox + fieldW + cell;
-        g.fill(panelX, oy, panelX + panelW, oy + cell * 6, 0xFF0A0D18);
-        g.renderOutline(panelX, oy, panelW, cell * 6, 0xFF3A4468);
+        g.fillGradient(panelX, oy, panelX + panelW, oy + cell * 6, 0xFF2E2666, 0xFF150F33);
+        g.renderOutline(panelX, oy, panelW, cell * 6, 0xFF6A5FC0);
         for (int[] c : SHAPES[next][0]) {
             drawCell(g, panelX + cell / 2 + c[0] * cell, oy + cell + c[1] * cell, cell, COLORS[next]);
         }

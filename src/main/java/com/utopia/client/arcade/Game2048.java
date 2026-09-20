@@ -21,7 +21,7 @@ public final class Game2048 implements ArcadeGame {
 
     /** Couleurs par puissance de deux, du 2 au 2048 et au-dela. */
     private static final int[] TILE_COLORS = {
-            0xFF3A3630, 0xFFEEE4DA, 0xFFEDE0C8, 0xFFF2B179, 0xFFF59563,
+            0xFFCDC1B4, 0xFFEEE4DA, 0xFFEDE0C8, 0xFFF2B179, 0xFFF59563,
             0xFFF67C5F, 0xFFF65E3B, 0xFFEDCF72, 0xFFEDCC61, 0xFFEDC850,
             0xFFEDC53F, 0xFFEDC22E, 0xFF3C3A32};
 
@@ -163,7 +163,7 @@ public final class Game2048 implements ArcadeGame {
         int ox = x + (width - fw) / 2;
         int oy = y + (height - fw) / 2;
 
-        g.fill(ox, oy, ox + fw, oy + fw, 0xFF1D1A16);
+        g.fillGradient(ox, oy, ox + fw, oy + fw, 0xFFA59A8E, 0xFF8D8377);
 
         net.minecraft.client.gui.Font font = net.minecraft.client.Minecraft.getInstance().font;
         for (int r = 0; r < N; r++) {
@@ -184,7 +184,7 @@ public final class Game2048 implements ArcadeGame {
                         py + (cell - font.lineHeight) / 2, encre, false);
             }
         }
-        g.renderOutline(ox - 1, oy - 1, fw + 2, fw + 2, 0xFF4A4238);
+        g.renderOutline(ox - 1, oy - 1, fw + 2, fw + 2, 0xFF8F7A66);
     }
 
     @Override

@@ -341,7 +341,7 @@ public final class BubbleGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fill(ox, oy, ox + fieldW, oy + fieldH, 0xFF0A0E1A);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF283454, 0xFF111A2E);
 
         // Ligne de perdition : elle doit se voir bien avant d'etre atteinte.
         int deadY = oy + (int) (centerY(DEAD_ROW) * scale);
@@ -381,7 +381,7 @@ public final class BubbleGame implements ArcadeGame {
         // La bulle suivante, en attente sur le cote : on prepare son coup d'avance.
         bulle(g, ox + fieldW - br - 2, oy + fieldH - br - 2, Math.max(2, br - 1), COLORS[next]);
 
-        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF2A3A60);
+        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF4A5C90);
     }
 
     private static void bulle(GuiGraphics g, int cx, int cy, int r, int color) {

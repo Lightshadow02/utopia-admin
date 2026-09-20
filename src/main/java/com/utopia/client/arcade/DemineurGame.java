@@ -45,8 +45,8 @@ public final class DemineurGame implements ArcadeGame {
             0xFF000000, 0xFF1B4FD8, 0xFF1E7B1E, 0xFFD02020, 0xFF0B1A6E,
             0xFF7B1717, 0xFF107F7F, 0xFF101010, 0xFF5A5A5A};
 
-    private static final int FOND_CADRE = 0xFF2A2E36;
-    private static final int FOND_BANDEAU = 0xFF12151C;
+    private static final int FOND_CADRE = 0xFF5A616E;
+    private static final int FOND_BANDEAU = 0xFF2A3040;
     private static final int CASE_FERMEE = 0xFFA9AEB8;
     private static final int CASE_OUVERTE = 0xFFD6D9DE;
     private static final int CASE_FATALE = 0xFFC24040;

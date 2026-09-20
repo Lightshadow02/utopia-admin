@@ -350,7 +350,7 @@ public final class TaupesGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF23431F, 0xFF0B1A0C);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2E5628, 0xFF17301A);
 
         for (int i = 0; i < TROUS; i++) {
             dessinerTrou(g, ox, oy, scale, i);
@@ -502,7 +502,7 @@ public final class TaupesGame implements ArcadeGame {
 
     private void dessinerBandeau(GuiGraphics g, int ox, int oy, int fieldW, int fieldH, double scale) {
         int bas = oy + (int) (BANDEAU * scale);
-        g.fill(ox, oy, ox + fieldW, bas, 0xE6070E0A);
+        g.fill(ox, oy, ox + fieldW, bas, 0xE6183020);
         g.fill(ox, bas, ox + fieldW, bas + 1, 0xFF3E5A34);
 
         int secondes = (int) Math.ceil(tempsRestant - 1e-9);

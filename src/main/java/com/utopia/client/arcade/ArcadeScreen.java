@@ -68,10 +68,14 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
         // volontairement vide
     }
 
-    /** Fond uni plutot que la texture de menu vanilla : une borne d'arcade est un ecran, pas un menu. */
+    /**
+     * Le pourtour de l'ecran, plutot que la texture de menu vanilla : une borne d'arcade est un
+     * ecran, pas un menu. Un degrade colore et non un aplat presque noir - la salle d'arcade doit
+     * ressembler a une salle d'arcade, et un cadre trop sombre fait paraitre le jeu eteint.
+     */
     @Override
     protected void renderMenuBackground(GuiGraphics graphics, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, 0xE8080B12);
+        graphics.fillGradient(x, y, x + width, y + height, 0xF0242E5A, 0xF00E1226);
     }
 
     /** Le cadre de jeu : centre, marges reservees au titre et au rappel des touches. */

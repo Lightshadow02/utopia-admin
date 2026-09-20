@@ -536,7 +536,7 @@ public final class EnvahisseursGame implements ArcadeGame {
         int ox = x + (width - cadreL) / 2;
         int oy = y + (height - cadreH) / 2;
 
-        g.fill(ox, oy, ox + cadreL, oy + cadreH, 0xFF05070F);
+        g.fillGradient(ox, oy, ox + cadreL, oy + cadreH, 0xFF241C50, 0xFF100C26);
         // Ligne de sol : elle materialise la hauteur fatale, celle ou la vague gagne.
         int solY = oy + (int) ((VAISSEAU_Y + VAISSEAU_H + 1.0) * echelle);
         g.fill(ox, solY, ox + cadreL, solY + 1, 0xFF2E7F4E);
@@ -547,7 +547,7 @@ public final class EnvahisseursGame implements ArcadeGame {
         dessinerTirs(g, ox, oy, echelle);
         dessinerEtat(g, ox, oy, cadreL, cadreH, echelle);
 
-        g.renderOutline(ox - 1, oy - 1, cadreL + 2, cadreH + 2, 0xFF23405E);
+        g.renderOutline(ox - 1, oy - 1, cadreL + 2, cadreH + 2, 0xFF4A6A94);
     }
 
     private void dessinerEnvahisseurs(GuiGraphics g, int ox, int oy, double echelle) {

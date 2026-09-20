@@ -248,7 +248,7 @@ public final class SimonGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fill(ox, oy, ox + fieldW, oy + fieldH, 0xFF0A0D14);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF241C2E, 0xFF120C18);
 
         boolean tourJoueur = phase == Phase.JOUEUR;
         for (int q = 0; q < 4; q++) {
@@ -270,7 +270,7 @@ public final class SimonGame implements ArcadeGame {
         int cy = oy + (int) ((PLATEAU_Y + PLATEAU_T / 2) * echelle);
         int demiMoyeu = Math.max(8, (int) (MOYEU * echelle / 2));
         g.fill(cx - demiMoyeu, cy - demiMoyeu, cx + demiMoyeu, cy + demiMoyeu, 0xFF11161E);
-        g.renderOutline(cx - demiMoyeu, cy - demiMoyeu, demiMoyeu * 2, demiMoyeu * 2, 0xFF2B3444);
+        g.renderOutline(cx - demiMoyeu, cy - demiMoyeu, demiMoyeu * 2, demiMoyeu * 2, 0xFF6A5A78);
         long numero = Math.max(1, sequence.size());
         g.drawCenteredString(font, "Manche", cx, cy - 9, 0xFF7E8798);
         g.drawCenteredString(font, Long.toString(numero), cx, cy + 1, 0xFFE8EEF6);
@@ -304,7 +304,7 @@ public final class SimonGame implements ArcadeGame {
             }
         }
 
-        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF2B3444);
+        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF6A5A78);
     }
 
     private static int teinte(int argb, double facteur) {

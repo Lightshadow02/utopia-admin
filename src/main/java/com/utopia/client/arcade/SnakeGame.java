@@ -161,13 +161,13 @@ public final class SnakeGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fill(ox, oy, ox + fieldW, oy + fieldH, 0xFF0B1410);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF1A3A5C, 0xFF0A1E33);
         // Quadrillage discret : sans repere, on juge mal la distance au mur.
         for (int c = 1; c < COLS; c++) {
-            g.fill(ox + c * cell, oy, ox + c * cell + 1, oy + fieldH, 0xFF101C16);
+            g.fill(ox + c * cell, oy, ox + c * cell + 1, oy + fieldH, 0xFF2B5C8A);
         }
         for (int r = 1; r < ROWS; r++) {
-            g.fill(ox, oy + r * cell, ox + fieldW, oy + r * cell + 1, 0xFF101C16);
+            g.fill(ox, oy + r * cell, ox + fieldW, oy + r * cell + 1, 0xFF2B5C8A);
         }
 
         g.fill(ox + foodX * cell + 1, oy + foodY * cell + 1,
@@ -183,7 +183,7 @@ public final class SnakeGame implements ArcadeGame {
                     ox + (seg[0] + 1) * cell - 1, oy + (seg[1] + 1) * cell - 1, color);
         }
 
-        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF3A5A48);
+        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF5FA8C8);
     }
 
     private static int shade(int argb, double factor) {

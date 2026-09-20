@@ -213,7 +213,7 @@ public final class BreakoutGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fill(ox, oy, ox + fieldW, oy + fieldH, 0xFF07101A);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF0F3A52, 0xFF061F2E);
 
         for (int r = 0; r < BRICK_ROWS; r++) {
             for (int c = 0; c < BRICK_COLS; c++) {
@@ -247,7 +247,7 @@ public final class BreakoutGame implements ArcadeGame {
             g.fill(lx, ly, lx + 5, ly + 3, 0xFFDDE6F0);
         }
 
-        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF2A4360);
+        g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF2E7396);
     }
 
     @Override
