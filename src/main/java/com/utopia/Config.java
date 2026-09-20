@@ -102,6 +102,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ADMIN_MARKETRECOVERY;
     public static final ModConfigSpec.BooleanValue ADMIN_MAIRE;
     public static final ModConfigSpec.BooleanValue ADMIN_INVENTORIES;
+    public static final ModConfigSpec.BooleanValue ADMIN_INSPECT;
     public static final ModConfigSpec.BooleanValue ADMIN_WARPS;
     public static final ModConfigSpec.BooleanValue ADMIN_ELECTIONS;
     public static final ModConfigSpec.BooleanValue ADMIN_JOBS;
@@ -365,6 +366,9 @@ public final class Config {
         ADMIN_MARKETRECOVERY = BUILDER.comment("Bouton \"Recuperation marche\".").define("marketRecovery", true);
         ADMIN_MAIRE = BUILDER.comment("Bouton \"Maire\".").define("maire", true);
         ADMIN_INVENTORIES = BUILDER.comment("Bouton \"Inventaires\".").define("inventories", true);
+        ADMIN_INSPECT = BUILDER.comment("Bouton \"Voir un inventaire\" (/invsee et /ecsee).",
+                        "Donne acces aux affaires de n'importe quel joueur, deconnecte compris,",
+                        "et permet de les modifier.").define("inspect", true);
         ADMIN_WARPS = BUILDER.comment("Bouton \"Warps\".").define("warps", true);
         ADMIN_ELECTIONS = BUILDER.comment("Bouton \"Elections\".").define("elections", true);
         ADMIN_JOBS = BUILDER.comment("Bouton \"Metiers et salaires\".").define("jobs", true);

@@ -275,6 +275,13 @@ public final class AdminMenu {
                     Icons.lore("Basculer entre l'inventaire 1 et 2 (garder sa survie avant le creatif)", ChatFormatting.GRAY),
                     AdminMenu::openInventorySwitch));
         }
+        if (Config.ADMIN_INSPECT.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.SPYGLASS),
+                    Icons.label("Voir un inventaire", ChatFormatting.AQUA),
+                    Icons.lore("Inventaire et coffre de l'End de n'importe qui, deconnecte compris",
+                            ChatFormatting.GRAY),
+                    com.utopia.inspect.InspectMenus::open));
+        }
         if (Config.ADMIN_DAILY.get()) {
             entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.CHEST),
                     Icons.label("Recompenses (daily)", ChatFormatting.GOLD),

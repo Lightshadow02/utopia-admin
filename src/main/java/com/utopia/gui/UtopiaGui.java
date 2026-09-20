@@ -34,9 +34,19 @@ public final class UtopiaGui {
     private boolean finalized = false;
 
     public UtopiaGui(int rows, Component title) {
+        this(rows, title, null);
+    }
+
+    /**
+     * Variante avec un conteneur fourni. Elle sert quand les cases ne doivent pas etre une copie
+     * mais une vue sur autre chose - l'inventaire d'un autre joueur, par exemple - pour qu'un
+     * deplacement porte tout de suite et qu'aucun objet ne puisse exister en deux exemplaires le
+     * temps d'une fenetre ouverte.
+     */
+    public UtopiaGui(int rows, Component title, SimpleContainer container) {
         this.rows = Math.max(1, Math.min(6, rows));
         this.title = title;
-        this.container = new SimpleContainer(this.rows * 9);
+        this.container = container != null ? container : new SimpleContainer(this.rows * 9);
     }
 
     public int rows() {

@@ -85,6 +85,7 @@ public final class UtopiaEvents {
         com.utopia.command.ReferendumCommand.register(dispatcher);
         com.utopia.command.DieuCommand.register(dispatcher);
         com.utopia.command.DisguiseCommands.register(dispatcher);
+        com.utopia.command.InspectCommands.register(dispatcher);
         UtopiaMod.LOGGER.info("[Utopia] Commandes enregistrees (tpa, spawn, daily, clearlag, balance/baltop, pay, withdraw, deposit, money, parcel, room/auberge, menu, admin).");
     }
 
