@@ -350,7 +350,7 @@ public final class TaupesGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2E5628, 0xFF17301A);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2E5628, 0xFF234321);
 
         for (int i = 0; i < TROUS; i++) {
             dessinerTrou(g, ox, oy, scale, i);

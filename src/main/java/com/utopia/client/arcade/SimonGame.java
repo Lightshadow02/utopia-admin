@@ -248,7 +248,7 @@ public final class SimonGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF241C2E, 0xFF120C18);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF241C2E, 0xFF1B1423);
 
         boolean tourJoueur = phase == Phase.JOUEUR;
         for (int q = 0; q < 4; q++) {

@@ -341,7 +341,7 @@ public final class BubbleGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF283454, 0xFF111A2E);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF283454, 0xFF1C2740);
 
         // Ligne de perdition : elle doit se voir bien avant d'etre atteinte.
         int deadY = oy + (int) (centerY(DEAD_ROW) * scale);

@@ -536,7 +536,7 @@ public final class EnvahisseursGame implements ArcadeGame {
         int ox = x + (width - cadreL) / 2;
         int oy = y + (height - cadreH) / 2;
 
-        g.fillGradient(ox, oy, ox + cadreL, oy + cadreH, 0xFF241C50, 0xFF100C26);
+        g.fillGradient(ox, oy, ox + cadreL, oy + cadreH, 0xFF241C50, 0xFF1A143B);
         // Ligne de sol : elle materialise la hauteur fatale, celle ou la vague gagne.
         int solY = oy + (int) ((VAISSEAU_Y + VAISSEAU_H + 1.0) * echelle);
         g.fill(ox, solY, ox + cadreL, solY + 1, 0xFF2E7F4E);

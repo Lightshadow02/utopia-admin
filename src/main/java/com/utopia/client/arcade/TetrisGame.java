@@ -247,7 +247,7 @@ public final class TetrisGame implements ArcadeGame {
         int ox = x + (width - total) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2E2666, 0xFF150F33);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2E2666, 0xFF221B4C);
         for (int r = 1; r < ROWS; r++) {
             g.fill(ox, oy + r * cell, ox + fieldW, oy + r * cell + 1, 0xFF453A96);
         }
@@ -285,7 +285,7 @@ public final class TetrisGame implements ArcadeGame {
         g.renderOutline(ox - 1, oy - 1, fieldW + 2, fieldH + 2, 0xFF6A5FC0);
 
         int panelX = ox + fieldW + cell;
-        g.fillGradient(panelX, oy, panelX + panelW, oy + cell * 6, 0xFF2E2666, 0xFF150F33);
+        g.fillGradient(panelX, oy, panelX + panelW, oy + cell * 6, 0xFF2E2666, 0xFF221B4C);
         g.renderOutline(panelX, oy, panelW, cell * 6, 0xFF6A5FC0);
         for (int[] c : SHAPES[next][0]) {
             drawCell(g, panelX + cell / 2 + c[0] * cell, oy + cell + c[1] * cell, cell, COLORS[next]);

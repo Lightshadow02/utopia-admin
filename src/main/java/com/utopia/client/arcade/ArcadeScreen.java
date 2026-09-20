@@ -75,7 +75,7 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
      */
     @Override
     protected void renderMenuBackground(GuiGraphics graphics, int x, int y, int width, int height) {
-        graphics.fillGradient(x, y, x + width, y + height, 0xF0242E5A, 0xF00E1226);
+        graphics.fillGradient(x, y, x + width, y + height, 0xF02C3768, 0xF0161E3C);
     }
 
     /** Le cadre de jeu : centre, marges reservees au titre et au rappel des touches. */
@@ -138,14 +138,14 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
                 : "RECORD  " + data.bestScore()
                         + (data.bestHolder().isEmpty() ? "" : "  " + data.bestHolder());
         int recordWidth = this.font.width(recordText);
-        g.drawString(this.font, recordText, f[0] + f[2] - recordWidth, 24, 0xFF9AA6B8, false);
+        g.drawString(this.font, recordText, f[0] + f[2] - recordWidth, 24, 0xFFC2CEE0, false);
 
         String hint = game.over() ? "Echap pour quitter" : game.hint();
-        g.drawCenteredString(this.font, hint, this.width / 2, f[1] + f[3] + 8, 0xFF8A93A3);
+        g.drawCenteredString(this.font, hint, this.width / 2, f[1] + f[3] + 8, 0xFFB8C4D8);
     }
 
     private void renderGameOver(GuiGraphics g, int[] f) {
-        g.fill(f[0], f[1], f[0] + f[2], f[1] + f[3], 0xB4000000);
+        g.fill(f[0], f[1], f[0] + f[2], f[1] + f[3], 0xA0170F2E);
         int cy = f[1] + f[3] / 2;
         g.drawCenteredString(this.font, Component.literal("PARTIE TERMINEE")
                 .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true)),
@@ -161,7 +161,7 @@ public final class ArcadeScreen extends Screen implements GuiScaleLock.Scaled {
         // Le rappel ne s'affiche qu'apres une seconde : sinon on quitte par reflexe avant d'avoir
         // vu son score.
         if (overDelay > 1.0) {
-            g.drawCenteredString(this.font, "Echap pour quitter", this.width / 2, cy + 30, 0xFF8A93A3);
+            g.drawCenteredString(this.font, "Echap pour quitter", this.width / 2, cy + 30, 0xFFB8C4D8);
         }
     }
 

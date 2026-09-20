@@ -533,7 +533,7 @@ public final class AsteroidesGame implements ArcadeGame {
         coupeX1 = ox + cadreW;
         coupeY1 = oy + cadreH;
 
-        g.fillGradient(coupeX0, coupeY0, coupeX1, coupeY1, 0xFF1C2350, 0xFF090C22);
+        g.fillGradient(coupeX0, coupeY0, coupeX1, coupeY1, 0xFF1C2350, 0xFF131839);
         for (int i = 0; i < etoiles.length; i += 3) {
             int sx = ox + (int) (etoiles[i] * sc);
             int sy = oy + (int) (etoiles[i + 1] * sc);

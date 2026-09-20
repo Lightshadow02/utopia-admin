@@ -421,7 +421,7 @@ public final class PacmanGame implements ArcadeGame {
         int ox = x + (width - fieldW) / 2;
         int oy = y + (height - fieldH) / 2;
 
-        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2A1446, 0xFF120826);
+        g.fillGradient(ox, oy, ox + fieldW, oy + fieldH, 0xFF2A1446, 0xFF1E0E36);
 
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {

@@ -559,7 +559,7 @@ public final class Puissance4Game implements ArcadeGame {
         int ox = x + (width - largeur) / 2;
         int oy = y + (height - hauteur) / 2;
 
-        g.fillGradient(ox, oy, ox + largeur, oy + hauteur, 0xFF2B2438, 0xFF150F1E);
+        g.fillGradient(ox, oy, ox + largeur, oy + hauteur, 0xFF2B2438, 0xFF20192B);
 
         int haut = oy + (int) (BANDE * echelle);
         int bas = oy + (int) ((BANDE + ROWS) * echelle);
