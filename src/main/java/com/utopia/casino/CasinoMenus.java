@@ -300,6 +300,12 @@ public final class CasinoMenus {
                 Icons.label("Ma collection", ChatFormatting.AQUA),
                 Icons.lore("Ce que tu as trouve, et ce qu'il te manque", ChatFormatting.GRAY),
                 sp -> openCollection(sp, 0, CasinoMenus::open)));
+        if (com.utopia.Config.CASINO_TABLES.get()) {
+            entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PAPER),
+                    Icons.label("Tables de jeu", ChatFormatting.GOLD),
+                    com.utopia.table.TableMenus.resume(player),
+                    com.utopia.table.TableMenus::open));
+        }
         entries.add(new OwoMenuServer.HubEntry(new ItemStack(Items.PLAYER_HEAD),
                 Icons.label("Gerants", ChatFormatting.YELLOW),
                 Icons.lore(data.managers().size() + " gerant(s) - ils ouvrent /casino sans etre op",

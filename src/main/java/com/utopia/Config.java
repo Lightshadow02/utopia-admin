@@ -121,6 +121,7 @@ public final class Config {
     /** Salle d'arcade : bornes de jeu posees dans le monde. */
     public static final ModConfigSpec.BooleanValue CASINO_ENABLED;
     public static final ModConfigSpec.BooleanValue CASINO_REVENUE_TO_MAIRIE;
+    public static final ModConfigSpec.BooleanValue CASINO_TABLES;
 
     /** Anti-AFK : un joueur qui ne donne plus signe de vie finit par liberer sa place. */
     public static final ModConfigSpec.BooleanValue AFK_ENABLED;
@@ -407,6 +408,11 @@ public final class Config {
                         "sont detruites : la salle devient un puits qui retire de la monnaie de",
                         "l'economie au lieu de la deplacer.")
                 .define("revenueToMairie", true);
+        CASINO_TABLES = BUILDER
+                .comment("Activer les tables de jeu (blackjack, Casino Hold'em, roulette).",
+                        "A false, les tables posees ne repondent plus au clic droit et les mises",
+                        "en cours sont rendues.")
+                .define("tables", true);
         BUILDER.pop(); // casino
 
         BUILDER.comment("Anti-AFK : deconnexion des joueurs qui ne donnent plus signe de vie.",

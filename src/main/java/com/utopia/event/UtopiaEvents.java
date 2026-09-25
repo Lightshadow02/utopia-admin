@@ -126,6 +126,22 @@ public final class UtopiaEvents {
                         : "Borne posee ! Les joueurs feront clic droit dessus pour jouer."));
                 return;
             }
+            com.utopia.table.Jeu tableAPoser = com.utopia.table.TableManager.poseEnCours(sp.getUUID());
+            if (tableAPoser != null && Config.CASINO_TABLES.get()) {
+                com.utopia.table.TableManager.annulerPose(sp.getUUID());
+                com.utopia.data.TableData.get(level.getServer()).add(dim, pos, tableAPoser);
+                event.setCanceled(true);
+                sp.sendSystemMessage(Messages.success("Table de " + tableAPoser.label
+                        + " posee ! Clic droit dessus pour s'y asseoir."));
+                return;
+            }
+            // Une table cassee disparait, et ce qui etait mise dessus est rendu.
+            com.utopia.data.TableData tables = com.utopia.data.TableData.get(level.getServer());
+            com.utopia.data.TableData.Table tableCassee = tables.tableAt(dim, pos);
+            if (tableCassee != null) {
+                com.utopia.table.TableManager.oublier(level.getServer(), tableCassee);
+                tables.remove(tableCassee.key());
+            }
             // Si on casse une borne enregistree, elle disparait de la salle.
             com.utopia.data.CasinoData casino = com.utopia.data.CasinoData.get(level.getServer());
             com.utopia.data.CasinoData.Machine broken = casino.machineAt(dim, pos);
@@ -241,6 +257,16 @@ public final class UtopiaEvents {
                     .get(level.getServer()).machineAt(level.dimension().location(), pos);
             if (machine != null) {
                 com.utopia.casino.CasinoMenus.openMachine(sp, machine);
+                event.setCanceled(true);
+                return;
+            }
+        }
+        // Table de jeu : clic droit -> on s'assoit et l'ecran du jeu s'ouvre.
+        if (Config.CASINO_TABLES.get()) {
+            com.utopia.data.TableData.Table table = com.utopia.data.TableData
+                    .get(level.getServer()).tableAt(level.dimension().location(), pos);
+            if (table != null) {
+                com.utopia.table.TableMenus.ouvrirPourJouer(sp, table);
                 event.setCanceled(true);
                 return;
             }
@@ -439,6 +465,18 @@ public final class UtopiaEvents {
     }
 
     @SubscribeEvent
+    public static void onServerStarted(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        // Une mise encore notee au demarrage est forcement une main que l'arret a coupee en deux.
+        com.utopia.table.TableManager.onServerStarted(event.getServer());
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(net.neoforged.neoforge.event.server.ServerStoppingEvent event) {
+        // Avant la derniere sauvegarde : ce qui est engage n'aura pas lieu, on rend.
+        com.utopia.table.TableManager.onServerStopping(event.getServer());
+    }
+
+    @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         // Previent le joueur si une recompense quotidienne est a recuperer.
         if (!(event.getEntity() instanceof ServerPlayer sp)) {
@@ -531,6 +569,7 @@ public final class UtopiaEvents {
             com.utopia.disguise.DisguiseManager.onLogout(leaving);
             com.utopia.power.MageStaff.onLogout(leaving);
             com.utopia.afk.AfkManager.onLogout(leaving);
+            com.utopia.table.TableManager.onLogout(leaving);
         }
         if (event.getEntity() instanceof ServerPlayer sp) {
             if (sp.containerMenu instanceof UtopiaMenu menu) {
@@ -598,6 +637,10 @@ public final class UtopiaEvents {
         if (t % 60 == 0) {
             // Bookmakers a leur poste et hologrammes a jour (le compte a rebours s'y affiche).
             com.utopia.bet.BetManager.syncWorld(server);
+        }
+        if (t % com.utopia.table.TableManager.PERIODE_TICKS == 0 && Config.CASINO_TABLES.get()) {
+            // Tables de jeu : tour de roulette, delais de tour, fin de main.
+            com.utopia.table.TableManager.tick(server);
         }
         if (t % com.utopia.afk.AfkManager.PERIODE_TICKS == 0) {
             // Anti-AFK : releve de position et de regard, puis preavis et deconnexion.
